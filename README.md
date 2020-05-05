@@ -3,7 +3,7 @@
 
 # DesertFox
 A RV32I (RISC V - <https://riscv.org/specifications/)> ISA compliant CPU featuring a simplified peripherals bus.
-Global warming - desert is hot - fox is smart and self-sufficient. The ultimate goal is running Linux plus SDR to provide an open-source platform for automated agriculture.
+The ultimate goal is running Linux plus SDR to provide an open-source platform for the automation of every possible task imaginable.
 
 # Software requirements
 - compile.sh was written on OSX Catalina - this is part of the SDK and can be found in src/software/sdk (requires installation of toolchain, see below!)
@@ -35,6 +35,9 @@ Requiring 2 clocks per instruction, it executes around 4098 Dhrystones runs per 
 # How to use example
 Install Xilinx Vivado, open the xpr file, generate bitstream, open hardware manager, write bitstream.
 
+![alt text](inaction.jpg "Example project (BME680)")
+
+
 # Project structure
 └───src<br/>
     ├───hardware<br/>
@@ -62,6 +65,11 @@ Install Xilinx Vivado, open the xpr file, generate bitstream, open hardware mana
 The default RAM.txt and ROM.txt is a fully working temperature / humidity / pressure / internal air quality monitor in a calculated update interval grabbing sensor data from BME680 and output to a SD1331 compatible 96x64 OLED display.
 
 Please report any issues via the issues tab, thank you!
+
+# Motivation
+
+This is part of a bigger picture: there is a game in development to teach anyone without formal education how to program in VHDL.
+The ultimate goal is to have the fastest, most efficient possible CPU with the most advanced features to enable automation from all walks of life, potentially producing many billionaires and lifting many people out of poverty.
 
 # License
 GPL 2
