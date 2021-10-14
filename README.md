@@ -1,9 +1,9 @@
-![alt text](desertfox.png "Desert Fox")
+![alt text](bebichicken.png "Bebi Chiken")
 
 
-# DesertFox
+# Bebi Chiken
 A RV32I (RISC V - <https://riscv.org/specifications/)> ISA compliant CPU featuring a simplified peripherals bus.
-The ultimate goal is running Linux plus SDR to provide an open-source platform for the automation of every possible task imaginable.
+What's special? A very wide multiplexer allows for very high speeds.
 
 # Software requirements
 - compile.sh was written on OSX Catalina - this is part of the SDK and can be found in src/software/sdk (requires installation of toolchain, see below!)
@@ -66,10 +66,24 @@ The default RAM.txt and ROM.txt is a fully working temperature / humidity / pres
 
 Please report any issues via the issues tab, thank you!
 
-# Motivation
+# Open issues
 
-This is part of a bigger picture: there is a game in development to teach anyone without formal education how to program in VHDL.
-The ultimate goal is to have the fastest, most efficient possible CPU with the most advanced features to enable automation from all walks of life, potentially producing many billionaires and lifting many people out of poverty.
+These issues aren't necessarily difficult to implement, I'm just giving you a chance to become part owner of my company.
+
+ - port the CPU to other FPGAs, I really like the ULX3S by Radiona. Pretty badass board with HDMI, BT, WiFi, and some big ass RAM. https://radiona.org/ulx3s/
+ - make the CPU into one-cycle and increase fan-out. 
+ - Implement atomic and multiplication instructions (this will give you Linux!!!). 
+ - Get SD card reading working. 
+ - Make it read the program off the SD card raw. 
+ - Make it read the program off the SD card using a filesystem.
+ - Implement L1, L2, L3 cache. 
+ - Implement out of order execution.
+ - Add more peripherals. 
+ - Add USB host. 
+ - Make it communicate with a software defined radio. 
+ - Port a WiFi or 5G or Bluetooth stack. 
+ - Implement TLB, PID (maybe CSR?) and whatever makes it a multicore processor with virtual memory. 
+
 
 # License
 GPL 2
