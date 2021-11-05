@@ -12,13 +12,13 @@ A RV32I (RISC V - <https://riscv.org/specifications/)> ISA compliant CPU featuri
 
 # Hardware requirements for example application
 
-- hardware side is done on Windows 10 in Xilinx Vivado - you just open src/hardware/project_1.xpr and click "Generate Bitstream"
+Hardware side is done on Windows 10 in Xilinx Vivado - you just open src/hardware/project_1.xpr and click "Generate Bitstream"
 
-  Digilent Arty S7-50T: <https://reference.digilentinc.com/reference/programmable-logic/arty-s7/start>
+Digilent Arty S7-50T: <https://reference.digilentinc.com/reference/programmable-logic/arty-s7/start>
 
-  BME680 breakout: <https://shop.pimoroni.com/products/bme680-breakout> on chipkit pins SCL and SDA
+BME680 breakout: <https://shop.pimoroni.com/products/bme680-breakout> on chipkit pins SCL and SDA
 
-  OLED RGB 96x64: <https://store.digilentinc.com/pmod-oledrgb-96-x-64-rgb-oled-display-with-16-bit-color-resolution/> on header JD (bottom right)
+OLED RGB 96x64: <https://store.digilentinc.com/pmod-oledrgb-96-x-64-rgb-oled-display-with-16-bit-color-resolution/> on header JD (bottom right)
 
 Requiring 2 clocks per instruction, it executes around 4098 Dhrystones runs per second at 100MHz (244 seconds for 1000000 runs). The following output is for the example BME680-OLED application.
 
