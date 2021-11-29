@@ -1,0 +1,2 @@
+ghdl -fexplicit -fsynopsys bebichiken
+synth_ecp5 -noccu2 -nomux -nodram -json bebichiken.json hdmi.vhd HDMI_clock.v HDMI_test_hires.v
