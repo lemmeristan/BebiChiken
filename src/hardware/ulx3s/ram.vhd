@@ -9,7 +9,7 @@ USE IEEE.std_logic_unsigned.ALL; -- for arithmetic
 USE IEEE.NUMERIC_STD.ALL; -- for unsigned()
 ENTITY block_ram IS
     GENERIC (
-        base_address : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"80000000";
+        base_address : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"80060000";
         ram_size : INTEGER := 128; --65536; --STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00010000";
         ram_file : STRING := "RAM.txt"
     );

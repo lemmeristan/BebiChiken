@@ -12,7 +12,14 @@ ENTITY bebichiken IS
     led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
     ftdi_rxd : OUT STD_LOGIC;
     gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
-    wifi_gpio0 : OUT STD_LOGIC
+    wifi_gpio0 : OUT STD_LOGIC;
+
+    flash_csn : OUT STD_LOGIC;
+    flash_mosi : INOUT STD_LOGIC; -- io(0)
+    flash_miso : IN STD_LOGIC; -- io(1)
+    flash_wpn : INOUT STD_LOGIC; -- io(2)
+    flash_holdn : INOUT STD_LOGIC -- io(3)
+
     --SD_DAT3, SD_CMD, SD_CLK : out std_logic;
     --SD_DAT0 : in std_logic := '0'
 
@@ -102,12 +109,41 @@ ARCHITECTURE behavioural OF bebichiken IS
     address_valid : OUT STD_LOGIC
     );
   END COMPONENT;
-  COMPONENT rom PORT (
-    rst, clk : IN STD_LOGIC;
-    addr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+
+  COMPONENT quadflash_cache
+    GENERIC (
+      vendor : STD_LOGIC; -- 0 => xilinx, 1 => lattice
+
+      base_address : STD_LOGIC_VECTOR(31 DOWNTO 0)
+    );
+
+    PORT (
+      reset : IN STD_LOGIC;
+      clk : IN STD_LOGIC;
+
+      mem_clk : IN STD_LOGIC;
+      mem_re : IN STD_LOGIC;
+      mem_addr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+      mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+      mem_rdy : OUT STD_LOGIC;
+      spi_csn, spi_sck, spi_di, spi_wpn, spi_holdn : OUT STD_LOGIC;
+      spi_do : IN STD_LOGIC;
+
+      spi_io : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+
+      spi_reading : OUT STD_LOGIC;
+      led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
     );
   END COMPONENT;
+
+  COMPONENT USRMCLK
+    PORT (
+      USRMCLKI : IN STD_ULOGIC;
+      USRMCLKTS : IN STD_ULOGIC
+    );
+  END COMPONENT;
+  ATTRIBUTE syn_noprune : BOOLEAN;
+  ATTRIBUTE syn_noprune OF USRMCLK : COMPONENT IS true;
   COMPONENT spimaster PORT (
     rst, clk : IN STD_LOGIC;
     sck, mosi : OUT STD_LOGIC;
@@ -205,14 +241,24 @@ ARCHITECTURE behavioural OF bebichiken IS
   --   );
   -- END COMPONENT;
 
+  SIGNAL flash_clk : STD_LOGIC;
+
+  SIGNAL spi_csn, spi_clk, spi_di, spi_do, spi_wpn, spi_holdn, spi_reading : STD_LOGIC;
+
+  SIGNAL spi_io : STD_LOGIC_VECTOR(3 DOWNTO 0);
+
 BEGIN
+
+  u1 : USRMCLK PORT MAP(
+    USRMCLKI => spi_clk,
+    USRMCLKTS => rst);
 
   wifi_gpio0 <= '1'; -- Tie GPIO0, keep board from rebooting
 
   --clk <= CLK100MHZ;
   rst <= (NOT btn(0)) OR btn(1) OR btn(2) OR btn(3) OR btn(4) OR btn(5) OR btn(6);
 
-  inst_rdy <= '1';
+  --inst_rdy <= '1';
 
   clk <= clk_25mhz;
   i_gpio : gpio PORT MAP(
@@ -226,12 +272,14 @@ BEGIN
   );
 
   led <= rst & int_gpio(6 DOWNTO 0);
+  --led <= mem_addr(7 DOWNTO 0);
+
   PROCESS (gpio_dir, gpio_value)
   BEGIN
     FOR i IN 0 TO 31 LOOP
       IF gpio_dir(i) = '1' THEN -- set as output
         int_gpio(i) <= gpio_value(i);
-        ELSE
+      ELSE
         int_gpio(i) <= 'Z';
       END IF;
     END LOOP;
@@ -289,11 +337,42 @@ BEGIN
   --   address_valid => i_address_valid(PERIPHERAL_I2CMASTER)
   -- );
 
-  i_rom : rom PORT MAP(
-    rst => rst, clk => clk,
-    addr => inst_addr,
-    data_out => inst_rdata
+  i_quadflash_cache : quadflash_cache GENERIC MAP(
+    vendor => '1',
+    base_address => X"00000000"
+    ) PORT MAP(
+    reset => rst,
+    clk => clk_25mhz,
+
+    mem_clk => clk_25mhz,
+    mem_re => inst_re,
+    mem_addr => inst_addr,
+    mem_rdata => inst_rdata,
+    mem_rdy => inst_rdy,
+
+    spi_csn => spi_csn, spi_sck => spi_clk,
+    spi_di => spi_di, spi_do => spi_do, spi_wpn => spi_wpn, spi_holdn => spi_holdn,
+
+    spi_io => spi_io, spi_reading => spi_reading --, led => led
   );
+
+  spi_io <= flash_holdn & flash_wpn & flash_miso & flash_mosi;
+
+  PROCESS (spi_reading, spi_holdn, spi_wpn, spi_di)
+  BEGIN
+    IF spi_reading = '1' THEN
+      flash_mosi <= 'Z';
+      flash_wpn <= 'Z';
+      flash_holdn <= 'Z';
+    ELSE
+      flash_mosi <= spi_di;
+      flash_wpn <= spi_wpn;
+      flash_holdn <= spi_holdn;
+    END IF;
+  END PROCESS;
+
+  flash_csn <= spi_csn;
+  spi_do <= flash_miso;
 
   i_cpu : cpu PORT MAP(
     rst => rst, clk => clk,
@@ -317,20 +396,20 @@ BEGIN
     data_in_rd => registerfile_wdata_rd,
     we => registerfile_we
   );
-  comp_hdmi : hdmi PORT MAP(
+  -- comp_hdmi : hdmi PORT MAP(
 
-    rst => rst, clk => clk,
-    mem_addr => mem_addr, mem_wdata => mem_wdata,
-    mem_rdata => i_mem_rdata(PERIPHERAL_HDMI),
-    mem_we => mem_we, mem_re => mem_re,
-    mem_width => mem_width,
-    mem_rdy => i_mem_rdy(PERIPHERAL_HDMI), mem_wack => i_mem_wack(PERIPHERAL_HDMI),
+  --   rst => rst, clk => clk,
+  --   mem_addr => mem_addr, mem_wdata => mem_wdata,
+  --   mem_rdata => i_mem_rdata(PERIPHERAL_HDMI),
+  --   mem_we => mem_we, mem_re => mem_re,
+  --   mem_width => mem_width,
+  --   mem_rdy => i_mem_rdy(PERIPHERAL_HDMI), mem_wack => i_mem_wack(PERIPHERAL_HDMI),
 
-    address_valid => i_address_valid(PERIPHERAL_HDMI),
+  --   address_valid => i_address_valid(PERIPHERAL_HDMI),
 
-    gpdi_dp => gpdi_dp
-    --gpdi_dn : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
-  );
+  --   gpdi_dp => gpdi_dp
+  --   --gpdi_dn : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
+  -- );
 
   PROCESS (i_address_valid, i_mem_rdata, i_mem_rdy, i_mem_wack)
   BEGIN

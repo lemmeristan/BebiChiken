@@ -4,7 +4,7 @@ USE IEEE.NUMERIC_STD.ALL;
 USE IEEE.std_logic_unsigned.ALL;
 
 ENTITY cpu IS
-    GENERIC (entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"80010000");
+    GENERIC (entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00400000");
 
     PORT (
         rst, clk : IN STD_LOGIC;
@@ -473,8 +473,8 @@ BEGIN
     CASE state IS
         WHEN FETCH_INSTRUCTION =>
             set_instruction <= '1';
+            inst_re <= '1';
             IF inst_rdy = '1' THEN
-                inst_re <= '1';
                 n_state <= EXECUTE;
             END IF;
 
