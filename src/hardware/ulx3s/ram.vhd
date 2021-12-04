@@ -72,7 +72,7 @@ ARCHITECTURE Behavioral OF block_ram IS
 BEGIN
 
     ramsize_bit <= STD_LOGIC_VECTOR(to_unsigned(ram_size, ramsize_bit'length));
-    blockram : PROCESS (rst, clk)
+    blockram : PROCESS (clk)
     BEGIN
         IF rising_edge(clk) THEN
             IF blockram_we = '1' THEN
@@ -200,7 +200,7 @@ BEGIN
         END CASE;
     END PROCESS;
 
-    PROCESS (mem_addr, mem_width)
+    PROCESS (mem_addr, mem_width, ramsize_bit)
     BEGIN
         i_address_valid <= '0';
         IF (mem_addr >= base_address) AND (mem_addr < (base_address + ram_size)) THEN

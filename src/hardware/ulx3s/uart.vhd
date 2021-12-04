@@ -25,8 +25,8 @@ ARCHITECTURE Behavioral OF uart IS
     CONSTANT COUNTER_MAX : INTEGER := (clk_freq/baud_rate) - 1;
     CONSTANT TX_BUSY : INTEGER := 0;
 
-    SIGNAL counter : INTEGER := COUNTER_MAX; -- 115207 bps
-    SIGNAL charToBeSent : STD_LOGIC_VECTOR(7 DOWNTO 0) := initial_data;
+    SIGNAL counter : INTEGER; -- 115207 bps
+    SIGNAL charToBeSent : STD_LOGIC_VECTOR(7 DOWNTO 0);
     SIGNAL reg_status : STD_LOGIC_VECTOR(7 DOWNTO 0);
     SIGNAL tick : STD_LOGIC;
 
@@ -65,7 +65,7 @@ BEGIN
     PROCESS (state, charToBeSent)
     BEGIN
         n_state <= state + 1;
-        reg_status(TX_BUSY) <= '1';
+        reg_status <= (TX_BUSY => '1', others => '0');
 
         CASE state IS
             WHEN 0 =>

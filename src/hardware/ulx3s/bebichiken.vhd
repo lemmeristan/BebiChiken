@@ -11,8 +11,8 @@ ENTITY bebichiken IS
     btn : IN STD_LOGIC_VECTOR(6 DOWNTO 0);
     led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
     ftdi_rxd : OUT STD_LOGIC;
-    gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
-    wifi_gpio0 : OUT STD_LOGIC;
+    --gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+    --wifi_gpio0 : OUT STD_LOGIC;
 
     flash_csn : OUT STD_LOGIC;
     flash_mosi : INOUT STD_LOGIC; -- io(0)
@@ -182,7 +182,7 @@ ARCHITECTURE behavioural OF bebichiken IS
     );
   END COMPONENT;
 
-  SIGNAL miso, mosi, sck : STD_LOGIC;
+
 
   -- component uart PORT (
   --   rst, CLK100MHZ : in std_logic;
@@ -200,9 +200,9 @@ ARCHITECTURE behavioural OF bebichiken IS
   SIGNAL registerfile_rdata_rs1, registerfile_rdata_rs2, registerfile_wdata_rd : STD_LOGIC_VECTOR(31 DOWNTO 0);
   SIGNAL registerfile_we : STD_LOGIC;
 
-  SIGNAL we_0, data_we, data_re, inst_re, inst_rdy, data_rdy, data_wack : STD_LOGIC;
+  SIGNAL inst_re, inst_rdy : STD_LOGIC;
 
-  SIGNAL data_wdata, data_addr, inst_addr, inst_rdata, data_rdata : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL inst_addr, inst_rdata: STD_LOGIC_VECTOR(31 DOWNTO 0);
 
   SIGNAL inst_width, mem_width : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
@@ -241,7 +241,7 @@ ARCHITECTURE behavioural OF bebichiken IS
   --   );
   -- END COMPONENT;
 
-  SIGNAL flash_clk : STD_LOGIC;
+
 
   SIGNAL spi_csn, spi_clk, spi_di, spi_do, spi_wpn, spi_holdn, spi_reading : STD_LOGIC;
 
@@ -253,7 +253,6 @@ BEGIN
     USRMCLKI => spi_clk,
     USRMCLKTS => rst);
 
-  wifi_gpio0 <= '1'; -- Tie GPIO0, keep board from rebooting
 
   --clk <= CLK100MHZ;
   rst <= (NOT btn(0)) OR btn(1) OR btn(2) OR btn(3) OR btn(4) OR btn(5) OR btn(6);
@@ -424,28 +423,5 @@ BEGIN
       END IF;
     END LOOP;
   END PROCESS;
-  --SD_DAT3 <= int_gpio(0);
-  --SD_CMD <= mosi;
-  --miso <= SD_DAT0;
-  --SD_CLK <= sck;
-  -- ila: ila_1 PORT MAP(
-  --     clk => clk,
-  --     probe0 => int_gpio(0), -- OLED_CS
-  --     probe1 => sck,
-  --     probe2 => mosi,
-  --     probe3 => int_gpio(1),
-  --     probe4 => int_gpio(2),
-  --     probe5 => int_gpio(3),
-  --     probe6 => int_gpio(4)
-
-  --   );
-
-  -- OLED_CS <= int_gpio(0);
-  -- OLED_MOSI <= mosi;
-  -- OLED_SCK <= sck;
-  -- OLED_DC <= int_gpio(1);
-  -- OLED_RES <= int_gpio(2);
-  -- OLED_VCCEN <= int_gpio(3);
-  -- OLED_PMODEN <= int_gpio(4);
 
 END behavioural;

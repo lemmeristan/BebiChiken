@@ -35,20 +35,6 @@ END cpu;
 
 ARCHITECTURE behavioural OF cpu IS
 
-    TYPE instruction_details_t IS
-    RECORD
-    selected, decode_error, execution_done, use_rs1, use_rs2, use_rd, decrement_counter : STD_LOGIC;
-    result, next_pc, imm : STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-    -- mmu interface
-    data_width : STD_LOGIC_VECTOR(1 DOWNTO 0);
-    data_addr, data_wdata : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    data_re, data_we : STD_LOGIC;
-END RECORD;
-CONSTANT init_instruction_details : instruction_details_t := (selected => '0', imm => (OTHERS => '0'), execution_done => '0', decode_error => '1', result => (OTHERS => '0'), next_pc => (OTHERS => '0'), use_rs1 => '0', use_rs2 => '0', use_rd => '0', decrement_counter => '0',
-data_width => "10", data_addr => (OTHERS => '0'), data_wdata => (OTHERS => '0'), data_re => '0', data_we => '0');
-TYPE instruction_details_array_t IS ARRAY (NATURAL RANGE <>) OF instruction_details_t;
-SIGNAL instruction_details_array : instruction_details_array_t(127 DOWNTO 0) := (OTHERS => init_instruction_details);
 SIGNAL opcode, funct7 : STD_LOGIC_VECTOR(6 DOWNTO 0);
 SIGNAL instruction, n_instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
@@ -79,7 +65,7 @@ SIGNAL use_rs2 : STD_LOGIC_VECTOR(127 DOWNTO 0) := (OTHERS => '0');
 SIGNAL use_rd : STD_LOGIC_VECTOR(127 DOWNTO 0) := (OTHERS => '0');
 SIGNAL execution_done : STD_LOGIC_VECTOR(127 DOWNTO 0) := (OTHERS => '1');
 SIGNAL dec_counter : STD_LOGIC_VECTOR(127 DOWNTO 0) := (OTHERS => '0');
-SIGNAL dwe : STD_LOGIC_VECTOR(127 DOWNTO 0) := (OTHERS => '0'); -- data_we
+SIGNAL dwe, dre : STD_LOGIC_VECTOR(127 DOWNTO 0) := (OTHERS => '0'); -- data_we
 SIGNAL selected : STD_LOGIC_VECTOR(127 DOWNTO 0) := (OTHERS => '0');
 TYPE word_t IS ARRAY (NATURAL RANGE <>) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
 SIGNAL next_pc : word_t(127 DOWNTO 0) := (OTHERS => (OTHERS => '0'));
@@ -88,19 +74,17 @@ SIGNAL imm : word_t(127 DOWNTO 0) := (OTHERS => (OTHERS => '0'));
 SIGNAL wdata : word_t(127 DOWNTO 0) := (OTHERS => (OTHERS => '0'));
 SIGNAL daddr : word_t(127 DOWNTO 0) := (OTHERS => (OTHERS => '0'));
 
+TYPE width_t IS ARRAY (NATURAL RANGE <>) OF STD_LOGIC_VECTOR(1 DOWNTO 0);
+signal dwidth : width_t(127 downto 0);
+
+
+
+
 SIGNAL state_out : STD_LOGIC_VECTOR(2 DOWNTO 0);
 
 SIGNAL i_inst_addr, i_data_wdata, i_data_addr : STD_LOGIC_VECTOR(31 DOWNTO 0);
 SIGNAL i_data_we, i_data_re : STD_LOGIC;
 
--- component ila_0 PORT (
---   clk : in std_logic;
---   probe2, probe3, probe4, probe5, probe6, probe7, probe8 : in std_logic_vector(31 downto 0);
---   probe0, probe9, probe10 : in std_logic;
---   probe1 : in std_logic_vector(2 downto 0);
---   probe11, probe12 : in std_logic_vector(127 downto 0)
--- );
--- end component;
 IMPURE FUNCTION DoShift (
     value : STD_LOGIC_VECTOR(31 DOWNTO 0);
     shamt : INTEGER RANGE 0 TO 31;
@@ -425,22 +409,6 @@ data_re <= i_data_re;
 data_we <= i_data_we;
 data_addr <= i_data_addr;
 
--- ila: ila_0 PORT MAP(
---   clk => clk,
---   probe0 => rst,
---   probe1 => state_out,
---   probe2 => pc,
---   probe3 => i_inst_addr,
---   probe4 => inst_rdata,
---   probe5 => instruction,
---   probe6 => data_rdata,
---   probe7 => i_data_wdata,
---   probe8 => i_data_addr,
---   probe9 => i_data_we,
---   probe10 => i_data_re,
---   probe11 => selected,
---   probe12 => execution_done
--- );
 
 funct7 <= instruction(31 DOWNTO 25);
 rs2 <= instruction(24 DOWNTO 20);
@@ -455,7 +423,7 @@ registerfile_rd <= rd;
 registerfile_wdata_rd <= result(to_integer(unsigned(opcode)));
 inst_width <= "10";
 
-fsm : PROCESS (state, instruction_details_array, pc, inst_rdy, opcode, decode_error, use_rd, execution_done, next_pc, result, daddr, dwe)
+fsm : PROCESS (state, pc, inst_rdy, opcode, decode_error, use_rd, execution_done, next_pc, result, daddr, dre, dwe)
 BEGIN
     n_state <= state;
     n_pc <= pc;
@@ -480,10 +448,10 @@ BEGIN
 
         WHEN EXECUTE =>
 
-            data_width <= instruction_details_array(to_integer(unsigned(opcode))).data_width;
+            data_width <= dwidth(to_integer(unsigned(opcode))); --instruction_details_array(to_integer(unsigned(opcode))).data_width;
             i_data_addr <= daddr(to_integer(unsigned(opcode)));
             i_data_wdata <= wdata(to_integer(unsigned(opcode)));
-            i_data_re <= instruction_details_array(to_integer(unsigned(opcode))).data_re;
+            i_data_re <= dre(to_integer(unsigned(opcode))); --instruction_details_array(to_integer(unsigned(opcode))).data_re;
             i_data_we <= dwe(to_integer(unsigned(opcode)));
 
             selected(to_integer(unsigned(opcode))) <= '1';
@@ -536,7 +504,7 @@ BEGIN
     daddr(to_integer(unsigned(S_TYPE))) <= registerfile_rdata_rs1 + imm_s;
     wdata(to_integer(unsigned(S_TYPE))) <= registerfile_rdata_rs2;
     dwe(to_integer(unsigned(S_TYPE))) <= selected(to_integer(unsigned(S_TYPE)));
-    instruction_details_array(to_integer(unsigned(S_TYPE))).data_width <= funct3(1 DOWNTO 0);
+    dwidth(to_integer(unsigned(S_TYPE))) <= funct3(1 DOWNTO 0);
 END PROCESS;
 
 decode_load : PROCESS (imm_i, pc, registerfile_rdata_rs1, data_rdy, data_rdata, funct3)
@@ -550,11 +518,11 @@ BEGIN
     decode_error(to_integer(unsigned(I_TYPE_LOAD))) <= '0';
 
     daddr(to_integer(unsigned(I_TYPE_LOAD))) <= registerfile_rdata_rs1 + imm_i;
-    instruction_details_array(to_integer(unsigned(I_TYPE_LOAD))).data_re <= '1';
+    dre(to_integer(unsigned(I_TYPE_LOAD))) <= '1';
 
     result(to_integer(unsigned(I_TYPE_LOAD))) <= data_rdata;
 
-    instruction_details_array(to_integer(unsigned(I_TYPE_LOAD))).data_width <= funct3(1 DOWNTO 0);
+    dwidth(to_integer(unsigned(I_TYPE_LOAD))) <= funct3(1 DOWNTO 0);
     IF (funct3(2) = '0') THEN
         CASE funct3(1 DOWNTO 0) IS
             WHEN "00" =>

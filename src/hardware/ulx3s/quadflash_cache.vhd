@@ -57,8 +57,7 @@ ENTITY quadflash_cache IS
 
         spi_reading : OUT STD_LOGIC;
 
-        led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-        initializing : OUT STD_LOGIC
+        led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
 
     );
 END quadflash_cache;
@@ -113,16 +112,14 @@ ARCHITECTURE behavioural OF quadflash_cache IS
     SIGNAL current_address, n_current_address : STD_LOGIC_VECTOR(10 DOWNTO 0);
     SIGNAL cache_WE, address_valid : STD_LOGIC;
     SIGNAL shift_reg, n_shift_reg : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL update_current_address, start_fill_cache : STD_LOGIC;
-
-    SIGNAL initialized, n_initialized, sck_state, n_sck_state, n_wel, wel : STD_LOGIC;
+    SIGNAL update_current_address : STD_LOGIC;
 
     SIGNAL sr1, n_sr1, sr2, n_sr2 : STD_LOGIC_VECTOR(7 DOWNTO 0);
 
 BEGIN
 
     cache_DIN <= n_shift_reg(7 DOWNTO 0) & n_shift_reg(15 DOWNTO 8) & n_shift_reg(23 DOWNTO 16) & n_shift_reg(31 DOWNTO 24);
-    async : PROCESS (clk, sr1, sr2, sck_state, wel, initialized, spi_do, state, current_address, shift_reg, fill_count, waitcounter, start_fill_cache, spi_io, address_valid)
+    async : PROCESS (clk, sr1, sr2, spi_do, state, current_address, shift_reg, fill_count, waitcounter, spi_io, address_valid, mem_re, mem_addr)
     BEGIN
         spi_csn <= '1';
         spi_di <= '0';
@@ -145,9 +142,8 @@ BEGIN
 
         --led(5) <= cache_WE;
 
-        n_initialized <= initialized;
 
-        initializing <= '0';
+
         mem_rdy <= '0';
 
         n_sr1 <= sr1;
@@ -183,7 +179,6 @@ BEGIN
                 END CASE;
 
             WHEN INIT =>
-                initializing <= '1';
                 n_waitcounter <= waitcounter + 1;
 
                 CASE waitcounter IS
@@ -275,7 +270,7 @@ BEGIN
                 END IF;
 
             WHEN FILL_CACHE =>
-                n_initialized <= '1';
+
                 led(2) <= '1';
 
                 CASE waitcounter IS
@@ -348,8 +343,6 @@ BEGIN
             current_address <= (OTHERS => '1');
             state <= S_RESET;
             waitcounter <= 0;
-            initialized <= '0';
-            wel <= '0';
             sr1 <= (OTHERS => '0');
             sr2 <= (OTHERS => '0');
 
@@ -359,8 +352,7 @@ BEGIN
             state <= n_state;
             waitcounter <= n_waitcounter;
 
-            initialized <= n_initialized;
-            wel <= n_wel;
+          
 
             sr1 <= n_sr1;
             sr2 <= n_sr2;
