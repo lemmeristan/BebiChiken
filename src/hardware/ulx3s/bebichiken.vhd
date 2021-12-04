@@ -182,8 +182,6 @@ ARCHITECTURE behavioural OF bebichiken IS
     );
   END COMPONENT;
 
-
-
   -- component uart PORT (
   --   rst, CLK100MHZ : in std_logic;
   --   txd : out std_logic
@@ -202,7 +200,7 @@ ARCHITECTURE behavioural OF bebichiken IS
 
   SIGNAL inst_re, inst_rdy : STD_LOGIC;
 
-  SIGNAL inst_addr, inst_rdata: STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL inst_addr, inst_rdata : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
   SIGNAL inst_width, mem_width : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
@@ -241,21 +239,34 @@ ARCHITECTURE behavioural OF bebichiken IS
   --   );
   -- END COMPONENT;
 
-
-
   SIGNAL spi_csn, spi_clk, spi_di, spi_do, spi_wpn, spi_holdn, spi_reading : STD_LOGIC;
 
   SIGNAL spi_io : STD_LOGIC_VECTOR(3 DOWNTO 0);
 
+  SIGNAL debouncectr : INTEGER;
 BEGIN
 
   u1 : USRMCLK PORT MAP(
     USRMCLKI => spi_clk,
     USRMCLKTS => rst);
-
-
   --clk <= CLK100MHZ;
-  rst <= (NOT btn(0)) OR btn(1) OR btn(2) OR btn(3) OR btn(4) OR btn(5) OR btn(6);
+  --rst <= (NOT btn(0)) OR btn(1) OR btn(2) OR btn(3) OR btn(4) OR btn(5) OR btn(6);
+  PROCESS (clk_25mhz)
+  BEGIN
+    IF rising_edge(clk_25mhz) THEN
+      IF btn(0) = '1' THEN
+
+        IF debouncectr < 100000 THEN
+          debouncectr <= debouncectr + 1;
+        ELSE
+          rst <= '0';
+        END IF;
+      ELSE
+        rst <= '1';
+        debouncectr <= 0;
+      END IF;
+    END IF;
+  END PROCESS;
 
   --inst_rdy <= '1';
 
@@ -270,6 +281,7 @@ BEGIN
     gpio_dir => gpio_dir, gpio_value => gpio_value, gpio_input => (OTHERS => '0')
   );
 
+  --led <= inst_addr(7 DOWNTO 0);
   led <= rst & int_gpio(6 DOWNTO 0);
   --led <= mem_addr(7 DOWNTO 0);
 

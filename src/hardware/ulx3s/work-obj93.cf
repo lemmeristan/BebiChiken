@@ -1,31 +1,34 @@
 v 4
-file . "hdmi.vhd" "80deb93ce7c492de7a0466e3bb272ce47e8ea5d4" "20211102114854.000":
-  entity hdmi at 1( 0) + 0 on 1237;
-  architecture behavioural of hdmi at 30( 747) + 0 on 1238;
-file . "cpu.vhd" "c5dd2619971ffe0b3ace415f9d50eb67cdf2d10b" "20211102114853.996":
-  entity cpu at 1( 0) + 0 on 1233;
-  architecture behavioural of cpu at 36( 1336) + 0 on 1234;
-file . "rom.vhd" "0c779139842ce9c0114221627bfddfcccc968817" "20211102114853.987":
-  entity rom at 1( 0) + 0 on 1229;
-  architecture behavioral of rom at 22( 567) + 0 on 1230;
-file . "gpio.vhd" "1236cc4fc3f9a49e017058439e51cbc309852493" "20211102114853.985":
-  entity gpio at 1( 0) + 0 on 1227;
-  architecture behavioural of gpio at 19( 551) + 0 on 1228;
-file . "uart.vhd" "33a69d936a27a0c9cbe6490b4e58b9ea7a927dc2" "20211102114853.984":
-  entity uart at 1( 0) + 0 on 1225;
-  architecture behavioral of uart at 24( 654) + 0 on 1226;
-file . "ram.vhd" "0c9966c0243eff66b5cb8f17a9600a23628e0686" "20211102114853.983":
-  entity block_ram at 1( 0) + 0 on 1223;
-  architecture behavioral of block_ram at 29( 806) + 0 on 1224;
+file . "quadflash_cache.vhd" "ee60c0382f154fed187480e74e0a19d1f32c58c3" "20211129221603.822":
+  entity quadflash_cache at 21( 554) + 0 on 1315;
+  architecture behavioural of quadflash_cache at 66( 1795) + 0 on 1316;
+file . "hdmi.vhd" "89dd33032b893283456c4e7cc69a753e93b449d8" "20211129221603.819":
+  entity hdmi at 1( 0) + 0 on 1313;
+  architecture behavioural of hdmi at 30( 747) + 0 on 1314;
+file . "cpu.vhd" "c5dd2619971ffe0b3ace415f9d50eb67cdf2d10b" "20211129221603.816":
+  entity cpu at 1( 0) + 0 on 1309;
+  architecture behavioural of cpu at 36( 1336) + 0 on 1310;
+file . "rom.vhd" "ea896d18381d955836d718959ee1540111015f09" "20211129221603.809":
+  entity rom at 1( 0) + 0 on 1305;
+  architecture behavioral of rom at 22( 567) + 0 on 1306;
+file . "gpio.vhd" "1236cc4fc3f9a49e017058439e51cbc309852493" "20211129221603.807":
+  entity gpio at 1( 0) + 0 on 1303;
+  architecture behavioural of gpio at 19( 551) + 0 on 1304;
+file . "uart.vhd" "33a69d936a27a0c9cbe6490b4e58b9ea7a927dc2" "20211129221603.807":
+  entity uart at 1( 0) + 0 on 1301;
+  architecture behavioral of uart at 24( 654) + 0 on 1302;
+file . "ram.vhd" "0c9966c0243eff66b5cb8f17a9600a23628e0686" "20211129221603.806":
+  entity block_ram at 1( 0) + 0 on 1299;
+  architecture behavioral of block_ram at 29( 806) + 0 on 1300;
 file . "blinky.vhd" "10b25b3b9cee960674b1768c3e562f34e3671a54" "20201023202219.038":
   entity top at 1( 0) + 0 on 59;
   architecture behavioural of top at 16( 261) + 0 on 60;
-file . "bebichiken.vhd" "9484ee0a96c4e5ff7828929ef6f6c30650434782" "20211102114853.978":
-  entity bebichiken at 1( 0) + 0 on 1221;
-  architecture behavioural of bebichiken at 25( 633) + 0 on 1222;
-file . "registerfile.vhd" "d67a3cac8536522f7698fc18b84038ccb955a986" "20211102114853.988":
-  entity registerfile at 1( 0) + 0 on 1231;
-  architecture behavioural of registerfile at 16( 400) + 0 on 1232;
-file . "timebase.vhd" "f1cd41502419e36012376f7afdee468b0322c18f" "20211102114853.998":
-  entity timebase at 1( 0) + 0 on 1235;
-  architecture behavioural of timebase at 18( 472) + 0 on 1236;
+file . "bebichiken.vhd" "dcefcf4b3875bb86ec0ba929d8c226845e6a68e1" "20211129221603.802":
+  entity bebichiken at 1( 0) + 0 on 1297;
+  architecture behavioural of bebichiken at 32( 835) + 0 on 1298;
+file . "registerfile.vhd" "d67a3cac8536522f7698fc18b84038ccb955a986" "20211129221603.810":
+  entity registerfile at 1( 0) + 0 on 1307;
+  architecture behavioural of registerfile at 16( 400) + 0 on 1308;
+file . "timebase.vhd" "f1cd41502419e36012376f7afdee468b0322c18f" "20211129221603.817":
+  entity timebase at 1( 0) + 0 on 1311;
+  architecture behavioural of timebase at 18( 472) + 0 on 1312;

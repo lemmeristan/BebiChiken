@@ -29,13 +29,13 @@ BEGIN
       i_gpio_dir <= (OTHERS => '1');
       gpio_value <= X"AAAAAAAA";
     ELSIF rising_edge(clk) THEN
-      if mem_we = '1' then
-      IF (mem_addr = base_address) THEN -- direction
-        i_gpio_dir <= mem_wdata;
-      elsIF (mem_addr = (base_address + X"00000004")) THEN
-        gpio_value <= mem_wdata;
+      IF mem_we = '1' THEN
+        IF (mem_addr = base_address) THEN -- direction
+          i_gpio_dir <= mem_wdata;
+        ELSIF (mem_addr = (base_address + X"00000004")) THEN
+          gpio_value <= mem_wdata;
+        END IF;
       END IF;
-    end if;
 
     END IF;
   END PROCESS;

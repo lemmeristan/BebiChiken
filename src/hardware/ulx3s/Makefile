@@ -35,5 +35,5 @@ bebichiken.json: bebichiken.ys bebichiken.vhd ram.vhd uart.vhd gpio.vhd rom.vhd 
 prog: ulx3s.bit
 	fujprog-v48-mac-x64 ulx3s.bit
 
-analysis: bebichiken.vhd ram.vhd uart.vhd gpio.vhd rom.vhd registerfile.vhd timebase.vhd hdmi.vhd
-	ghdl -a --ieee=synopsys -fexplicit bebichiken.vhd ram.vhd uart.vhd gpio.vhd rom.vhd registerfile.vhd cpu.vhd timebase.vhd hdmi.vhd
+analysis: bebichiken.vhd ram.vhd uart.vhd gpio.vhd rom.vhd registerfile.vhd cpu.vhd timebase.vhd hdmi.vhd quadflash_cache.vhd
+	ghdl -a --ieee=synopsys -fexplicit bebichiken.vhd ram.vhd uart.vhd gpio.vhd rom.vhd registerfile.vhd cpu.vhd timebase.vhd hdmi.vhd quadflash_cache.vhd
