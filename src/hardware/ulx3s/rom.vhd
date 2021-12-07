@@ -8,14 +8,15 @@ LIBRARY std;
 USE std.textio.ALL;
 ENTITY rom IS
     GENERIC (
-        base_address : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"80010000";
+        base_address : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00400000";
         rom_size : INTEGER := 128; -- 131072; --STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00020000";
         rom_file : STRING := "ROM.txt"
     );
     PORT (
         rst, clk : IN STD_LOGIC;
         addr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-        data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+        data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        re : IN STD_LOGIC
     );
 END rom;
 
@@ -68,14 +69,14 @@ ARCHITECTURE Behavioral OF rom IS
     -- END FUNCTION;
     CONSTANT memory : memory_t := (
         0 => X"c00027b7", -- start: lui	a5,0xc0002
-        1 => X"00400713", -- li	a4, 4
+        1 => X"00800713", -- li	a4, 4
         2 => X"00e7a023", -- sw	a4,0(a5) # c0002000
         3 => X"c00027b7", -- lui	a5,0xc0002
         4 => X"00478793", -- addi	a5,a5,4
         5 => X"0007a023", -- sw	zero,0(a5)
         6 => X"c00027b7", -- lui	a5,0xc0002
         7 => X"00478793", -- addi	a5,a5,4
-        8 => X"00400713", -- li	a4,4
+        8 => X"00800713", -- li	a4,4
         9 => X"00e7a023", -- sw	a4,0(a5) # c0002004
         10 => X"fe5ff06f", -- j start
         OTHERS => X"00000013");-- InitRomFromFile(rom_file);
@@ -94,6 +95,7 @@ BEGIN
     addr_valid <= '1' WHEN (addr >= base_address) AND (addr < (base_address + rom_size)) ELSE
         '0';
 
-    data_out <= memory(idx);
+    data_out <= memory(idx) WHEN addr_valid = '1' AND re = '1' ELSE
+        (OTHERS => '0');
 
 END Behavioral;

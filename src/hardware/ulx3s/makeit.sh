@@ -1,7 +1,7 @@
 PROJECTNAME=bebichiken
 
 VERILOGS="simple_dualport_ram_8k_lattice.v" # HDMI_test_hires.v HDMI_clock.v TMDS_encoder.v"
-VHDLS="bebichiken.vhd quadflash_cache.vhd  uart.vhd gpio.vhd registerfile.vhd cpu.vhd ram.vhd timebase.vhd" # hdmi.vhd"
+VHDLS="bebichiken.vhd quadflash_cache.vhd registerfile.vhd cpu.vhd uart.vhd" # gpio.vhd timebase.vhd hdmi.vhd ram.vhd "
 
 if [ $1 == "clean" ]; then
   rm -f *.bit *.json *.config *.svf *~

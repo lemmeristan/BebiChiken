@@ -1,16 +1,22 @@
 #include "sdkdefs.h"
 
-li	a4,2
-_swag:
-lui	a5,0xc0002
-sw	a4,0(a5)
-sw	a4,4(a5)
-//addi a4, a4, 1
-j _swag
 
-//lui	a4,0xc0001
-//li a3, '+'
-//sw a3, 1(a4)
+        start: lui	a5,0xc0001
+        li	a4, 'h'
+        //blah: j blah
+        sw	a4,0(a5)
+        li	a4, 'e'
+        sw	a4,0(a5)
+        li	a4, 'l'
+        sw	a4,0(a5)
+        li	a4, 'l'
+        sw	a4,0(a5)
+        li	a4, 'o'
+        sw	a4,0(a5)
+        li	a4, '\n'
+        sw	a4,0(a5)
+        
+        j start
 
 //.align 7
 j _start 

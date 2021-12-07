@@ -40,17 +40,24 @@ BEGIN
     BEGIN
         IF rst = '1' THEN
             counter <= COUNTER_MAX; -- counter counts down one bit length
-            state <= 0; -- RS232 transmission finite state machine (11 states: start, b0..b7, stop)
+            state <= 10; -- RS232 transmission finite state machine (11 states: start, b0..b7, stop)
             charToBeSent <= initial_data;
+            mem_wack <= '0';
         ELSIF rising_edge(clk) THEN
-            charToBeSent <= n_charToBeSent;
+            mem_wack <= '0';
+
             IF counter = 0 THEN
-                state <= n_state; -- assign next state
                 counter <= COUNTER_MAX; -- reset counter
+                state <= n_state; -- assign next state
+
+                IF (state = 10) AND (mem_addr = X"C0001000") AND (mem_we = '1') THEN
+                    chartobesent <= mem_wdata(7 DOWNTO 0);
+                    state <= 0;
+                    mem_wack <= '1';
+                END IF;
             ELSE
                 counter <= counter - 1; -- continue counting down
             END IF;
-
         END IF;
     END PROCESS;
     PROCESS (state, do_start, charToBeSent, mem_we, mem_wdata)
@@ -60,18 +67,12 @@ BEGIN
 
         CASE state IS
             WHEN 0 =>
-                n_state <= state + 1;
                 txd <= '0'; -- start bit
             WHEN 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 =>
-                n_state <= state + 1;
                 txd <= chartobesent(state - 1);
             WHEN 10 =>
                 txd <= '1'; -- stop bit
-                IF mem_we = '1' THEN
-                    n_charToBeSent <= mem_wdata(7 DOWNTO 0);
-                    n_state <= 0;
-                    mem_wack <= '1';
-                END IF;
+                n_state <= state;
             WHEN OTHERS =>
                 n_state <= 10;
                 txd <= '1';

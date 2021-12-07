@@ -29,20 +29,19 @@ BEGIN
       i_gpio_dir <= (OTHERS => '1');
       gpio_value <= X"AAAAAAAA";
     ELSIF rising_edge(clk) THEN
-      IF mem_we = '1' THEN
-        IF (mem_addr = base_address) THEN -- direction
-          i_gpio_dir <= mem_wdata;
-        ELSIF (mem_addr = (base_address + X"00000004")) THEN
-          gpio_value <= mem_wdata;
-        END IF;
+      IF (mem_addr = base_address) AND (mem_we = '1') THEN -- direction
+        i_gpio_dir <= mem_wdata;
+      END IF;
+      IF (mem_addr = (base_address + X"00000004")) AND (mem_we = '1') THEN
+        gpio_value <= mem_wdata;
       END IF;
 
     END IF;
   END PROCESS;
 
-  PROCESS (mem_addr, i_gpio_dir, gpio_input, mem_re) --, io)
+  PROCESS (mem_addr, i_gpio_dir) --, io)
   BEGIN
-    mem_rdy <= mem_re;
+    mem_rdy <= '1';
     mem_wack <= '1';
     address_valid <= '1';
     IF mem_addr = base_address THEN -- direction values
@@ -51,9 +50,9 @@ BEGIN
       mem_rdata <= gpio_input;
     ELSE
       address_valid <= '0';
-      mem_rdy <= '0';
-      mem_wack <= '0';
-      mem_rdata <= (OTHERS => '0');
+      mem_rdy <= 'Z';
+      mem_wack <= 'Z';
+      mem_rdata <= (OTHERS => 'Z');
     END IF;
   END PROCESS;
 

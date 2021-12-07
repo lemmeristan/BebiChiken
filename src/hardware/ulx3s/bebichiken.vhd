@@ -11,8 +11,8 @@ ENTITY bebichiken IS
     btn : IN STD_LOGIC_VECTOR(6 DOWNTO 0);
     led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
     ftdi_rxd : OUT STD_LOGIC;
-    --gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
-    --wifi_gpio0 : OUT STD_LOGIC;
+    gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+    wifi_gpio0 : OUT STD_LOGIC;
 
     flash_csn : OUT STD_LOGIC;
     flash_mosi : INOUT STD_LOGIC; -- io(0)
@@ -182,6 +182,8 @@ ARCHITECTURE behavioural OF bebichiken IS
     );
   END COMPONENT;
 
+  SIGNAL miso, mosi, sck : STD_LOGIC;
+
   -- component uart PORT (
   --   rst, CLK100MHZ : in std_logic;
   --   txd : out std_logic
@@ -198,9 +200,9 @@ ARCHITECTURE behavioural OF bebichiken IS
   SIGNAL registerfile_rdata_rs1, registerfile_rdata_rs2, registerfile_wdata_rd : STD_LOGIC_VECTOR(31 DOWNTO 0);
   SIGNAL registerfile_we : STD_LOGIC;
 
-  SIGNAL inst_re, inst_rdy : STD_LOGIC;
+  SIGNAL we_0, data_we, data_re, inst_re, inst_rdy, i_inst_rdy, r_inst_rdy, data_rdy, data_wack, hasrdy : STD_LOGIC;
 
-  SIGNAL inst_addr, inst_rdata : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL data_wdata, data_addr, inst_addr, inst_rdata, i_inst_rdata, data_rdata : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
   SIGNAL inst_width, mem_width : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
@@ -239,62 +241,49 @@ ARCHITECTURE behavioural OF bebichiken IS
   --   );
   -- END COMPONENT;
 
+  SIGNAL flash_clk : STD_LOGIC;
+
   SIGNAL spi_csn, spi_clk, spi_di, spi_do, spi_wpn, spi_holdn, spi_reading : STD_LOGIC;
 
   SIGNAL spi_io : STD_LOGIC_VECTOR(3 DOWNTO 0);
 
-  SIGNAL debouncectr : INTEGER;
 BEGIN
 
   u1 : USRMCLK PORT MAP(
     USRMCLKI => spi_clk,
     USRMCLKTS => rst);
-  --clk <= CLK100MHZ;
-  --rst <= (NOT btn(0)) OR btn(1) OR btn(2) OR btn(3) OR btn(4) OR btn(5) OR btn(6);
-  PROCESS (clk_25mhz)
-  BEGIN
-    IF rising_edge(clk_25mhz) THEN
-      IF btn(0) = '1' THEN
 
-        IF debouncectr < 100000 THEN
-          debouncectr <= debouncectr + 1;
-        ELSE
-          rst <= '0';
-        END IF;
-      ELSE
-        rst <= '1';
-        debouncectr <= 0;
-      END IF;
-    END IF;
-  END PROCESS;
+  wifi_gpio0 <= '1'; -- Tie GPIO0, keep board from rebooting
+
+  --clk <= CLK100MHZ;
+  rst <= (NOT btn(0)) OR btn(1) OR btn(2) OR btn(3) OR btn(4) OR btn(5) OR btn(6);
 
   --inst_rdy <= '1';
 
-  clk <= clk_25mhz;
-  i_gpio : gpio PORT MAP(
-    rst => rst, clk => clk,
-    mem_addr => mem_addr, mem_wdata => mem_wdata,
-    mem_rdata => i_mem_rdata(PERIPHERAL_GPIO),
-    mem_we => mem_we, mem_re => mem_re,
-    mem_wack => i_mem_wack(PERIPHERAL_GPIO), mem_rdy => i_mem_rdy(PERIPHERAL_GPIO),
-    address_valid => i_address_valid(PERIPHERAL_GPIO),
-    gpio_dir => gpio_dir, gpio_value => gpio_value, gpio_input => (OTHERS => '0')
-  );
+  -- i_gpio : gpio PORT MAP(
+  --   rst => rst, clk => clk,
+  --   mem_addr => mem_addr, mem_wdata => mem_wdata,
+  --   mem_rdata => i_mem_rdata(PERIPHERAL_GPIO),
+  --   mem_we => mem_we, mem_re => mem_re,
+  --   mem_wack => i_mem_wack(PERIPHERAL_GPIO), mem_rdy => i_mem_rdy(PERIPHERAL_GPIO),
+  --   address_valid => i_address_valid(PERIPHERAL_GPIO),
+  --   gpio_dir => gpio_dir, gpio_value => gpio_value, gpio_input => (OTHERS => '0')
+  -- );
 
-  --led <= inst_addr(7 DOWNTO 0);
-  led <= rst & int_gpio(6 DOWNTO 0);
+  --led <= rst & int_gpio(6 DOWNTO 0);
   --led <= mem_addr(7 DOWNTO 0);
-
-  PROCESS (gpio_dir, gpio_value)
-  BEGIN
-    FOR i IN 0 TO 31 LOOP
-      IF gpio_dir(i) = '1' THEN -- set as output
-        int_gpio(i) <= gpio_value(i);
-      ELSE
-        int_gpio(i) <= 'Z';
-      END IF;
-    END LOOP;
-  END PROCESS;
+  --led <= inst_rdata(31 DOWNTO 24);
+  led <= (hasrdy & inst_re) & mem_we & inst_addr(4 DOWNTO 0); --hasrdy & inst_re & inst_addr(5 DOWNTO 0); --"000000"; --
+  -- PROCESS (gpio_dir, gpio_value)
+  -- BEGIN
+  --   FOR i IN 0 TO 31 LOOP
+  --     IF gpio_dir(i) = '1' THEN -- set as output
+  --       int_gpio(i) <= gpio_value(i);
+  --     ELSE
+  --       int_gpio(i) <= 'Z';
+  --     END IF;
+  --   END LOOP;
+  -- END PROCESS;
 
   i_uart : uart PORT MAP(
     rst => rst, clk => clk,
@@ -307,26 +296,26 @@ BEGIN
     address_valid => i_address_valid(PERIPHERAL_UART)
   );
 
-  i_timebase : timebase PORT MAP(
-    rst => rst, clk => clk,
-    mem_addr => mem_addr, mem_wdata => mem_wdata,
-    mem_rdata => i_mem_rdata(PERIPHERAL_TIMEBASE),
-    mem_we => mem_we, mem_re => mem_re,
-    mem_wack => i_mem_wack(PERIPHERAL_TIMEBASE),
-    mem_rdy => i_mem_rdy(PERIPHERAL_TIMEBASE),
-    address_valid => i_address_valid(PERIPHERAL_TIMEBASE)
-  );
+  -- i_timebase : timebase PORT MAP(
+  --   rst => rst, clk => clk,
+  --   mem_addr => mem_addr, mem_wdata => mem_wdata,
+  --   mem_rdata => i_mem_rdata(PERIPHERAL_TIMEBASE),
+  --   mem_we => mem_we, mem_re => mem_re,
+  --   mem_wack => i_mem_wack(PERIPHERAL_TIMEBASE),
+  --   mem_rdy => i_mem_rdy(PERIPHERAL_TIMEBASE),
+  --   address_valid => i_address_valid(PERIPHERAL_TIMEBASE)
+  -- );
 
-  i_ram : block_ram PORT MAP(
-    rst => rst, clk => clk,
-    mem_addr => mem_addr, mem_wdata => mem_wdata,
-    mem_width => mem_width,
-    mem_rdata => i_mem_rdata(PERIPHERAL_RAM),
-    mem_we => mem_we, mem_re => mem_re,
-    mem_wack => i_mem_wack(PERIPHERAL_RAM),
-    mem_rdy => i_mem_rdy(PERIPHERAL_RAM),
-    address_valid => i_address_valid(PERIPHERAL_RAM)
-  );
+  -- i_ram : block_ram PORT MAP(
+  --   rst => rst, clk => clk,
+  --   mem_addr => mem_addr, mem_wdata => mem_wdata,
+  --   mem_width => mem_width,
+  --   mem_rdata => i_mem_rdata(PERIPHERAL_RAM),
+  --   mem_we => mem_we, mem_re => mem_re,
+  --   mem_wack => i_mem_wack(PERIPHERAL_RAM),
+  --   mem_rdy => i_mem_rdy(PERIPHERAL_RAM),
+  --   address_valid => i_address_valid(PERIPHERAL_RAM)
+  -- );
 
   -- i_spimaster : spimaster PORT MAP(
   --   rst => rst, clk => clk,
@@ -347,40 +336,69 @@ BEGIN
   --   mem_rdy => i_mem_rdy(PERIPHERAL_I2CMASTER), mem_wack => i_mem_wack(PERIPHERAL_I2CMASTER),
   --   address_valid => i_address_valid(PERIPHERAL_I2CMASTER)
   -- );
+  inst_re <= '1';
 
   i_quadflash_cache : quadflash_cache GENERIC MAP(
     vendor => '1',
     base_address => X"00000000"
     ) PORT MAP(
     reset => rst,
-    clk => clk_25mhz,
+    clk => clk,
 
-    mem_clk => clk_25mhz,
+    mem_clk => clk,
     mem_re => inst_re,
     mem_addr => inst_addr,
-    mem_rdata => inst_rdata,
-    mem_rdy => inst_rdy,
+    mem_rdata => i_inst_rdata,
+    mem_rdy => i_inst_rdy,
 
     spi_csn => spi_csn, spi_sck => spi_clk,
     spi_di => spi_di, spi_do => spi_do, spi_wpn => spi_wpn, spi_holdn => spi_holdn,
 
     spi_io => spi_io, spi_reading => spi_reading --, led => led
   );
+  clk <= clk_25mhz;
 
-  spi_io <= flash_holdn & flash_wpn & flash_miso & flash_mosi;
+  -- PROCESS (rst, clk_25mhz)
+  -- BEGIN
+  --   IF rst = '1' THEN
+  --     clk <= '0';
+  --   ELSIF rising_edge(clk_25mhz) THEN
+  --     clk <= NOT clk;
+  --   END IF;
+  -- END PROCESS;
 
-  PROCESS (spi_reading, spi_holdn, spi_wpn, spi_di)
+  PROCESS (rst, clk)
   BEGIN
-    IF spi_reading = '1' THEN
-      flash_mosi <= 'Z';
-      flash_wpn <= 'Z';
-      flash_holdn <= 'Z';
-    ELSE
-      flash_mosi <= spi_di;
-      flash_wpn <= spi_wpn;
-      flash_holdn <= spi_holdn;
+    IF rst = '1' THEN
+      hasrdy <= '0';
+
+      r_inst_rdy <= '0';
+      inst_rdata <= (OTHERS => '0');
+    ELSIF rising_edge(clk) THEN
+      IF r_inst_rdy = '1' THEN
+        hasrdy <= '1';
+      END IF;
+
+      r_inst_rdy <= i_inst_rdy;
+      inst_rdata <= i_inst_rdata;
     END IF;
   END PROCESS;
+
+  inst_rdy <= (i_inst_rdy AND r_inst_rdy);
+  spi_io <= flash_holdn & flash_wpn & flash_miso & flash_mosi;
+
+  -- PROCESS (spi_reading, spi_holdn, spi_wpn, spi_di)
+  -- BEGIN
+  --   IF spi_reading = '1' THEN
+  --     flash_mosi <= 'Z';
+  --     flash_wpn <= 'Z';
+  --     flash_holdn <= 'Z';
+  --   ELSE
+  flash_mosi <= spi_di;
+  flash_wpn <= spi_wpn;
+  flash_holdn <= spi_holdn;
+  --   END IF;
+  -- END PROCESS;
 
   flash_csn <= spi_csn;
   spi_do <= flash_miso;
@@ -389,7 +407,9 @@ BEGIN
     rst => rst, clk => clk,
 
     -- Instruction memory bus
-    inst_width => inst_width, inst_addr => inst_addr, inst_rdata => inst_rdata, inst_re => inst_re, inst_rdy => inst_rdy,
+    inst_width => inst_width, inst_addr => inst_addr, inst_rdata => inst_rdata,
+    --inst_re => inst_re, 
+    inst_rdy => inst_rdy,
 
     data_width => mem_width, data_addr => mem_addr, data_wdata => mem_wdata,
     data_rdata => mem_rdata, data_re => mem_re, data_we => mem_we, data_rdy => mem_rdy, data_wack => mem_wack,
@@ -422,18 +442,45 @@ BEGIN
   --   --gpdi_dn : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
   -- );
 
-  PROCESS (i_address_valid, i_mem_rdata, i_mem_rdy, i_mem_wack)
-  BEGIN
-    mem_rdata <= (OTHERS => '0');
-    mem_rdy <= '0';
-    mem_wack <= '0';
-    FOR i IN PERIPHERAL_MAX - 1 DOWNTO 0 LOOP
-      IF i_address_valid(i) = '1' THEN
-        mem_rdata <= i_mem_rdata(i);
-        mem_rdy <= i_mem_rdy(i);
-        mem_wack <= i_mem_wack(i);
-      END IF;
-    END LOOP;
-  END PROCESS;
+  -- PROCESS (i_address_valid, i_mem_rdata, i_mem_rdy, i_mem_wack)
+  -- BEGIN
+  --   mem_rdata <= (OTHERS => '0');
+  --   mem_rdy <= '0';
+  --   mem_wack <= '0';
+  --   FOR i IN PERIPHERAL_MAX - 1 DOWNTO 0 LOOP
+  --     IF i_address_valid(i) = '1' THEN
+  --       mem_rdata <= i_mem_rdata(i);
+  --       mem_rdy <= i_mem_rdy(i);
+  --       mem_wack <= i_mem_wack(i);
+  --     END IF;
+  --   END LOOP;
+  -- END PROCESS;
+
+  mem_rdy <= '1';
+  mem_rdata <= X"AAAAAAAA";
+  mem_wack <= i_mem_wack(PERIPHERAL_UART);
+  --SD_DAT3 <= int_gpio(0);
+  --SD_CMD <= mosi;
+  --miso <= SD_DAT0;
+  --SD_CLK <= sck;
+  -- ila: ila_1 PORT MAP(
+  --     clk => clk,
+  --     probe0 => int_gpio(0), -- OLED_CS
+  --     probe1 => sck,
+  --     probe2 => mosi,
+  --     probe3 => int_gpio(1),
+  --     probe4 => int_gpio(2),
+  --     probe5 => int_gpio(3),
+  --     probe6 => int_gpio(4)
+
+  --   );
+
+  -- OLED_CS <= int_gpio(0);
+  -- OLED_MOSI <= mosi;
+  -- OLED_SCK <= sck;
+  -- OLED_DC <= int_gpio(1);
+  -- OLED_RES <= int_gpio(2);
+  -- OLED_VCCEN <= int_gpio(3);
+  -- OLED_PMODEN <= int_gpio(4);
 
 END behavioural;

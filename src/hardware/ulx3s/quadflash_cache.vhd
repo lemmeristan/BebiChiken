@@ -3,7 +3,7 @@
 -- Company:
 -- Engineer: Lemmer EL ASSAL
 --
--- Create Date: 11/24/2021 06:03:48 PM
+-- Create Date: 12/06/2021 03:09:48 PM
 -- Design Name: Quad SPI Flash Cache (W25Q128JVSIQ)
 -- Module Name: quadflash_cache - behavioural
 -- Project Name: BebiChiken
@@ -57,7 +57,8 @@ ENTITY quadflash_cache IS
 
         spi_reading : OUT STD_LOGIC;
 
-        led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
+        led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+        initializing : OUT STD_LOGIC
 
     );
 END quadflash_cache;
@@ -86,9 +87,10 @@ ARCHITECTURE behavioural OF quadflash_cache IS
         );
     END COMPONENT;
 
-    TYPE state_t IS (S_RESET, INIT, IDLE, FILL_CACHE);
+    TYPE state_t IS (S_RESET, INIT, IDLE, FILL_CACHE, FILL_CACHE_SINGLE);
     SIGNAL state, n_state : state_t;
 
+    CONSTANT CMD_READ_DATA : STD_LOGIC_VECTOR(7 DOWNTO 0) := X"03";
     CONSTANT CMD_READ_QUAD : STD_LOGIC_VECTOR(7 DOWNTO 0) := X"6B";
     CONSTANT CMD_WRITE_ENABLE : STD_LOGIC_VECTOR(7 DOWNTO 0) := X"06";
     CONSTANT CMD_WRITE_ENABLE_VOLATILE : STD_LOGIC_VECTOR(7 DOWNTO 0) := X"50";
@@ -112,14 +114,16 @@ ARCHITECTURE behavioural OF quadflash_cache IS
     SIGNAL current_address, n_current_address : STD_LOGIC_VECTOR(10 DOWNTO 0);
     SIGNAL cache_WE, address_valid : STD_LOGIC;
     SIGNAL shift_reg, n_shift_reg : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL update_current_address : STD_LOGIC;
+    SIGNAL update_current_address, start_fill_cache : STD_LOGIC;
+
+    SIGNAL initialized, n_initialized, sck_state, n_sck_state, n_wel, wel : STD_LOGIC;
 
     SIGNAL sr1, n_sr1, sr2, n_sr2 : STD_LOGIC_VECTOR(7 DOWNTO 0);
 
 BEGIN
 
     cache_DIN <= n_shift_reg(7 DOWNTO 0) & n_shift_reg(15 DOWNTO 8) & n_shift_reg(23 DOWNTO 16) & n_shift_reg(31 DOWNTO 24);
-    async : PROCESS (clk, sr1, sr2, spi_do, state, current_address, shift_reg, fill_count, waitcounter, spi_io, address_valid, mem_re, mem_addr)
+    async : PROCESS (clk, sr1, sr2, sck_state, wel, initialized, spi_do, state, current_address, shift_reg, fill_count, waitcounter, start_fill_cache, spi_io, address_valid)
     BEGIN
         spi_csn <= '1';
         spi_di <= '0';
@@ -142,8 +146,9 @@ BEGIN
 
         --led(5) <= cache_WE;
 
+        n_initialized <= initialized;
 
-
+        initializing <= '0';
         mem_rdy <= '0';
 
         n_sr1 <= sr1;
@@ -167,7 +172,7 @@ BEGIN
                     WHEN 24 TO 31 =>
                         spi_sck <= clk;
                         spi_csn <= '0';
-                        spi_di <= CMD_ENABLE_RESET(7 - (waitcounter - 8));
+                        spi_di <= CMD_RESET(7 - (waitcounter - 24));
 
                     WHEN 32 TO 999 => -- wait 30 us (actually 45 us here)
 
@@ -179,6 +184,7 @@ BEGIN
                 END CASE;
 
             WHEN INIT =>
+                initializing <= '1';
                 n_waitcounter <= waitcounter + 1;
 
                 CASE waitcounter IS
@@ -261,7 +267,7 @@ BEGIN
                 led(1) <= '1';
                 IF (mem_re = '1') AND (address_valid = '1') THEN
                     IF current_address /= mem_addr(23 DOWNTO 13) THEN
-                        n_state <= FILL_CACHE;
+                        n_state <= FILL_CACHE_SINGLE;
                         n_waitcounter <= 0;
                         n_fill_count <= (OTHERS => '0');
                     ELSE
@@ -270,7 +276,7 @@ BEGIN
                 END IF;
 
             WHEN FILL_CACHE =>
-
+                n_initialized <= '1';
                 led(2) <= '1';
 
                 CASE waitcounter IS
@@ -316,11 +322,65 @@ BEGIN
                         spi_csn <= '0';
 
                         n_shift_reg <= shift_reg(27 DOWNTO 0) & spi_io(3 DOWNTO 0);
-                        n_fill_count <= fill_count + "00000000000001";
+                        n_fill_count <= fill_count + "0000000000000001";
 
                         IF fill_count(2 DOWNTO 0) = "111" THEN
                             cache_WE <= '1';
-                            IF fill_count = "11111111111111" THEN
+                            IF fill_count = "0011111111111111" THEN
+                                n_state <= IDLE;
+                                update_current_address <= '1';
+                            END IF;
+                        END IF;
+
+                    WHEN OTHERS =>
+                        n_state <= INIT;
+                        n_waitcounter <= 0;
+                END CASE;
+            WHEN FILL_CACHE_SINGLE =>
+                n_initialized <= '1';
+                led(2) <= '1';
+
+                CASE waitcounter IS
+                    WHEN 0 TO 7 =>
+                        n_waitcounter <= waitcounter + 1;
+
+                        spi_sck <= '0';
+                        spi_di <= '0';
+                    WHEN 8 TO 15 =>
+                        n_waitcounter <= waitcounter + 1;
+
+                        spi_sck <= clk;
+                        spi_csn <= '0';
+                        spi_di <= CMD_READ_DATA(7 - (waitcounter - 8));
+
+                    WHEN 16 TO 26 =>
+                        n_waitcounter <= waitcounter + 1;
+
+                        spi_sck <= clk;
+                        spi_csn <= '0';
+                        spi_di <= mem_addr(23 - (waitcounter - 16));
+                        --16 => addr(10)
+                        --17 => addr(9)
+                        --18 => addr(8)
+                        --...
+                        --26 => addr(0)
+
+                    WHEN 27 TO 39 => -- 13 zeroes = 8 kB boundary
+                        n_waitcounter <= waitcounter + 1;
+
+                        spi_sck <= clk;
+                        spi_csn <= '0';
+                        spi_di <= '0'; --temp_offset(12 - (waitcounter - 27)); --
+                    WHEN 40 =>
+                        spi_sck <= clk;
+                        spi_csn <= '0';
+
+                        n_shift_reg <= shift_reg(30 DOWNTO 0) & spi_do;
+                        n_fill_count <= fill_count + "0000000000000001";
+
+                        IF fill_count(4 DOWNTO 0) = "11111" THEN
+                            cache_WE <= '1';
+                            IF fill_count = "1111111111111111" THEN
                                 n_state <= IDLE;
                                 update_current_address <= '1';
                             END IF;
@@ -341,8 +401,10 @@ BEGIN
             fill_count <= (OTHERS => '0');
             shift_reg <= (OTHERS => '0');
             current_address <= (OTHERS => '1');
-            state <= S_RESET;
+            state <= IDLE;
             waitcounter <= 0;
+            initialized <= '0';
+            wel <= '0';
             sr1 <= (OTHERS => '0');
             sr2 <= (OTHERS => '0');
 
@@ -352,7 +414,8 @@ BEGIN
             state <= n_state;
             waitcounter <= n_waitcounter;
 
-          
+            initialized <= n_initialized;
+            wel <= n_wel;
 
             sr1 <= n_sr1;
             sr2 <= n_sr2;
@@ -379,7 +442,7 @@ BEGIN
         inst_dpram : simple_dualport_ram_8k_lattice
         PORT MAP(
             Data => cache_DIN,
-            WrAddress => fill_count(13 DOWNTO 3), RdAddress => mem_addr(12 DOWNTO 2),
+            WrAddress => fill_count(15 DOWNTO 5), RdAddress => mem_addr(12 DOWNTO 2),
             RdClock => mem_clk, WrClock => clk, WrClockEn => cache_WE, RdClockEn => mem_re, WE => cache_WE, Reset => '0', --reset,
             Q => mem_rdata
         );

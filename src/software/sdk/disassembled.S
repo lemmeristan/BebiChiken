@@ -4,39 +4,44 @@ main.out:     file format elf32-littleriscv
 
 Disassembly of section .text:
 
-00400000 <_swag-0x4>:
+00400000 <start>:
 #include "sdkdefs.h"
 
-li	a4,2
-  400000:	00200713          	li	a4,2
 
-00400004 <_swag>:
-_swag:
-lui	a5,0xc0002
-  400004:	c00027b7          	lui	a5,0xc0002
-sw	a4,0(a5)
-  400008:	00e7a023          	sw	a4,0(a5) # c0002000 <main+0xbfc01d0c>
-sw	a4,4(a5)
-  40000c:	00e7a223          	sw	a4,4(a5)
-//addi a4, a4, 1
-j _swag
-  400010:	ff5ff06f          	j	400004 <_swag>
-//lui	a4,0xc0001
-//li a3, '+'
-//sw a3, 1(a4)
+        start: lui	a5,0xc0001
+  400000:	c00017b7          	lui	a5,0xc0001
+        li	a4, 'h'
+  400004:	06800713          	li	a4,104
+        //blah: j blah
+        sw	a4,0(a5)
+  400008:	00e7a023          	sw	a4,0(a5) # c0001000 <main+0xbfc00d30>
+        li	a4, 'e'
+  40000c:	06500713          	li	a4,101
+        sw	a4,0(a5)
+  400010:	00e7a023          	sw	a4,0(a5)
+        li	a4, 'l'
+  400014:	06c00713          	li	a4,108
+        sw	a4,0(a5)
+  400018:	00e7a023          	sw	a4,0(a5)
+        li	a4, 'l'
+  40001c:	06c00713          	li	a4,108
+        sw	a4,0(a5)
+  400020:	00e7a023          	sw	a4,0(a5)
+        li	a4, 'o'
+  400024:	06f00713          	li	a4,111
+        sw	a4,0(a5)
+  400028:	00e7a023          	sw	a4,0(a5)
+        li	a4, '\n'
+  40002c:	00a00713          	li	a4,10
+        sw	a4,0(a5)
+  400030:	00e7a023          	sw	a4,0(a5)
+        
+        j start
+  400034:	fcdff06f          	j	400000 <start>
 
 //.align 7
 j _start 
-  400014:	1f00006f          	j	400204 <_start>
-  400018:	00000013          	nop
-  40001c:	00000013          	nop
-  400020:	00000013          	nop
-  400024:	00000013          	nop
-  400028:	00000013          	nop
-  40002c:	00000013          	nop
-  400030:	00000013          	nop
-  400034:	00000013          	nop
-  400038:	00000013          	nop
+  400038:	1cc0006f          	j	400204 <_start>
   40003c:	00000013          	nop
   400040:	00000013          	nop
   400044:	00000013          	nop
@@ -88,7 +93,7 @@ j _start
   4000fc:	00000013          	nop
 .align 8
 j _external_interrupt
-  400100:	1ec0006f          	j	4002ec <_external_interrupt>
+  400100:	1c80006f          	j	4002c8 <_external_interrupt>
   400104:	00000013          	nop
   400108:	00000013          	nop
   40010c:	00000013          	nop
@@ -154,7 +159,7 @@ j _external_interrupt
   4001fc:	00000013          	nop
 .align 8
 j _misaligned_instruction
-  400200:	0f00006f          	j	4002f0 <_misaligned_instruction>
+  400200:	0cc0006f          	j	4002cc <_misaligned_instruction>
 
 00400204 <_start>:
 
@@ -172,7 +177,7 @@ la ra, exec_done
   400210:	00c08093          	addi	ra,ra,12 # 400218 <exec_done>
 #endif
 j main
-  400214:	0e00006f          	j	4002f4 <main>
+  400214:	0bc0006f          	j	4002d0 <main>
 
 00400218 <exec_done>:
 
@@ -180,43 +185,19 @@ exec_done:
   400218:	0000006f          	j	400218 <exec_done>
 	...
 
-004002ec <_external_interrupt>:
+004002c8 <_external_interrupt>:
 
 void _external_interrupt()
 {
 
     //    printf("external interrupt triggered");
 }
-  4002ec:	00008067          	ret
+  4002c8:	00008067          	ret
 
-004002f0 <_misaligned_instruction>:
-  4002f0:	00008067          	ret
+004002cc <_misaligned_instruction>:
+  4002cc:	00008067          	ret
 
-004002f4 <main>:
-}
-
-void main()
-{
-
-    HAL_GPIO_SetDirections(0xFFFFFFFF);
-  4002f4:	fff00713          	li	a4,-1
-  4002f8:	c00027b7          	lui	a5,0xc0002
-  4002fc:	00e7a023          	sw	a4,0(a5) # c0002000 <main+0xbfc01d0c>
-    HAL_GPIO_SetOutputs(0xFFFFFFFF);
-    while (1)
-    {
-        HAL_UART_PutChar(".");
-  400300:	00000693          	li	a3,0
-    HAL_GPIO_SetOutputs(0xFFFFFFFF);
-  400304:	00e7a223          	sw	a4,4(a5)
-        HAL_UART_PutChar(".");
-  400308:	0ff6f693          	zext.b	a3,a3
-  40030c:	c0001737          	lui	a4,0xc0001
-  400310:	00074783          	lbu	a5,0(a4) # c0001000 <main+0xbfc00d0c>
-  400314:	0017f793          	andi	a5,a5,1
-  400318:	fe079ce3          	bnez	a5,400310 <main+0x1c>
-  40031c:	00d700a3          	sb	a3,1(a4)
-  400320:	00074783          	lbu	a5,0(a4)
-  400324:	0017f793          	andi	a5,a5,1
-  400328:	fe0794e3          	bnez	a5,400310 <main+0x1c>
-  40032c:	ff1ff06f          	j	40031c <main+0x28>
+004002d0 <main>:
+  4002d0:	00008067          	ret
+  4002d4:	0000                	unimp
+	...

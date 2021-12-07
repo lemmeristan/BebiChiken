@@ -15,7 +15,7 @@ riscv64-unknown-elf-objdump --source -d main.out > disassembled.S
 # Generate RAM.txt and ROM.txt
 #riscv64-unknown-elf-objcopy -S -O binary main.out content.bin
 riscv64-unknown-elf-objcopy --dump-section .text=blah.bin main.out
-fujprog-v48-mac-x64 -j flash -f 0x400000 blah.bin
+fujprog-v48-mac-x64 -j flash -f 0x200000 blah.bin
 
 #go run ./createHexText/createHexText.go
 
