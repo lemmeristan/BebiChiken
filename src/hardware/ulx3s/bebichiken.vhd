@@ -3,6 +3,9 @@ USE IEEE.STD_LOGIC_1164.ALL;
 USE IEEE.NUMERIC_STD.ALL;
 USE IEEE.std_logic_unsigned.ALL;
 
+LIBRARY work;
+USE work.bebichiken.ALL;
+
 ENTITY bebichiken IS
   PORT (
     --rst, clk : in std_logic;
@@ -30,6 +33,9 @@ ENTITY bebichiken IS
   );
 END bebichiken;
 ARCHITECTURE behavioural OF bebichiken IS
+
+  constant num_hosts : integer := 1;
+  constant num_peripherals : integer := 1;
 
   COMPONENT registerfile PORT (
     clk : IN STD_LOGIC;
@@ -66,6 +72,39 @@ ARCHITECTURE behavioural OF bebichiken IS
     );
   END COMPONENT;
 
+  COMPONENT mmu IS
+  GENERIC (
+      num_hosts       : INTEGER;
+      num_peripherals : INTEGER
+  );
+
+  PORT (
+    rst     : IN STD_LOGIC;
+    sys_clk : IN STD_LOGIC;
+    --mem_clk : IN STD_LOGIC_VECTOR(num_hosts-1 downto 0); -- not needed; all hosts run on sys_clk
+    host_we              : IN STD_logic;
+    host_re              : IN STD_logic;
+    host_addr            : IN std_logic_vector(31 downto 0);
+    host_width           : IN std_logic_Vector(1 downto 0);
+    host_wdata           : IN std_logic_vector(31 downto 0);
+    host_rdata           : OUT std_logic_vector(31 downto 0);
+    host_rdy             : OUT STD_logic;
+    host_wack            : OUT STD_logic;
+    host_address_invalid : OUT STD_logic;
+    peripheral_we        : OUT STD_LOGIC;
+    peripheral_re        : OUT STD_LOGIC;
+    peripheral_addr      : OUT std_logic_vector(31 downto 0);
+    peripheral_width     : OUT std_logic_vector(1 downto 0);
+    peripheral_wdata     : OUT std_logic_vector(31 downto 0);
+    peripheral_rdata     : IN std_logic_vector(31 downto 0);
+    peripheral_rdy       : IN STD_LOGIC;
+    peripheral_wack      : IN STD_LOGIC
+
+  );
+END COMPONENT;
+
+
+
   COMPONENT block_ram PORT (
     rst, clk : IN STD_LOGIC;
     mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -82,8 +121,7 @@ ARCHITECTURE behavioural OF bebichiken IS
     mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
     mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     mem_we, mem_re : IN STD_LOGIC;
-    mem_wack, mem_rdy : OUT STD_LOGIC;
-    address_valid : OUT STD_LOGIC
+    mem_wack, mem_rdy : OUT STD_LOGIC
     );
   END COMPONENT;
 
@@ -208,8 +246,15 @@ ARCHITECTURE behavioural OF bebichiken IS
 
   SIGNAL rst, clk : STD_LOGIC;
 
-  SIGNAL mem_addr, mem_wdata, mem_rdata, int_gpio : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  signal int_gpio : std_logic_vector(31 downto 0);
+
+  SIGNAL mem_addr, mem_wdata, mem_rdata : STD_LOGIC_VECTOR(31 DOWNTO 0);
   SIGNAL mem_rdy, mem_wack, mem_we, mem_re : STD_LOGIC;
+
+  signal mem_width_uart : std_logic_vector(1 downto 0);
+  SIGNAL mem_addr_uart, mem_wdata_uart, mem_rdata_uart : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL mem_rdy_uart, mem_wack_uart, mem_we_uart, mem_re_uart : STD_LOGIC;
+
 
   ---------------------------------------------------------------------------
   -- Peripherals
@@ -288,12 +333,11 @@ BEGIN
   i_uart : uart PORT MAP(
     rst => rst, clk => clk,
     txd => ftdi_rxd,
-    mem_addr => mem_addr, mem_wdata => mem_wdata,
-    mem_rdata => i_mem_rdata(PERIPHERAL_UART),
-    mem_we => mem_we, mem_re => mem_re,
-    mem_wack => i_mem_wack(PERIPHERAL_UART),
-    mem_rdy => i_mem_rdy(PERIPHERAL_UART),
-    address_valid => i_address_valid(PERIPHERAL_UART)
+    mem_addr => mem_addr_uart, mem_wdata => mem_wdata_uart,
+    mem_rdata => mem_rdata_uart,
+    mem_we => mem_we_uart, mem_re => mem_re_uart,
+    mem_wack => mem_wack_uart,
+    mem_rdy => mem_rdy_uart
   );
 
   -- i_timebase : timebase PORT MAP(
@@ -337,6 +381,37 @@ BEGIN
   --   address_valid => i_address_valid(PERIPHERAL_I2CMASTER)
   -- );
   inst_re <= '1';
+
+  i_mmu : mmu   GENERIC MAP (
+    num_hosts => 1,
+    num_peripherals => 1
+)
+
+PORT MAP (
+    rst => rst,
+    sys_clk => clk,
+    host_we => mem_we,
+    host_re => mem_re,
+    host_addr => mem_addr,
+    host_width => mem_width,
+    host_wdata => mem_wdata,
+    host_rdata => mem_rdata,
+    host_rdy => mem_rdy,
+    host_wack => mem_wack,
+    --host_address_invalid => '0',
+    peripheral_we => mem_we_uart,
+    peripheral_re => mem_re_uart,
+    peripheral_addr => mem_addr_uart,
+    peripheral_width => mem_width_uart,
+    peripheral_wdata => mem_wdata_uart,
+    peripheral_rdata => mem_rdata_uart,
+    peripheral_rdy => mem_rdy_uart,
+    peripheral_wack => mem_wack_uart
+
+);
+
+
+
 
   i_quadflash_cache : quadflash_cache GENERIC MAP(
     vendor => '1',
@@ -456,9 +531,9 @@ BEGIN
   --   END LOOP;
   -- END PROCESS;
 
-  mem_rdy <= '1';
-  mem_rdata <= X"AAAAAAAA";
-  mem_wack <= i_mem_wack(PERIPHERAL_UART);
+  --mem_rdy <= '1';
+  --mem_rdata <= X"AAAAAAAA";
+  --mem_wack <= i_mem_wack(PERIPHERAL_UART);
   --SD_DAT3 <= int_gpio(0);
   --SD_CMD <= mosi;
   --miso <= SD_DAT0;

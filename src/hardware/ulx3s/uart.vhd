@@ -15,9 +15,7 @@ ENTITY uart IS
         mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
         mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         mem_we, mem_re : IN STD_LOGIC;
-        mem_wack, mem_rdy : OUT STD_LOGIC;
-
-        address_valid : OUT STD_LOGIC
+        mem_wack, mem_rdy : OUT STD_LOGIC
     );
 END uart;
 
