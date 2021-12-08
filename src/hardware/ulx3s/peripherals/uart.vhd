@@ -48,7 +48,7 @@ BEGIN
                 counter <= COUNTER_MAX; -- reset counter
                 state <= n_state; -- assign next state
 
-                IF (state = 10) AND (mem_addr = X"C0001000") AND (mem_we = '1') THEN
+                IF (state = 10) AND (mem_we = '1') THEN --AND (mem_addr = X"C0001000")  THEN
                     chartobesent <= mem_wdata(7 DOWNTO 0);
                     state <= 0;
                     mem_wack <= '1';
@@ -62,13 +62,14 @@ BEGIN
     BEGIN
         n_state <= state + 1;
         reg_status <= (TX_BUSY => '1', OTHERS => '0');
+        txd <= '1';
 
         CASE state IS
             WHEN 0 =>
                 txd <= '0'; -- start bit
             WHEN 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 =>
                 txd <= chartobesent(state - 1);
-            WHEN 10 =>
+            WHEN 11 =>
                 txd <= '1'; -- stop bit
                 n_state <= state;
             WHEN OTHERS =>

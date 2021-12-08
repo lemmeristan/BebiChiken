@@ -6,7 +6,7 @@ USE IEEE.std_logic_unsigned.ALL;
 LIBRARY work;
 USE work.bebichiken.ALL;
 
-ENTITY bebichiken IS
+ENTITY top IS
   PORT (
     --rst, clk : in std_logic;
 
@@ -31,11 +31,11 @@ ENTITY bebichiken IS
     --ck_scl, ck_sda : INOUT STD_LOGIC
 
   );
-END bebichiken;
-ARCHITECTURE behavioural OF bebichiken IS
+END top;
+ARCHITECTURE behavioural OF top IS
 
-  constant num_hosts : integer := 1;
-  constant num_peripherals : integer := 1;
+  CONSTANT num_hosts : INTEGER := 1;
+  CONSTANT num_peripherals : INTEGER := 1;
 
   COMPONENT registerfile PORT (
     clk : IN STD_LOGIC;
@@ -73,37 +73,35 @@ ARCHITECTURE behavioural OF bebichiken IS
   END COMPONENT;
 
   COMPONENT mmu IS
-  GENERIC (
-      num_hosts       : INTEGER;
+    GENERIC (
+      num_hosts : INTEGER;
       num_peripherals : INTEGER
-  );
+    );
 
-  PORT (
-    rst     : IN STD_LOGIC;
-    sys_clk : IN STD_LOGIC;
-    --mem_clk : IN STD_LOGIC_VECTOR(num_hosts-1 downto 0); -- not needed; all hosts run on sys_clk
-    host_we              : IN STD_logic;
-    host_re              : IN STD_logic;
-    host_addr            : IN std_logic_vector(31 downto 0);
-    host_width           : IN std_logic_Vector(1 downto 0);
-    host_wdata           : IN std_logic_vector(31 downto 0);
-    host_rdata           : OUT std_logic_vector(31 downto 0);
-    host_rdy             : OUT STD_logic;
-    host_wack            : OUT STD_logic;
-    host_address_invalid : OUT STD_logic;
-    peripheral_we        : OUT STD_LOGIC;
-    peripheral_re        : OUT STD_LOGIC;
-    peripheral_addr      : OUT std_logic_vector(31 downto 0);
-    peripheral_width     : OUT std_logic_vector(1 downto 0);
-    peripheral_wdata     : OUT std_logic_vector(31 downto 0);
-    peripheral_rdata     : IN std_logic_vector(31 downto 0);
-    peripheral_rdy       : IN STD_LOGIC;
-    peripheral_wack      : IN STD_LOGIC
+    PORT (
+      rst : IN STD_LOGIC;
+      sys_clk : IN STD_LOGIC;
+      --mem_clk : IN STD_LOGIC_VECTOR(num_hosts-1 downto 0); -- not needed; all hosts run on sys_clk
+      host_we : IN STD_LOGIC;
+      host_re : IN STD_LOGIC;
+      host_addr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+      host_width : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+      host_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+      host_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+      host_rdy : OUT STD_LOGIC;
+      host_wack : OUT STD_LOGIC;
+      host_address_invalid : OUT STD_LOGIC;
+      peripheral_we : OUT STD_LOGIC;
+      peripheral_re : OUT STD_LOGIC;
+      peripheral_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+      peripheral_width : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+      peripheral_wdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+      peripheral_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+      peripheral_rdy : IN STD_LOGIC;
+      peripheral_wack : IN STD_LOGIC
 
-  );
-END COMPONENT;
-
-
+    );
+  END COMPONENT;
 
   COMPONENT block_ram PORT (
     rst, clk : IN STD_LOGIC;
@@ -234,28 +232,38 @@ END COMPONENT;
   -- );
   -- end component;
 
+  ATTRIBUTE syn_keep : BOOLEAN;
+
   SIGNAL registerfile_rs1, registerfile_rs2, registerfile_rd : STD_LOGIC_VECTOR(4 DOWNTO 0);
+  ATTRIBUTE syn_keep OF registerfile_rs1, registerfile_rs2, registerfile_rd : SIGNAL IS true;
+
   SIGNAL registerfile_rdata_rs1, registerfile_rdata_rs2, registerfile_wdata_rd : STD_LOGIC_VECTOR(31 DOWNTO 0);
   SIGNAL registerfile_we : STD_LOGIC;
-
+  ATTRIBUTE syn_keep OF registerfile_rdata_rs1, registerfile_rdata_rs2, registerfile_wdata_rd, registerfile_we : SIGNAL IS true;
   SIGNAL we_0, data_we, data_re, inst_re, inst_rdy, i_inst_rdy, r_inst_rdy, data_rdy, data_wack, hasrdy : STD_LOGIC;
+  ATTRIBUTE syn_keep OF we_0, data_we, data_re, inst_re, inst_rdy, i_inst_rdy, r_inst_rdy, data_rdy, data_wack, hasrdy : SIGNAL IS true;
 
   SIGNAL data_wdata, data_addr, inst_addr, inst_rdata, i_inst_rdata, data_rdata : STD_LOGIC_VECTOR(31 DOWNTO 0);
-
+  ATTRIBUTE syn_keep OF data_wdata, data_addr, inst_addr, inst_rdata, i_inst_rdata, data_rdata : SIGNAL IS true;
   SIGNAL inst_width, mem_width : STD_LOGIC_VECTOR(1 DOWNTO 0);
-
+  ATTRIBUTE syn_keep OF inst_width, mem_width : SIGNAL IS true;
   SIGNAL rst, clk : STD_LOGIC;
-
-  signal int_gpio : std_logic_vector(31 downto 0);
+  ATTRIBUTE syn_keep OF rst, clk : SIGNAL IS true;
+  SIGNAL int_gpio : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
   SIGNAL mem_addr, mem_wdata, mem_rdata : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  ATTRIBUTE syn_keep OF mem_addr, mem_wdata, mem_rdata : SIGNAL IS true;
+
   SIGNAL mem_rdy, mem_wack, mem_we, mem_re : STD_LOGIC;
+  ATTRIBUTE syn_keep OF mem_rdy, mem_wack, mem_we, mem_re : SIGNAL IS true;
+  SIGNAL mem_width_uart : STD_LOGIC_VECTOR(1 DOWNTO 0);
+  ATTRIBUTE syn_keep OF mem_width_uart : SIGNAL IS true;
 
-  signal mem_width_uart : std_logic_vector(1 downto 0);
   SIGNAL mem_addr_uart, mem_wdata_uart, mem_rdata_uart : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  ATTRIBUTE syn_keep OF mem_addr_uart, mem_wdata_uart, mem_rdata_uart : SIGNAL IS true;
+
   SIGNAL mem_rdy_uart, mem_wack_uart, mem_we_uart, mem_re_uart : STD_LOGIC;
-
-
+  ATTRIBUTE syn_keep OF mem_rdy_uart, mem_wack_uart, mem_we_uart, mem_re_uart : SIGNAL IS true;
   ---------------------------------------------------------------------------
   -- Peripherals
   ---------------------------------------------------------------------------
@@ -318,7 +326,7 @@ BEGIN
   --led <= rst & int_gpio(6 DOWNTO 0);
   --led <= mem_addr(7 DOWNTO 0);
   --led <= inst_rdata(31 DOWNTO 24);
-  led <= (hasrdy & inst_re) & mem_we & inst_addr(4 DOWNTO 0); --hasrdy & inst_re & inst_addr(5 DOWNTO 0); --"000000"; --
+  led <= (hasrdy & inst_re) & (mem_we_uart XOR mem_we) & (inst_addr(4 DOWNTO 0)); --hasrdy & inst_re & inst_addr(5 DOWNTO 0); --"000000"; --
   -- PROCESS (gpio_dir, gpio_value)
   -- BEGIN
   --   FOR i IN 0 TO 31 LOOP
@@ -382,12 +390,12 @@ BEGIN
   -- );
   inst_re <= '1';
 
-  i_mmu : mmu   GENERIC MAP (
+  i_mmu : mmu GENERIC MAP(
     num_hosts => 1,
     num_peripherals => 1
-)
+  )
 
-PORT MAP (
+  PORT MAP(
     rst => rst,
     sys_clk => clk,
     host_we => mem_we,
@@ -408,11 +416,7 @@ PORT MAP (
     peripheral_rdy => mem_rdy_uart,
     peripheral_wack => mem_wack_uart
 
-);
-
-
-
-
+  );
   i_quadflash_cache : quadflash_cache GENERIC MAP(
     vendor => '1',
     base_address => X"00000000"
@@ -431,7 +435,7 @@ PORT MAP (
 
     spi_io => spi_io, spi_reading => spi_reading --, led => led
   );
-  clk <= clk_25mhz;
+  --clk <= clk_25mhz;
 
   -- PROCESS (rst, clk_25mhz)
   -- BEGIN
@@ -442,22 +446,25 @@ PORT MAP (
   --   END IF;
   -- END PROCESS;
 
-  PROCESS (rst, clk)
+  PROCESS (rst, clk_25mhz)
   BEGIN
     IF rst = '1' THEN
       hasrdy <= '0';
 
       r_inst_rdy <= '0';
       inst_rdata <= (OTHERS => '0');
-    ELSIF rising_edge(clk) THEN
+    ELSIF rising_edge(clk_25mhz) THEN
       IF r_inst_rdy = '1' THEN
         hasrdy <= '1';
       END IF;
 
       r_inst_rdy <= i_inst_rdy;
       inst_rdata <= i_inst_rdata;
+      --clk <= NOT clk;
     END IF;
   END PROCESS;
+
+  clk <= clk_25mhz;
 
   inst_rdy <= (i_inst_rdy AND r_inst_rdy);
   spi_io <= flash_holdn & flash_wpn & flash_miso & flash_mosi;

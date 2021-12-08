@@ -178,7 +178,7 @@ BEGIN
 
                     WHEN 1000 =>
                         n_waitcounter <= 0;
-                        n_state <= INIT;
+                        n_state <= IDLE;
                     WHEN OTHERS =>
                         n_waitcounter <= 0;
                 END CASE;
@@ -401,7 +401,7 @@ BEGIN
             fill_count <= (OTHERS => '0');
             shift_reg <= (OTHERS => '0');
             current_address <= (OTHERS => '1');
-            state <= IDLE;
+            state <= S_RESET;
             waitcounter <= 0;
             initialized <= '0';
             wel <= '0';

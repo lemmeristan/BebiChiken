@@ -1,12 +1,12 @@
 #include "sdkdefs.h"
 
 
-        start: lui	a5,0xc0001
+        fuck: lui	a5,0xc0001
         li	a4, 'h'
-        //blah: j blah
         sw	a4,0(a5)
         li	a4, 'e'
         sw	a4,0(a5)
+
         li	a4, 'l'
         sw	a4,0(a5)
         li	a4, 'l'
@@ -15,8 +15,8 @@
         sw	a4,0(a5)
         li	a4, '\n'
         sw	a4,0(a5)
-        
-        j start
+        //blah: j blah
+        beq a4, a4, fuck
 
 //.align 7
 j _start 

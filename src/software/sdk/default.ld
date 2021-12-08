@@ -1,7 +1,7 @@
 MEMORY
 {
   ram : ORIGIN = 0x0000000, LENGTH = 64K
-  rom : ORIGIN = 0x400000, LENGTH = 64K
+  rom : ORIGIN = 0x200000, LENGTH = 64K
 }
 
 PROVIDE(_ram_start = ORIGIN(ram));
