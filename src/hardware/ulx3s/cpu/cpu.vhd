@@ -67,7 +67,7 @@ CONSTANT U_TYPE_LUI : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0110111"; -- LUI
 CONSTANT U_TYPE_AUIPC : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0010111"; -- AUIPC
 CONSTANT J_TYPE_JAL : STD_LOGIC_VECTOR(6 DOWNTO 0) := "1101111"; -- JAL
 CONSTANT J_TYPE_JALR : STD_LOGIC_VECTOR(6 DOWNTO 0) := "1100111"; -- JALR
-TYPE state_t IS (FETCH_INSTRUCTION, WAIT_UNTIL_RD_UNLOCKED, FETCH_RS1, FETCH_RS2, EXECUTE_1, EXECUTE_2, WRITEBACK, INCREMENT_PC, PANIC);
+TYPE state_t IS (FETCH_INSTRUCTION, WAIT_UNTIL_RD_UNLOCKED, FETCH_RS1, FETCH_RS2, EXECUTE_1, EXECUTE_2,EXECUTE_3, SEND_CHAR_0, SEND_CHAR_1, SEND_CHAR_2, SEND_CHAR_3,  WRITEBACK, INCREMENT_PC, PANIC);
 --ATTRIBUTE syn_encoding : STRING;
 --ATTRIBUTE syn_encoding OF state_t : TYPE IS "one-hot";
 SIGNAL state, n_state : state_t;
@@ -426,6 +426,54 @@ BEGIN
 END FUNCTION;
 
 BEGIN
+
+
+-- Immediate fields
+decode_imm : PROCESS (instruction)
+BEGIN
+    -- I-type
+    imm_i(31 DOWNTO 11) <= (OTHERS => instruction(31));
+    imm_i(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
+    imm_i(4 DOWNTO 1) <= instruction(24 DOWNTO 21);
+    imm_i(0) <= instruction(20);
+
+    -- S-type
+    imm_s(31 DOWNTO 11) <= (OTHERS => instruction(31));
+    imm_s(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
+    imm_s(4 DOWNTO 1) <= instruction(11 DOWNTO 8);
+    imm_s(0) <= instruction(7);
+
+    -- B-type
+    imm_b(31 DOWNTO 12) <= (OTHERS => instruction(31));
+    imm_b(11) <= instruction(7);
+    imm_b(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
+    imm_b(4 DOWNTO 1) <= instruction(11 DOWNTO 8);
+    imm_b(0) <= '0';
+
+    -- U-type
+    imm_u(31) <= instruction(31);
+    imm_u(30 DOWNTO 20) <= instruction(30 DOWNTO 20);
+    imm_u(19 DOWNTO 12) <= instruction(19 DOWNTO 12);
+    imm_u(11 DOWNTO 0) <= (OTHERS => '0');
+
+    -- J-type
+    imm_j(31 DOWNTO 20) <= (OTHERS => instruction(31));
+    imm_j(19 DOWNTO 12) <= instruction(19 DOWNTO 12);
+    imm_j(11) <= instruction(20);
+    imm_j(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
+    imm_j(4 DOWNTO 1) <= instruction(24 DOWNTO 21);
+    imm_j(0) <= '0';
+
+    -- JALR
+    imm_jalr <= (OTHERS => '0');
+    imm_jalr(11 DOWNTO 0) <= instruction(31 DOWNTO 20);
+
+END PROCESS;
+
+
+
+
+
 i_inst_addr <= pc;
 inst_addr <= pc; --i_inst_addr;
 data_wdata <= i_data_wdata;
@@ -463,7 +511,7 @@ registerfile_rd <= rd;
 registerfile_wdata_rd <= result(to_integer(unsigned(opcode)));
 inst_width <= "10";
 
-fsm : PROCESS (state, instruction_details_array, pc, inst_rdy, opcode, decode_error, use_rd, execution_done, r_next_pc, result, daddr, dwe)
+fsm : PROCESS (state, instruction_details_array,  instruction, pc, opcode, imm_j, inst_rdy, opcode, decode_error, use_rd, execution_done, r_next_pc, result, daddr, dwe)
 BEGIN
     n_state <= state;
     n_pc <= pc;
@@ -479,8 +527,42 @@ BEGIN
     i_data_we <= '0';
 
     CASE state IS
+
+        -- when SEND_CHAR_0 =>
+        --     i_data_wdata <= X"000000" & pc(31 downto 24);
+        --     i_data_we <= '1';
+        --     if data_wack = '1' then
+        --         n_state <= SEND_CHAR_1;
+        --     end if;
+
+        -- when SEND_CHAR_1 =>
+        --     i_data_wdata <= X"000000" & pc(23 downto 16);
+        --     i_data_we <= '1';
+        --     if data_wack = '1' then
+        --         n_state <= SEND_CHAR_2;
+        --     end if;
+
+        -- when SEND_CHAR_2 =>
+        --     i_data_wdata <= X"000000" & pc(15 downto 8);
+        --     i_data_we <= '1';
+        --     if data_wack = '1' then
+        --         n_state <= SEND_CHAR_3;
+        --     end if;
+
+        -- when SEND_CHAR_3 =>
+        --     i_data_wdata <= X"000000" & pc(7 downto 0);
+        --     i_data_we <= '1';
+        --     if data_wack = '1' then
+        --         n_state <= FETCH_INSTRUCTION;
+        --     end if;
+
+
+
+
         WHEN FETCH_INSTRUCTION =>
             inst_re <= '1';
+            set_instruction <= '1';
+
             IF inst_rdy = '1' THEN
                 n_state <= EXECUTE_1;
             END IF;
@@ -490,7 +572,57 @@ BEGIN
             set_instruction <= '1';
             n_state <= EXECUTE_2;
 
-        WHEN EXECUTE_2 =>
+            WHEN EXECUTE_2 =>
+            inst_re <= '1';
+            set_instruction <= '1';
+            n_state <= EXECUTE_3;
+        
+        -- when SEND_CHAR_0 =>
+        --     i_data_wdata <= X"000000" & instruction(31 downto 24);
+        --     i_data_we <= '1';
+        --     if data_wack = '1' then
+        --         n_state <= SEND_CHAR_1;
+        --     end if;
+    
+        -- when SEND_CHAR_1 =>
+        --     i_data_wdata <= X"000000" & instruction(23 downto 16);
+        --     i_data_we <= '1';
+        --     if data_wack = '1' then
+        --         n_state <= SEND_CHAR_2;
+        --     end if;
+    
+        -- when SEND_CHAR_2 =>
+        --     i_data_wdata <= X"000000" & instruction(15 downto 8);
+        --     i_data_we <= '1';
+        --     if data_wack = '1' then
+        --         n_state <= SEND_CHAR_3;
+        --     end if;
+    
+        -- when SEND_CHAR_3 =>
+        --     i_data_wdata <= X"000000" & instruction(7 downto 0);
+        --     i_data_we <= '1';
+        --     if data_wack = '1' then
+        --         n_state <= EXECUTE_2;
+        --     end if;
+
+
+
+        
+        WHEN EXECUTE_3 =>
+
+        -- imm(to_integer(unsigned(J_TYPE_JAL))) <= imm_j;
+        -- use_rd(to_integer(unsigned(J_TYPE_JAL))) <= '1';
+        -- result(to_integer(unsigned(J_TYPE_JAL))) <= pc + X"00000004";
+        -- next_pc(to_integer(unsigned(J_TYPE_JAL))) <= pc + imm_j;
+        -- decode_error(to_integer(unsigned(J_TYPE_JAL))) <= '0';
+        -- execution_done(to_integer(unsigned(J_TYPE_JAL))) <= '1';
+        if opcode = J_TYPE_JAL then
+            n_state <= FETCH_INSTRUCTION;
+            n_pc <= pc + imm_j;
+        else
+
+
+
             data_width <= instruction_details_array(to_integer(unsigned(opcode))).data_width;
             i_data_addr <= daddr(to_integer(unsigned(opcode)));
             i_data_wdata <= wdata(to_integer(unsigned(opcode)));
@@ -509,6 +641,7 @@ BEGIN
             ELSIF decode_error(to_integer(unsigned(opcode))) = '1' THEN
                 n_state <= PANIC;
             END IF;
+        end if;
 
         WHEN PANIC =>
             err <= '1';
@@ -542,20 +675,29 @@ BEGIN
     END IF;
 END PROCESS;
 
-decode_store : PROCESS (imm_s, pc, r_registerfile_rdata_rs1, registerfile_rdata_rs2, data_wack, funct3, selected(to_integer(unsigned(S_TYPE))))
+decode_store : PROCESS (clk, imm_s, pc, r_registerfile_rdata_rs1, registerfile_rdata_rs2, data_wack, funct3, selected(to_integer(unsigned(S_TYPE))))
 BEGIN
-    imm(to_integer(unsigned(S_TYPE))) <= imm_s;
-    result(to_integer(unsigned(S_TYPE))) <= imm_s;
-    use_rs1(to_integer(unsigned(S_TYPE))) <= '1';
-    use_rs2(to_integer(unsigned(S_TYPE))) <= '1';
-    next_pc(to_integer(unsigned(S_TYPE))) <= pc + X"00000004";
-    execution_done(to_integer(unsigned(S_TYPE))) <= data_wack;
-    decode_error(to_integer(unsigned(S_TYPE))) <= '0';
 
-    daddr(to_integer(unsigned(S_TYPE))) <= r_registerfile_rdata_rs1 + imm_s;
-    wdata(to_integer(unsigned(S_TYPE))) <= registerfile_rdata_rs2;
-    dwe(to_integer(unsigned(S_TYPE))) <= '1';-- NOT data_wack; --selected(to_integer(unsigned(S_TYPE)));
-    instruction_details_array(to_integer(unsigned(S_TYPE))).data_width <= funct3(1 DOWNTO 0);
+imm(to_integer(unsigned(S_TYPE))) <= imm_s;
+result(to_integer(unsigned(S_TYPE))) <= imm_s;
+use_rs1(to_integer(unsigned(S_TYPE))) <= '1';
+use_rs2(to_integer(unsigned(S_TYPE))) <= '1';
+next_pc(to_integer(unsigned(S_TYPE))) <= pc + X"00000004";
+
+decode_error(to_integer(unsigned(S_TYPE))) <= '0';
+
+daddr(to_integer(unsigned(S_TYPE))) <= r_registerfile_rdata_rs1 + imm_s;
+wdata(to_integer(unsigned(S_TYPE))) <= registerfile_rdata_rs2;
+dwe(to_integer(unsigned(S_TYPE))) <= '1';-- NOT data_wack; --selected(to_integer(unsigned(S_TYPE)));
+instruction_details_array(to_integer(unsigned(S_TYPE))).data_width <= funct3(1 DOWNTO 0);
+        if rising_edge(clk) then
+            if opcode = S_TYPE then
+                execution_done(to_integer(unsigned(S_TYPE))) <= data_wack;
+            else
+                execution_done(to_integer(unsigned(S_TYPE))) <= '0';
+            end if;
+
+        end if;
 END PROCESS;
 
 decode_load : PROCESS (imm_i, pc, r_registerfile_rdata_rs1, data_rdy, data_rdata, funct3)
@@ -848,48 +990,6 @@ BEGIN
 
     END CASE;
     --end if;
-END PROCESS;
-
--- Immediate fields
-decode_imm : PROCESS (instruction)
-BEGIN
-    -- I-type
-    imm_i(31 DOWNTO 11) <= (OTHERS => instruction(31));
-    imm_i(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
-    imm_i(4 DOWNTO 1) <= instruction(24 DOWNTO 21);
-    imm_i(0) <= instruction(20);
-
-    -- S-type
-    imm_s(31 DOWNTO 11) <= (OTHERS => instruction(31));
-    imm_s(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
-    imm_s(4 DOWNTO 1) <= instruction(11 DOWNTO 8);
-    imm_s(0) <= instruction(7);
-
-    -- B-type
-    imm_b(31 DOWNTO 12) <= (OTHERS => instruction(31));
-    imm_b(11) <= instruction(7);
-    imm_b(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
-    imm_b(4 DOWNTO 1) <= instruction(11 DOWNTO 8);
-    imm_b(0) <= '0';
-
-    -- U-type
-    imm_u(31) <= instruction(31);
-    imm_u(30 DOWNTO 20) <= instruction(30 DOWNTO 20);
-    imm_u(19 DOWNTO 12) <= instruction(19 DOWNTO 12);
-    imm_u(11 DOWNTO 0) <= (OTHERS => '0');
-
-    -- J-type
-    imm_j(31 DOWNTO 20) <= (OTHERS => instruction(31));
-    imm_j(19 DOWNTO 12) <= instruction(19 DOWNTO 12);
-    imm_j(11) <= instruction(20);
-    imm_j(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
-    imm_j(4 DOWNTO 1) <= instruction(24 DOWNTO 21);
-    imm_j(0) <= '0';
-
-    -- JALR
-    imm_jalr <= (OTHERS => '0');
-    imm_jalr(11 DOWNTO 0) <= instruction(31 DOWNTO 20);
-
 END PROCESS;
 
 --interrupt_error <= instruction_details_array(to_integer(unsigned(opcode))).decode_error;

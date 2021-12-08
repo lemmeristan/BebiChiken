@@ -4,11 +4,11 @@ main.out:     file format elf32-littleriscv
 
 Disassembly of section .text:
 
-00200000 <fuck>:
+00200000 <blah>:
 #include "sdkdefs.h"
 
-
-        fuck: lui	a5,0xc0001
+blah:
+        lui	a5,0xc0001
   200000:	c00017b7          	lui	a5,0xc0001
         li	a4, 'h'
   200004:	06800713          	li	a4,104
@@ -35,9 +35,8 @@ Disassembly of section .text:
   20002c:	00a00713          	li	a4,10
         sw	a4,0(a5)
   200030:	00e7a023          	sw	a4,0(a5)
-        //blah: j blah
-        beq a4, a4, fuck
-  200034:	fce706e3          	beq	a4,a4,200000 <fuck>
+        j blah
+  200034:	fcdff06f          	j	200000 <blah>
 
 //.align 7
 j _start 
@@ -198,6 +197,18 @@ void _external_interrupt()
   2002cc:	00008067          	ret
 
 002002d0 <main>:
-  2002d0:	00008067          	ret
-  2002d4:	0000                	unimp
+
+void main()
+{
+    while(1){
+
+     HAL_GPIO_SetDirections(0xFFFFFFFF);
+  2002d0:	c0002737          	lui	a4,0xc0002
+  2002d4:	fff00793          	li	a5,-1
+  2002d8:	00f72023          	sw	a5,0(a4) # c0002000 <main+0xbfe01d30>
+     HAL_GPIO_SetOutputs(0xFFFFFFFF);
+  2002dc:	00f72223          	sw	a5,4(a4)
+    while(1){
+  2002e0:	ff9ff06f          	j	2002d8 <main+0x8>
+  2002e4:	0000                	unimp
 	...
