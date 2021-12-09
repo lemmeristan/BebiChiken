@@ -14,14 +14,28 @@ ENTITY top IS
     btn : IN STD_LOGIC_VECTOR(6 DOWNTO 0);
     led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
     ftdi_rxd : OUT STD_LOGIC;
-    gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
     wifi_gpio0 : OUT STD_LOGIC;
 
     flash_csn : OUT STD_LOGIC;
     flash_mosi : INOUT STD_LOGIC; -- io(0)
     flash_miso : IN STD_LOGIC; -- io(1)
     flash_wpn : INOUT STD_LOGIC; -- io(2)
-    flash_holdn : INOUT STD_LOGIC -- io(3)
+    flash_holdn : INOUT STD_LOGIC; -- io(3)
+
+  -- SDRAM
+    sdram_a : OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
+    sdram_ba : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+    sdram_d : INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+    sdram_cke : OUT STD_LOGIC;
+    sdram_csn : OUT STD_LOGIC;
+    sdram_rasn : OUT STD_LOGIC;
+    sdram_casn : OUT STD_LOGIC;
+    sdram_wen : OUT STD_LOGIC;
+    sdram_dqm : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+
+    -- HDMI
+    gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
+
 
     --SD_DAT3, SD_CMD, SD_CLK : out std_logic;
     --SD_DAT0 : in std_logic := '0'
@@ -33,6 +47,11 @@ ENTITY top IS
   );
 END top;
 ARCHITECTURE behavioural OF top IS
+
+
+
+
+
 
   CONSTANT num_hosts : INTEGER := 1;
   CONSTANT num_peripherals : INTEGER := 1;
@@ -302,6 +321,84 @@ ARCHITECTURE behavioural OF top IS
   signal periph_wdata, periph_rdata, periph_address : peripheral_word_t;
   signal periph_width : peripheral_width_t;
 
+
+  -- SDRAM
+  SIGNAL sdram_mem_clk, sdram_mem_we, sdram_mem_re, sdram_mem_rdy, sdram_mem_wack : STD_LOGIC_VECTOR(1 DOWNTO 0);
+  SIGNAL sdram_mem_addr, n_sdram_mem_addr, sdram_mem_wdata, sdram_mem_rdata : word_array_t(1 DOWNTO 0);
+  SIGNAL sdram_mem_width : width_array_t(1 DOWNTO 0);
+
+
+  COMPONENT sdram_cache IS
+
+        GENERIC (
+            vendor : STD_LOGIC;
+            --base_address : STD_LOGIC_VECTOR(31 DOWNTO 0);
+            clk_freq : NATURAL;
+            CAS_LATENCY : NATURAL := 2; -- 2=below 133MHz, 3=above 133MHz
+
+            -- timing values (in nanoseconds)
+            --
+            -- These values can be adjusted to match the exact timing of your SDRAM
+            -- chip (refer to the datasheet).
+            T_DESL : real := 100000.0; -- startup delay
+            T_MRD : real := 12.0; -- mode register cycle time
+            T_RC : real := 60.0; -- row cycle time
+            T_RCD : real := 18.0; -- RAS to CAS delay
+            T_RP : real := 18.0; -- precharge to activate delay
+            T_WR : real := 12.0; -- write recovery time
+            T_REFI : real := 7800.0; -- average refresh interval
+
+            num_ports : INTEGER := 1
+
+        );
+        PORT (
+            reset : IN STD_LOGIC;
+            clk : IN STD_LOGIC;
+
+            sdram_a : OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
+            sdram_ba : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+            sdram_dq : INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            sdram_cke : OUT STD_LOGIC;
+            sdram_cs_n : OUT STD_LOGIC;
+            sdram_ras_n : OUT STD_LOGIC;
+            sdram_cas_n : OUT STD_LOGIC;
+            sdram_we_n : OUT STD_LOGIC;
+            sdram_dqml : OUT STD_LOGIC;
+            sdram_dqmh : OUT STD_LOGIC;
+
+            mem_clk : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
+            mem_we : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
+            mem_re : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
+            mem_addr : IN word_array_t(num_ports - 1 DOWNTO 0);
+            mem_width : IN width_array_t(num_ports - 1 DOWNTO 0);
+            mem_wdata : IN word_array_t(num_ports - 1 DOWNTO 0);
+            mem_rdata : OUT word_array_t(num_ports - 1 DOWNTO 0);
+            mem_rdy : OUT STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
+            mem_wack : OUT STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0) --;
+
+            --addr_valid : OUT STD_LOGIC
+        );
+    END COMPONENT;
+
+
+  -- HDMI
+  signal hdmi_mem_addr, hdmi_mem_wdata, hdmi_mem_rdata : std_logic_vector(31 downto 0);
+  signal hdmi_mem_we, hdmi_mem_re, hdmi_mem_rdy, hdmi_mem_wack, pixclk, half_clk_TMDS : std_logic;
+  signal hdmi_mem_width : std_logic_vector(1 downto 0);
+  SIGNAL X, Y : STD_LOGIC_VECTOR(9 DOWNTO 0);
+  SIGNAL current_pixel : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"0000F000";
+
+  COMPONENT HDMI_test_hires IS
+  PORT (
+      pclk : IN STD_LOGIC;
+      gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+      GFX_X, GFX_Y : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
+      red, green, blue : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+      pixclk, half_clk_TMDS : OUT STD_LOGIC
+  );
+  END COMPONENT;
+
+
 BEGIN
 
   u1 : USRMCLK PORT MAP(
@@ -554,50 +651,75 @@ BEGIN
   -- OLED_VCCEN <= int_gpio(3);
   -- OLED_PMODEN <= int_gpio(4);
 
-  -- i_sdram_cache : sdram_cache
 
-  --   GENERIC MAP(
-  --       vendor => '1',
-  --       num_ports => 2,
-  --       base_address => X"01000000",
-  --       clk_freq => 25
-  --   )
-
-  --   PORT MAP(
-  --       reset => rst, clk => pixclk, -- clk_25mhz,
-  --       mem_addr => mem_addr, mem_wdata => mem_wdata,
-  --       mem_rdata => mem_rdata,
-  --       mem_we => mem_we, mem_re => mem_re,
-  --       mem_width => mem_width,
-  --       mem_rdy => mem_rdy, mem_wack => mem_wack,
-  --       mem_clk => mem_clk,
-
-  --       sdram_a => sdram_a,
-  --       sdram_ba => sdram_ba,
-  --       sdram_dq => sdram_d,
-  --       sdram_cke => sdram_cke,
-  --       sdram_cs_n => sdram_csn,
-  --       sdram_ras_n => sdram_rasn,
-  --       sdram_cas_n => sdram_casn,
-  --       sdram_we_n => sdram_wen,
-  --       sdram_dqml => sdram_dqm(0),
-  --       sdram_dqmh => sdram_dqm(1),
-  --       addr_valid => addr_valid
-
-  --   );
+  sdram_mem_addr <= (0 => periph_address(PERIPH_SDRAM), 1 => hdmi_mem_addr);
+  sdram_mem_wdata <= (0 => periph_wdata(PERIPH_SDRAM), 1 => hdmi_mem_wdata);
+  periph_rdata(PERIPH_SDRAM) <= sdram_mem_rdata(0);
 
 
-  --   i_hdmi : HDMI_test_hires PORT MAP(
-  --       pclk => clk_25mhz,
-  --       gpdi_dp => gpdi_dp,
-  --       GFX_X => X,
-  --       GFX_Y => Y,
-  --       red => current_pixel(23 DOWNTO 16),
-  --       green => current_pixel(15 DOWNTO 8),
-  --       blue => current_pixel(7 DOWNTO 0),
-  --       pixclk => pixclk);
+  sdram_mem_we <= (0 => periph_we(PERIPH_SDRAM), 1 => hdmi_mem_we);
+  sdram_mem_re <= (0 => periph_re(PERIPH_SDRAM), 1 => hdmi_mem_re);
+  sdram_mem_width <= (0 => periph_width(PERIPH_SDRAM), 1 => hdmi_mem_width);
+  periph_rdy(PERIPH_SDRAM) <= sdram_mem_rdy(0);
+  periph_wack(PERIPH_SDRAM) <= sdram_mem_wack(0);
+  sdram_mem_clk <= (0 => clk, 1 => pixclk);
 
 
+
+  i_sdram_cache : sdram_cache
+
+    GENERIC MAP(
+        vendor => '1',
+        num_ports => 2,
+        clk_freq => 125
+    )
+
+    PORT MAP(
+        reset => rst, clk => pixclk, -- clk_25mhz,
+        mem_addr => sdram_mem_addr, mem_wdata => sdram_mem_wdata,
+        mem_rdata => sdram_mem_rdata,
+        mem_we => sdram_mem_we, mem_re => sdram_mem_re,
+        mem_width => sdram_mem_width,
+        mem_rdy => sdram_mem_rdy, mem_wack => sdram_mem_wack,
+        mem_clk => sdram_mem_clk,
+
+        sdram_a => sdram_a,
+        sdram_ba => sdram_ba,
+        sdram_dq => sdram_d,
+        sdram_cke => sdram_cke,
+        sdram_cs_n => sdram_csn,
+        sdram_ras_n => sdram_rasn,
+        sdram_cas_n => sdram_casn,
+        sdram_we_n => sdram_wen,
+        sdram_dqml => sdram_dqm(0),
+        sdram_dqmh => sdram_dqm(1) --,
+        --addr_valid => addr_valid
+
+    );
+
+
+    i_hdmi : HDMI_test_hires PORT MAP(
+      pclk => clk_25mhz,
+      gpdi_dp => gpdi_dp,
+      GFX_X => X,
+      GFX_Y => Y,
+      red => current_pixel(23 DOWNTO 16),
+      green => current_pixel(15 DOWNTO 8),
+      blue => current_pixel(7 DOWNTO 0),
+      half_clk_TMDS => half_clk_TMDS,
+      pixclk => pixclk);
+
+
+      hdmi_mem_wack <= sdram_mem_wack(1);
+      hdmi_mem_rdata <= sdram_mem_rdata(1);
+      hdmi_mem_rdy <= sdram_mem_rdy(1);
+      hdmi_mem_addr <= "00000" & X"0000" & X(8 DOWNTO 0) & "00";
+      current_pixel <= hdmi_mem_rdata when hdmi_mem_rdy = '1' else X"00FF0000";
+      
+
+        hdmi_mem_re <= '1';
+        hdmi_mem_width <= "10";
+        hdmi_mem_we <= '0';
 
 
 

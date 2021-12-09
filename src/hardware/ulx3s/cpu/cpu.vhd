@@ -67,7 +67,7 @@ CONSTANT U_TYPE_LUI : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0110111"; -- LUI
 CONSTANT U_TYPE_AUIPC : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0010111"; -- AUIPC
 CONSTANT J_TYPE_JAL : STD_LOGIC_VECTOR(6 DOWNTO 0) := "1101111"; -- JAL
 CONSTANT J_TYPE_JALR : STD_LOGIC_VECTOR(6 DOWNTO 0) := "1100111"; -- JALR
-TYPE state_t IS (FETCH_INSTRUCTION, WAIT_UNTIL_RD_UNLOCKED, FETCH_RS1, FETCH_RS2, EXECUTE_1, EXECUTE_2,EXECUTE_3, SEND_CHAR_0, SEND_CHAR_1, SEND_CHAR_2, SEND_CHAR_3,  WRITEBACK, INCREMENT_PC, PANIC);
+TYPE state_t IS (FETCH_INSTRUCTION, WAIT_UNTIL_RD_UNLOCKED, FETCH_RS1, FETCH_RS2, EXECUTE_1, EXECUTE_2,EXECUTE_3,EXECUTE_4, SEND_CHAR_0, SEND_CHAR_1, SEND_CHAR_2, SEND_CHAR_3,  WRITEBACK, INCREMENT_PC, PANIC);
 --ATTRIBUTE syn_encoding : STRING;
 --ATTRIBUTE syn_encoding OF state_t : TYPE IS "one-hot";
 SIGNAL state, n_state : state_t;
@@ -576,6 +576,11 @@ BEGIN
             inst_re <= '1';
             set_instruction <= '1';
             n_state <= EXECUTE_3;
+
+            WHEN EXECUTE_3 =>
+            inst_re <= '1';
+            set_instruction <= '1';
+            n_state <= EXECUTE_4;
         
         -- when SEND_CHAR_0 =>
         --     i_data_wdata <= X"000000" & instruction(31 downto 24);
@@ -608,7 +613,7 @@ BEGIN
 
 
         
-        WHEN EXECUTE_3 =>
+        WHEN EXECUTE_4 =>
 
         -- imm(to_integer(unsigned(J_TYPE_JAL))) <= imm_j;
         -- use_rd(to_integer(unsigned(J_TYPE_JAL))) <= '1';
@@ -616,10 +621,10 @@ BEGIN
         -- next_pc(to_integer(unsigned(J_TYPE_JAL))) <= pc + imm_j;
         -- decode_error(to_integer(unsigned(J_TYPE_JAL))) <= '0';
         -- execution_done(to_integer(unsigned(J_TYPE_JAL))) <= '1';
-        if opcode = J_TYPE_JAL then
-            n_state <= FETCH_INSTRUCTION;
-            n_pc <= pc + imm_j;
-        else
+        -- if opcode = J_TYPE_JAL then
+        --     n_state <= FETCH_INSTRUCTION;
+        --     n_pc <= pc + imm_j;
+        -- else
 
 
 
@@ -641,7 +646,7 @@ BEGIN
             ELSIF decode_error(to_integer(unsigned(opcode))) = '1' THEN
                 n_state <= PANIC;
             END IF;
-        end if;
+        --end if;
 
         WHEN PANIC =>
             err <= '1';
