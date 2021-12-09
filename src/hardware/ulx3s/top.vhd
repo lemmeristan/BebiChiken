@@ -73,9 +73,9 @@ ARCHITECTURE behavioural OF top IS
   END COMPONENT;
 
   COMPONENT mmu IS
-    GENERIC (
-      peripheral_addresses : peripheral_address_t
-    );
+    -- GENERIC (
+    --   peripheral_addresses : peripheral_address_t
+    -- );
 
     PORT (
       rst : IN STD_LOGIC;
@@ -302,8 +302,6 @@ ARCHITECTURE behavioural OF top IS
   signal periph_wdata, periph_rdata, periph_address : peripheral_word_t;
   signal periph_width : peripheral_width_t;
 
-  signal periph_addresses : peripheral_address_t(0 to 860160);
-
 BEGIN
 
   u1 : USRMCLK PORT MAP(
@@ -395,12 +393,9 @@ BEGIN
   inst_re <= '1';
 
 
-  periph_addresses <= (786433 => PERIPH_UART, 851968 to 860160 => PERIPH_SDRAM, others => PERIPH_INVALID);
+  --periph_addresses <= (786433 => PERIPH_UART, 851968 to 860160 => PERIPH_SDRAM, others => PERIPH_INVALID);
 
-  i_mmu : mmu GENERIC MAP(
-    peripheral_addresses => periph_addresses
-    
-  )
+  i_mmu : mmu 
 
   PORT MAP(
     rst => rst,

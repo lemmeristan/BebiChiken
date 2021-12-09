@@ -37,9 +37,9 @@ USE ieee.math_real.ALL; -- ceil
 LIBRARY work;
 USE work.bebichiken.ALL;
 ENTITY mmu IS
-    GENERIC (
-        peripheral_addresses : peripheral_address_t
-    );
+    -- GENERIC (
+    --     peripheral_addresses : peripheral_address_t
+    -- );
 
     PORT (
         rst : IN STD_LOGIC;
@@ -72,32 +72,28 @@ ARCHITECTURE behavioural OF mmu IS
     -- CONSTANT IDX_SDRAM : INTEGER := 2;
     -- CONSTANT IDX_SMB : INTEGER := 3;
 
-    -- FUNCTION f_address_to_peripheral (
-    --     address : IN STD_LOGIC_VECTOR(31 DOWNTO 0))
-    --     RETURN INTEGER IS
-    -- BEGIN
+    FUNCTION f_address_to_peripheral (
+        address : IN STD_LOGIC_VECTOR(31 DOWNTO 0))
+        RETURN peripherals_t IS
+    BEGIN
 
-    --     -- case address(31 downto 12) is
-    --     --     when X"00000" to X"00FFF" => -- SPI Flash (ROM)
-    --     --         return IDX_SPI_ROM;
-    --     --     when X"01000" to X"01FFF" => -- SDRAM
-    --     --         return IDX_SDRAM;
-    --     --     when X"2000" =>
-    --     --         return IDX_SMB;
-    --     -- end case;
+        -- case address(31 downto 12) is
+        --     when X"00000" to X"00FFF" => -- SPI Flash (ROM)
+        --         return IDX_SPI_ROM;
+        --     when X"01000" to X"01FFF" => -- SDRAM
+        --         return IDX_SDRAM;
+        --     when X"2000" =>
+        --         return IDX_SMB;
+        -- end case;
 
-    --     IF (address(31 DOWNTO 12) = X"C0001") THEN
-    --         RETURN IDX_UART;
-    --     ELSIF (address(31 DOWNTO 12) >= X"00000") AND (address(31 DOWNTO 12) <= X"00FFF") THEN -- SPI Flash (ROM)
-    --         RETURN IDX_SPI_ROM;
-    --     ELSIF (address(31 DOWNTO 12) >= X"01000") AND (address(31 DOWNTO 12) <= X"01FFF") THEN -- -- SDRAM        
-    --         RETURN IDX_SDRAM;
-    --     ELSIF address(31 DOWNTO 12) = X"C2000" THEN
-    --         RETURN IDX_SMB;
-    --     ELSE
-    --         RETURN num_peripherals;
-    --     END IF;
-    -- END;
+        IF (address(31 DOWNTO 12) = X"C0001") THEN
+            RETURN PERIPH_UART;
+        ELSIF (address(31 DOWNTO 12) >= X"D0000") AND (address(31 DOWNTO 12) <= X"D1FFF") THEN -- SDRAM
+            RETURN PERIPH_SDRAM;
+        ELSE
+            RETURN PERIPH_INVALID;
+        END IF;
+    END;
     -- FUNCTION f_has_multiple_access (
     --     address : word_array_t(num_hosts - 1 DOWNTO 0);
     --     we, re : STD_LOGIC_VECTOR(num_hosts - 1 DOWNTO 0)
@@ -131,9 +127,62 @@ ARCHITECTURE behavioural OF mmu IS
     SIGNAL current_host, n_current_host : INTEGER RANGE 0 TO 0;
 BEGIN
 
-    PROCESS (state, host_addr, host_we, host_re, host_width, host_wdata, current_host, peripheral_rdata, peripheral_rdy, peripheral_wack)
+    -- PROCESS (state, host_addr, host_we, host_re, host_width, host_wdata, current_host, peripheral_rdata, peripheral_rdy, peripheral_wack)
+    -- variable temp : peripherals_t;
+    -- BEGIN
+    --     n_state <= state;
+    --     peripheral_we <= (others => '0');
+    --     peripheral_re <= (others => '0');
+    --     peripheral_addr <= (others => (OTHERS => '0')); --(others => host_addr(0)); --
+    --     peripheral_width <= (others => (OTHERS => '0')); --(others => "10"); --
+    --     peripheral_wdata <= (others => (OTHERS => '0')); --(others => host_wdata(0)); --
+    --     host_rdata <= (OTHERS => '0'); --(others => peripheral_rdata(IDX_SDRAM));--
+    --     host_rdy <= '0';
+    --     host_wack <= '0';
+    --     host_address_invalid <= '0';
+
+    --     n_current_host <= current_host;
+
+    --     CASE state IS
+    --         WHEN GOOD =>
+    --             --IF f_has_multiple_access(host_addr, host_we, host_re) = '1' THEN
+    --             --    n_state <= FIND_ALTERNATIVE;
+    --             --ELSE
+    --             --FOR i IN 0 TO num_hosts - 1 LOOP
+    --             --    IF temp < num_peripherals THEN
+
+    --             temp := f_address_to_peripheral(host_addr);
+    --             peripheral_we(temp) <= host_we;
+    --             peripheral_re(temp) <= host_re;
+    --             peripheral_addr(temp) <= host_addr;
+    --             peripheral_width(temp) <= host_width;
+    --             peripheral_wdata(temp) <= host_wdata;
+    --             host_rdata <= peripheral_rdata(temp);
+    --             host_rdy <= peripheral_rdy(temp);
+    --             host_wack <= peripheral_wack(temp);
+    --             --   ELSE
+
+    --             --      host_address_invalid <= '1';
+    --             --   END IF;
+    --             --END LOOP;
+    --             --END IF;
+    --         WHEN FIND_ALTERNATIVE =>
+    --             -- iterate current_host from 0 to num_hosts-1
+    --             -- if there's a read: issue read, wait for read to go low
+    --             -- if there's a write: issue write, wait for write to go low
+    --             -- simple, no?
+    --             n_state <= GOOD;
+    --         WHEN OTHERS =>
+    --             n_state <= GOOD;
+    --     END CASE;
+
+    -- END PROCESS;
+    host_address_invalid <= '0';
+
+    PROCESS (rst, sys_clk)
+    variable temp : peripherals_t;
     BEGIN
-        n_state <= state;
+        IF rst = '1' THEN
         peripheral_we <= (others => '0');
         peripheral_re <= (others => '0');
         peripheral_addr <= (others => (OTHERS => '0')); --(others => host_addr(0)); --
@@ -142,50 +191,18 @@ BEGIN
         host_rdata <= (OTHERS => '0'); --(others => peripheral_rdata(IDX_SDRAM));--
         host_rdy <= '0';
         host_wack <= '0';
-        host_address_invalid <= '0';
-
-        n_current_host <= current_host;
-
-        CASE state IS
-            WHEN GOOD =>
-                --IF f_has_multiple_access(host_addr, host_we, host_re) = '1' THEN
-                --    n_state <= FIND_ALTERNATIVE;
-                --ELSE
-                --FOR i IN 0 TO num_hosts - 1 LOOP
-                --    temp := f_address_to_peripheral(host_addr);
-                --    IF temp < num_peripherals THEN
-
-                peripheral_we(peripheral_addresses(to_integer(unsigned(host_addr(31 downto 12))))) <= host_we;
-                peripheral_re(peripheral_addresses(to_integer(unsigned(host_addr(31 downto 12))))) <= host_re;
-                peripheral_addr(peripheral_addresses(to_integer(unsigned(host_addr(31 downto 12))))) <= host_addr;
-                peripheral_width(peripheral_addresses(to_integer(unsigned(host_addr(31 downto 12))))) <= host_width;
-                peripheral_wdata(peripheral_addresses(to_integer(unsigned(host_addr(31 downto 12))))) <= host_wdata;
-                host_rdata <= peripheral_rdata(peripheral_addresses(to_integer(unsigned(host_addr(31 downto 12)))));
-                host_rdy <= peripheral_rdy(peripheral_addresses(to_integer(unsigned(host_addr(31 downto 12)))));
-                host_wack <= peripheral_wack(peripheral_addresses(to_integer(unsigned(host_addr(31 downto 12)))));
-                --   ELSE
-
-                --      host_address_invalid <= '1';
-                --   END IF;
-                --END LOOP;
-                --END IF;
-            WHEN FIND_ALTERNATIVE =>
-                -- iterate current_host from 0 to num_hosts-1
-                -- if there's a read: issue read, wait for read to go low
-                -- if there's a write: issue write, wait for write to go low
-                -- simple, no?
-                n_state <= GOOD;
-            WHEN OTHERS =>
-                n_state <= GOOD;
-        END CASE;
-
-    END PROCESS;
-    PROCESS (rst, sys_clk)
-    BEGIN
-        IF rst = '1' THEN
             state <= GOOD;
         ELSIF rising_edge(sys_clk) THEN
             state <= n_state;
+            temp := f_address_to_peripheral(host_addr);
+            peripheral_we(temp) <= host_we;
+            peripheral_re(temp) <= host_re;
+            peripheral_addr(temp) <= host_addr;
+            peripheral_width(temp) <= host_width;
+            peripheral_wdata(temp) <= host_wdata;
+            host_rdata <= peripheral_rdata(temp);
+            host_rdy <= peripheral_rdy(temp);
+            host_wack <= peripheral_wack(temp);
         END IF;
     END PROCESS;
 
