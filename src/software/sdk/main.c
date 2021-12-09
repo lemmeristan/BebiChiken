@@ -22,12 +22,10 @@ void _misaligned_instruction()
 
 void main()
 {
-    while(1){
-
-     HAL_GPIO_SetDirections(0xFFFFFFFF);
-     HAL_GPIO_SetOutputs(0xFFFFFFFF);
-    *(uint32_t *)0xC0001000 = (uint32_t) 'h';
-        *(uint32_t *)0xC0001000 = (uint32_t) 'a';
+    for(int x=0; x<1920; x++) {
+        for(int y=0; y<1080; y++) {
+            *((uint32_t *) (0xD0000000+(y*1920)+x)) = 0xFF00FF00;
+        }
     }
 
      /*

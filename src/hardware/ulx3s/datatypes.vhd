@@ -17,5 +17,10 @@ package bebichiken is
   type dpram_address_array_t is array (natural range <>) of std_logic_vector(10 downto 0);
 
   
+  type peripherals_t is (PERIPH_UART, PERIPH_SDRAM, PERIPH_INVALID);
+  type peripheral_width_t is array (peripherals_t) of std_logic_vector(1 downto 0);
+  type peripheral_word_t is array (peripherals_t) of std_logic_vector(31 downto 0);
+  type peripheral_bit_t is array (peripherals_t) of std_logic;
+  type peripheral_address_t is array(natural range <>) of peripherals_t;
 
 end package bebichiken;

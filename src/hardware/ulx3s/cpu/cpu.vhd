@@ -675,110 +675,194 @@ BEGIN
     END IF;
 END PROCESS;
 
-decode_store : PROCESS (clk, imm_s, pc, r_registerfile_rdata_rs1, registerfile_rdata_rs2, data_wack, funct3, selected(to_integer(unsigned(S_TYPE))))
-BEGIN
-
-imm(to_integer(unsigned(S_TYPE))) <= imm_s;
-result(to_integer(unsigned(S_TYPE))) <= imm_s;
-use_rs1(to_integer(unsigned(S_TYPE))) <= '1';
-use_rs2(to_integer(unsigned(S_TYPE))) <= '1';
-next_pc(to_integer(unsigned(S_TYPE))) <= pc + X"00000004";
-
-decode_error(to_integer(unsigned(S_TYPE))) <= '0';
-
-daddr(to_integer(unsigned(S_TYPE))) <= r_registerfile_rdata_rs1 + imm_s;
-wdata(to_integer(unsigned(S_TYPE))) <= registerfile_rdata_rs2;
-dwe(to_integer(unsigned(S_TYPE))) <= '1';-- NOT data_wack; --selected(to_integer(unsigned(S_TYPE)));
-instruction_details_array(to_integer(unsigned(S_TYPE))).data_width <= funct3(1 DOWNTO 0);
-        if rising_edge(clk) then
-            if opcode = S_TYPE then
-                execution_done(to_integer(unsigned(S_TYPE))) <= data_wack;
-            else
-                execution_done(to_integer(unsigned(S_TYPE))) <= '0';
-            end if;
-
-        end if;
-END PROCESS;
-
-decode_load : PROCESS (imm_i, pc, r_registerfile_rdata_rs1, data_rdy, data_rdata, funct3)
-BEGIN
-    imm(to_integer(unsigned(I_TYPE_LOAD))) <= imm_i;
-    use_rs1(to_integer(unsigned(I_TYPE_LOAD))) <= '1';
-    use_rd(to_integer(unsigned(I_TYPE_LOAD))) <= '1';
-
-    next_pc(to_integer(unsigned(I_TYPE_LOAD))) <= pc + X"00000004";
-    execution_done(to_integer(unsigned(I_TYPE_LOAD))) <= data_rdy;
-    decode_error(to_integer(unsigned(I_TYPE_LOAD))) <= '0';
-
-    daddr(to_integer(unsigned(I_TYPE_LOAD))) <= r_registerfile_rdata_rs1 + imm_i;
-    instruction_details_array(to_integer(unsigned(I_TYPE_LOAD))).data_re <= '1';
-
-    result(to_integer(unsigned(I_TYPE_LOAD))) <= data_rdata;
-
-    instruction_details_array(to_integer(unsigned(I_TYPE_LOAD))).data_width <= funct3(1 DOWNTO 0);
-    IF (funct3(2) = '0') THEN
-        CASE funct3(1 DOWNTO 0) IS
-            WHEN "00" =>
-                result(to_integer(unsigned(I_TYPE_LOAD)))(31 DOWNTO 8) <= (OTHERS => data_rdata(7));
-
-            WHEN "01" =>
-                result(to_integer(unsigned(I_TYPE_LOAD)))(31 DOWNTO 16) <= (OTHERS => data_rdata(15));
-
-            WHEN "11" =>
-                decode_error(to_integer(unsigned(I_TYPE_LOAD))) <= '1';
-
-            WHEN OTHERS =>
-
-        END CASE;
-    END IF;
-
-END PROCESS;
-
-decode_lui : PROCESS (clk, imm_u, pc)
+decode_store : PROCESS (clk, opcode, imm_s, pc, r_registerfile_rdata_rs1, registerfile_rdata_rs2, data_wack, funct3, selected(to_integer(unsigned(S_TYPE))))
 BEGIN
     if rising_edge(clk) then
-        imm(to_integer(unsigned(U_TYPE_LUI))) <= imm_u;
-        result(to_integer(unsigned(U_TYPE_LUI))) <= imm_u;
-        use_rd(to_integer(unsigned(U_TYPE_LUI))) <= '1';
-        next_pc(to_integer(unsigned(U_TYPE_LUI))) <= pc + X"00000004";
-        --execution_done(to_integer(unsigned(U_TYPE_LUI))) <= '1';
-        decode_error(to_integer(unsigned(U_TYPE_LUI))) <= '0';
+        if opcode = S_TYPE then
+            execution_done(to_integer(unsigned(S_TYPE))) <= data_wack;
+        else
+            execution_done(to_integer(unsigned(S_TYPE))) <= '0';
+        end if;
+    end if;
+
+    if opcode = S_TYPE then
+        imm(to_integer(unsigned(S_TYPE))) <= imm_s;
+        result(to_integer(unsigned(S_TYPE))) <= imm_s;
+        use_rs1(to_integer(unsigned(S_TYPE))) <= '1';
+        use_rs2(to_integer(unsigned(S_TYPE))) <= '1';
+        next_pc(to_integer(unsigned(S_TYPE))) <= pc + X"00000004";
+
+        decode_error(to_integer(unsigned(S_TYPE))) <= '0';
+
+        daddr(to_integer(unsigned(S_TYPE))) <= r_registerfile_rdata_rs1 + imm_s;
+        wdata(to_integer(unsigned(S_TYPE))) <= registerfile_rdata_rs2;
+        dwe(to_integer(unsigned(S_TYPE))) <= '1';-- NOT data_wack; --selected(to_integer(unsigned(S_TYPE)));
+        instruction_details_array(to_integer(unsigned(S_TYPE))).data_width <= funct3(1 DOWNTO 0);
+
+    else
+        imm(to_integer(unsigned(S_TYPE))) <= (others => '0');
+        result(to_integer(unsigned(S_TYPE))) <= (others => '0');
+        use_rs1(to_integer(unsigned(S_TYPE))) <= '0';
+        use_rs2(to_integer(unsigned(S_TYPE))) <= '0';
+        next_pc(to_integer(unsigned(S_TYPE))) <= pc + X"00000004";
+
+        decode_error(to_integer(unsigned(S_TYPE))) <= '0';
+
+        daddr(to_integer(unsigned(S_TYPE))) <= (others => '0');
+        wdata(to_integer(unsigned(S_TYPE))) <= (others => '0');
+        dwe(to_integer(unsigned(S_TYPE))) <= '0';
+        instruction_details_array(to_integer(unsigned(S_TYPE))).data_width <= (others => '0');
+    end if;
+END PROCESS;
+
+decode_load : PROCESS (imm_i, pc, r_registerfile_rdata_rs1, data_rdy, data_rdata, funct3, opcode)
+BEGIN
+    if opcode = I_TYPE_LOAD then
+        imm(to_integer(unsigned(I_TYPE_LOAD))) <= imm_i;
+        use_rs1(to_integer(unsigned(I_TYPE_LOAD))) <= '1';
+        use_rd(to_integer(unsigned(I_TYPE_LOAD))) <= '1';
+
+        next_pc(to_integer(unsigned(I_TYPE_LOAD))) <= pc + X"00000004";
+        execution_done(to_integer(unsigned(I_TYPE_LOAD))) <= data_rdy;
+        decode_error(to_integer(unsigned(I_TYPE_LOAD))) <= '0';
+
+        daddr(to_integer(unsigned(I_TYPE_LOAD))) <= r_registerfile_rdata_rs1 + imm_i;
+        instruction_details_array(to_integer(unsigned(I_TYPE_LOAD))).data_re <= '1';
+
+        result(to_integer(unsigned(I_TYPE_LOAD))) <= data_rdata;
+
+        instruction_details_array(to_integer(unsigned(I_TYPE_LOAD))).data_width <= funct3(1 DOWNTO 0);
+        IF (funct3(2) = '0') THEN
+            CASE funct3(1 DOWNTO 0) IS
+                WHEN "00" =>
+                    result(to_integer(unsigned(I_TYPE_LOAD)))(31 DOWNTO 8) <= (OTHERS => data_rdata(7));
+
+                WHEN "01" =>
+                    result(to_integer(unsigned(I_TYPE_LOAD)))(31 DOWNTO 16) <= (OTHERS => data_rdata(15));
+
+                WHEN "11" =>
+                    decode_error(to_integer(unsigned(I_TYPE_LOAD))) <= '1';
+
+                WHEN OTHERS =>
+
+            END CASE;
+        END IF;
+    else
+        imm(to_integer(unsigned(I_TYPE_LOAD))) <= (others => '0');
+        result(to_integer(unsigned(I_TYPE_LOAD))) <= (others => '0');
+        use_rs1(to_integer(unsigned(I_TYPE_LOAD))) <= '0';
+        use_rs2(to_integer(unsigned(I_TYPE_LOAD))) <= '0';
+        next_pc(to_integer(unsigned(I_TYPE_LOAD))) <= pc + X"00000004";
+
+        decode_error(to_integer(unsigned(I_TYPE_LOAD))) <= '0';
+
+        daddr(to_integer(unsigned(I_TYPE_LOAD))) <= (others => '0');
+        wdata(to_integer(unsigned(I_TYPE_LOAD))) <= (others => '0');
+        dwe(to_integer(unsigned(I_TYPE_LOAD))) <= '0';
+        instruction_details_array(to_integer(unsigned(I_TYPE_LOAD))).data_width <= (others => '0');
+    end if;
+
+END PROCESS;
+
+decode_lui : PROCESS (clk, imm_u, pc, opcode)
+BEGIN
+
+    if rising_edge(clk) then
         if (opcode = U_TYPE_LUI) then
             execution_done(to_integer(unsigned(U_TYPE_LUI))) <= '1';
         else
             execution_done(to_integer(unsigned(U_TYPE_LUI))) <= '0';
         end if;
     end if;
+
+    if opcode = U_TYPE_LUI then
+        imm(to_integer(unsigned(U_TYPE_LUI))) <= imm_u;
+        result(to_integer(unsigned(U_TYPE_LUI))) <= imm_u;
+        use_rd(to_integer(unsigned(U_TYPE_LUI))) <= '1';
+        next_pc(to_integer(unsigned(U_TYPE_LUI))) <= pc + X"00000004";
+        --execution_done(to_integer(unsigned(U_TYPE_LUI))) <= '1';
+        decode_error(to_integer(unsigned(U_TYPE_LUI))) <= '0';
+
+    else
+        imm(to_integer(unsigned(U_TYPE_LUI))) <= (others => '0');
+        result(to_integer(unsigned(U_TYPE_LUI))) <= (others => '0');
+        use_rs1(to_integer(unsigned(U_TYPE_LUI))) <= '0';
+        use_rs2(to_integer(unsigned(U_TYPE_LUI))) <= '0';
+        next_pc(to_integer(unsigned(U_TYPE_LUI))) <= pc + X"00000004";
+
+        decode_error(to_integer(unsigned(U_TYPE_LUI))) <= '0';
+
+        daddr(to_integer(unsigned(U_TYPE_LUI))) <= (others => '0');
+        wdata(to_integer(unsigned(U_TYPE_LUI))) <= (others => '0');
+        dwe(to_integer(unsigned(U_TYPE_LUI))) <= '0';
+        instruction_details_array(to_integer(unsigned(U_TYPE_LUI))).data_width <= (others => '0');
+    end if;
 END PROCESS;
 
-decode_auipc : PROCESS (imm_u, pc)
+decode_auipc : PROCESS (opcode, imm_u, pc)
 BEGIN
 
+    if opcode = U_TYPE_AUIPC then
+        imm(to_integer(unsigned(U_TYPE_AUIPC))) <= imm_u;
+        use_rd(to_integer(unsigned(U_TYPE_AUIPC))) <= '1';
+        result(to_integer(unsigned(U_TYPE_AUIPC))) <= pc + imm_u;
+        next_pc(to_integer(unsigned(U_TYPE_AUIPC))) <= pc + X"00000004";
+        --execution_done(to_integer(unsigned(U_TYPE_AUIPC))) <= '1';
+        decode_error(to_integer(unsigned(U_TYPE_AUIPC))) <= '0';
+        execution_done(to_integer(unsigned(U_TYPE_AUIPC))) <= '1';
+    else
+        imm(to_integer(unsigned(U_TYPE_AUIPC))) <= (others => '0');
+        result(to_integer(unsigned(U_TYPE_AUIPC))) <= (others => '0');
+        use_rs1(to_integer(unsigned(U_TYPE_AUIPC))) <= '0';
+        use_rs2(to_integer(unsigned(U_TYPE_AUIPC))) <= '0';
+        next_pc(to_integer(unsigned(U_TYPE_AUIPC))) <= pc + X"00000004";
 
-    imm(to_integer(unsigned(U_TYPE_AUIPC))) <= imm_u;
-    use_rd(to_integer(unsigned(U_TYPE_AUIPC))) <= '1';
-    result(to_integer(unsigned(U_TYPE_AUIPC))) <= pc + imm_u;
-    next_pc(to_integer(unsigned(U_TYPE_AUIPC))) <= pc + X"00000004";
-    --execution_done(to_integer(unsigned(U_TYPE_AUIPC))) <= '1';
-    decode_error(to_integer(unsigned(U_TYPE_AUIPC))) <= '0';
-    execution_done(to_integer(unsigned(U_TYPE_AUIPC))) <= '1';
+        decode_error(to_integer(unsigned(U_TYPE_AUIPC))) <= '0';
 
+        daddr(to_integer(unsigned(U_TYPE_AUIPC))) <= (others => '0');
+        wdata(to_integer(unsigned(U_TYPE_AUIPC))) <= (others => '0');
+        dwe(to_integer(unsigned(U_TYPE_AUIPC))) <= '0';
+        instruction_details_array(to_integer(unsigned(U_TYPE_AUIPC))).data_width <= (others => '0');
+    end if;
 END PROCESS;
 
 --execution_done(111) <= '1';
-decode_jal : PROCESS (imm_j, pc)
+decode_jal : PROCESS (opcode, imm_j, pc)
 BEGIN
-    imm(to_integer(unsigned(J_TYPE_JAL))) <= imm_j;
-    use_rd(to_integer(unsigned(J_TYPE_JAL))) <= '1';
-    result(to_integer(unsigned(J_TYPE_JAL))) <= pc + X"00000004";
-    next_pc(to_integer(unsigned(J_TYPE_JAL))) <= pc + imm_j;
-    decode_error(to_integer(unsigned(J_TYPE_JAL))) <= '0';
-    execution_done(to_integer(unsigned(J_TYPE_JAL))) <= '1';
+    if opcode = J_TYPE_JAL then
+        imm(to_integer(unsigned(J_TYPE_JAL))) <= imm_j;
+        use_rd(to_integer(unsigned(J_TYPE_JAL))) <= '1';
+        result(to_integer(unsigned(J_TYPE_JAL))) <= pc + X"00000004";
+        next_pc(to_integer(unsigned(J_TYPE_JAL))) <= pc + imm_j;
+        decode_error(to_integer(unsigned(J_TYPE_JAL))) <= '0';
+        execution_done(to_integer(unsigned(J_TYPE_JAL))) <= '1';
+    else
+        imm(to_integer(unsigned(J_TYPE_JAL))) <= (others => '0');
+        result(to_integer(unsigned(J_TYPE_JAL))) <= (others => '0');
+        use_rs1(to_integer(unsigned(J_TYPE_JAL))) <= '0';
+        use_rs2(to_integer(unsigned(J_TYPE_JAL))) <= '0';
+        next_pc(to_integer(unsigned(J_TYPE_JAL))) <= pc + X"00000004";
+
+        decode_error(to_integer(unsigned(J_TYPE_JAL))) <= '0';
+
+        daddr(to_integer(unsigned(J_TYPE_JAL))) <= (others => '0');
+        wdata(to_integer(unsigned(J_TYPE_JAL))) <= (others => '0');
+        dwe(to_integer(unsigned(J_TYPE_JAL))) <= '0';
+        instruction_details_array(to_integer(unsigned(J_TYPE_JAL))).data_width <= (others => '0');
+    end if;
 END PROCESS;
 
-decode_jalr : PROCESS (clk, r_registerfile_rdata_rs1, pc, imm_jalr)
+decode_jalr : PROCESS (opcode, clk, r_registerfile_rdata_rs1, pc, imm_jalr)
 BEGIN
     if rising_edge(clk) then
+        if (opcode = J_TYPE_JALR) then
+            execution_done(to_integer(unsigned(J_TYPE_JALR))) <= '1';
+        else
+            execution_done(to_integer(unsigned(J_TYPE_JALR))) <= '0';
+        end if;
+    end if;
+
+    if opcode = J_TYPE_JALR then
         imm(to_integer(unsigned(J_TYPE_JALR))) <= imm_jalr;
         use_rd(to_integer(unsigned(J_TYPE_JALR))) <= '1';
         use_rs1(to_integer(unsigned(J_TYPE_JALR))) <= '1';
@@ -786,210 +870,267 @@ BEGIN
         next_pc(to_integer(unsigned(J_TYPE_JALR))) <= (imm_jalr + r_registerfile_rdata_rs1) AND X"FFFFFFFE"; --(pc + r_registerfile_rdata_rs1) and X"FFFFFFFE";
         --execution_done(to_integer(unsigned(J_TYPE_JALR))) <= '1';
         decode_error(to_integer(unsigned(J_TYPE_JALR))) <= '0';
-        if (opcode = J_TYPE_JALR) then
-            execution_done(to_integer(unsigned(J_TYPE_JALR))) <= '1';
-        else
-            execution_done(to_integer(unsigned(J_TYPE_JALR))) <= '0';
-        end if;
 
 
-    end if;
-END PROCESS;
-
-decode_b_type : PROCESS (clk, funct3, r_registerfile_rdata_rs1, registerfile_rdata_rs2, imm_b, pc)
-BEGIN
-if rising_edge(clk) then
-
-    if (opcode = B_TYPE) then
-        execution_done(to_integer(unsigned(B_TYPE))) <= '1';
     else
-        execution_done(to_integer(unsigned(B_TYPE))) <= '0';
+        imm(to_integer(unsigned(J_TYPE_JALR))) <= (others => '0');
+        result(to_integer(unsigned(J_TYPE_JALR))) <= (others => '0');
+        use_rs1(to_integer(unsigned(J_TYPE_JALR))) <= '0';
+        use_rs2(to_integer(unsigned(J_TYPE_JALR))) <= '0';
+        next_pc(to_integer(unsigned(J_TYPE_JALR))) <= pc + X"00000004";
+
+        decode_error(to_integer(unsigned(J_TYPE_JALR))) <= '0';
+
+        daddr(to_integer(unsigned(J_TYPE_JALR))) <= (others => '0');
+        wdata(to_integer(unsigned(J_TYPE_JALR))) <= (others => '0');
+        dwe(to_integer(unsigned(J_TYPE_JALR))) <= '0';
+        instruction_details_array(to_integer(unsigned(J_TYPE_JALR))).data_width <= (others => '0');
+    end if;
+END PROCESS;
+
+decode_b_type : PROCESS (opcode, clk, funct3, r_registerfile_rdata_rs1, registerfile_rdata_rs2, imm_b, pc)
+BEGIN
+
+    if rising_edge(clk) then
+
+        if (opcode = B_TYPE) then
+            execution_done(to_integer(unsigned(B_TYPE))) <= '1';
+        else
+            execution_done(to_integer(unsigned(B_TYPE))) <= '0';
+        end if;
     end if;
 
-    imm(to_integer(unsigned(B_TYPE))) <= imm_b;
+    if opcode = B_TYPE then
 
-    result(to_integer(unsigned(B_TYPE))) <= (OTHERS => '0');
-    use_rs1(to_integer(unsigned(B_TYPE))) <= '1';
-    use_rs2(to_integer(unsigned(B_TYPE))) <= '1';
-    next_pc(to_integer(unsigned(B_TYPE))) <= pc + X"00000004";
+        imm(to_integer(unsigned(B_TYPE))) <= imm_b;
 
-    decode_error(to_integer(unsigned(B_TYPE))) <= '0';
-    --execution_done(to_integer(unsigned(B_TYPE))) <= '1';
+        result(to_integer(unsigned(B_TYPE))) <= (OTHERS => '0');
+        use_rs1(to_integer(unsigned(B_TYPE))) <= '1';
+        use_rs2(to_integer(unsigned(B_TYPE))) <= '1';
+        next_pc(to_integer(unsigned(B_TYPE))) <= pc + X"00000004";
 
-    CASE funct3 IS
-        WHEN "000" => -- BEQ
-            IF signed(r_registerfile_rdata_rs1) = signed(registerfile_rdata_rs2) THEN
-                next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
-            END IF;
-        WHEN "001" => -- BNE
-            IF signed(r_registerfile_rdata_rs1) /= signed(registerfile_rdata_rs2) THEN
-                next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
-            END IF;
-        WHEN "100" => -- BLT
-            IF signed(r_registerfile_rdata_rs1) < signed(registerfile_rdata_rs2) THEN
-                next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
-            END IF;
-        WHEN "101" => -- BGE
-            IF signed(r_registerfile_rdata_rs1) >= signed(registerfile_rdata_rs2) THEN
-                next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
-            END IF;
-        WHEN "110" => -- BLTU
-            IF unsigned(r_registerfile_rdata_rs1) < unsigned(registerfile_rdata_rs2) THEN
-                next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
-            END IF;
-        WHEN "111" => -- BGEU
-            IF unsigned(r_registerfile_rdata_rs1) >= unsigned(registerfile_rdata_rs2) THEN
-                next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
-            END IF;
-        WHEN OTHERS =>
-            decode_error(to_integer(unsigned(B_TYPE))) <= '1';
-    END CASE;
-end if;
+        decode_error(to_integer(unsigned(B_TYPE))) <= '0';
+        --execution_done(to_integer(unsigned(B_TYPE))) <= '1';
+
+        CASE funct3 IS
+            WHEN "000" => -- BEQ
+                IF signed(r_registerfile_rdata_rs1) = signed(registerfile_rdata_rs2) THEN
+                    next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
+                END IF;
+            WHEN "001" => -- BNE
+                IF signed(r_registerfile_rdata_rs1) /= signed(registerfile_rdata_rs2) THEN
+                    next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
+                END IF;
+            WHEN "100" => -- BLT
+                IF signed(r_registerfile_rdata_rs1) < signed(registerfile_rdata_rs2) THEN
+                    next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
+                END IF;
+            WHEN "101" => -- BGE
+                IF signed(r_registerfile_rdata_rs1) >= signed(registerfile_rdata_rs2) THEN
+                    next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
+                END IF;
+            WHEN "110" => -- BLTU
+                IF unsigned(r_registerfile_rdata_rs1) < unsigned(registerfile_rdata_rs2) THEN
+                    next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
+                END IF;
+            WHEN "111" => -- BGEU
+                IF unsigned(r_registerfile_rdata_rs1) >= unsigned(registerfile_rdata_rs2) THEN
+                    next_pc(to_integer(unsigned(B_TYPE))) <= pc + imm_b;
+                END IF;
+            WHEN OTHERS =>
+                decode_error(to_integer(unsigned(B_TYPE))) <= '1';
+        END CASE;
+
+
+    else
+        imm(to_integer(unsigned(B_TYPE))) <= (others => '0');
+        result(to_integer(unsigned(B_TYPE))) <= (others => '0');
+        use_rs1(to_integer(unsigned(B_TYPE))) <= '0';
+        use_rs2(to_integer(unsigned(B_TYPE))) <= '0';
+        next_pc(to_integer(unsigned(B_TYPE))) <= pc + X"00000004";
+
+        decode_error(to_integer(unsigned(B_TYPE))) <= '0';
+
+        daddr(to_integer(unsigned(B_TYPE))) <= (others => '0');
+        wdata(to_integer(unsigned(B_TYPE))) <= (others => '0');
+        dwe(to_integer(unsigned(B_TYPE))) <= '0';
+        instruction_details_array(to_integer(unsigned(B_TYPE))).data_width <= (others => '0');
+    end if;
+
 END PROCESS;
-decode_r_type : PROCESS (funct3, funct7, r_registerfile_rdata_rs1, registerfile_rdata_rs2, pc) --clk, pc)
+decode_r_type : PROCESS (opcode, funct3, funct7, r_registerfile_rdata_rs1, registerfile_rdata_rs2, pc) --clk, pc)
 BEGIN
-    use_rs1(to_integer(unsigned(R_TYPE))) <= '1';
-    use_rs2(to_integer(unsigned(R_TYPE))) <= '1';
-    use_rd(to_integer(unsigned(R_TYPE))) <= '1';
-    next_pc(to_integer(unsigned(R_TYPE))) <= pc + X"00000004";
-    decode_error(to_integer(unsigned(R_TYPE))) <= '0';
-    result(to_integer(unsigned(R_TYPE))) <= (OTHERS => '0');
-    imm(to_integer(unsigned(R_TYPE))) <= registerfile_rdata_rs2;
-    execution_done(to_integer(unsigned(R_TYPE))) <= '1';
-    dec_counter(to_integer(unsigned(R_TYPE))) <= '0';
+    if opcode = R_TYPE then
+        use_rs1(to_integer(unsigned(R_TYPE))) <= '1';
+        use_rs2(to_integer(unsigned(R_TYPE))) <= '1';
+        use_rd(to_integer(unsigned(R_TYPE))) <= '1';
+        next_pc(to_integer(unsigned(R_TYPE))) <= pc + X"00000004";
+        decode_error(to_integer(unsigned(R_TYPE))) <= '0';
+        result(to_integer(unsigned(R_TYPE))) <= (OTHERS => '0');
+        imm(to_integer(unsigned(R_TYPE))) <= registerfile_rdata_rs2;
+        execution_done(to_integer(unsigned(R_TYPE))) <= '1';
+        dec_counter(to_integer(unsigned(R_TYPE))) <= '0';
 
-    CASE funct3 IS
-        WHEN "000" =>
-            CASE funct7 IS
-                WHEN "0000000" => -- ADD
-                    result(to_integer(unsigned(R_TYPE))) <= r_registerfile_rdata_rs1 + registerfile_rdata_rs2;
+        CASE funct3 IS
+            WHEN "000" =>
+                CASE funct7 IS
+                    WHEN "0000000" => -- ADD
+                        result(to_integer(unsigned(R_TYPE))) <= r_registerfile_rdata_rs1 + registerfile_rdata_rs2;
 
-                WHEN "0100000" => -- SUB
-                    result(to_integer(unsigned(R_TYPE))) <= r_registerfile_rdata_rs1 - registerfile_rdata_rs2;
+                    WHEN "0100000" => -- SUB
+                        result(to_integer(unsigned(R_TYPE))) <= r_registerfile_rdata_rs1 - registerfile_rdata_rs2;
 
-                WHEN OTHERS =>
-                    decode_error(to_integer(unsigned(R_TYPE))) <= '1';
-            END CASE;
+                    WHEN OTHERS =>
+                        decode_error(to_integer(unsigned(R_TYPE))) <= '1';
+                END CASE;
 
-        WHEN "001" => -- SLL
-            execution_done(to_integer(unsigned(R_TYPE))) <= '1';
-            result(to_integer(unsigned(R_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(registerfile_rdata_rs2(4 DOWNTO 0))), false, true);
+            WHEN "001" => -- SLL
+                execution_done(to_integer(unsigned(R_TYPE))) <= '1';
+                result(to_integer(unsigned(R_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(registerfile_rdata_rs2(4 DOWNTO 0))), false, true);
 
-        WHEN "010" => -- SLT
-            IF signed(r_registerfile_rdata_rs1) < signed(registerfile_rdata_rs2) THEN
-                result(to_integer(unsigned(R_TYPE))) <= X"00000001";
-            ELSE
-                result(to_integer(unsigned(R_TYPE))) <= (OTHERS => '0');
-            END IF;
+            WHEN "010" => -- SLT
+                IF signed(r_registerfile_rdata_rs1) < signed(registerfile_rdata_rs2) THEN
+                    result(to_integer(unsigned(R_TYPE))) <= X"00000001";
+                ELSE
+                    result(to_integer(unsigned(R_TYPE))) <= (OTHERS => '0');
+                END IF;
 
-        WHEN "011" => -- SLTU
-            IF unsigned(r_registerfile_rdata_rs1) < unsigned(registerfile_rdata_rs2) THEN
-                result(to_integer(unsigned(R_TYPE))) <= X"00000001";
-            ELSE
-                result(to_integer(unsigned(R_TYPE))) <= (OTHERS => '0');
-            END IF;
+            WHEN "011" => -- SLTU
+                IF unsigned(r_registerfile_rdata_rs1) < unsigned(registerfile_rdata_rs2) THEN
+                    result(to_integer(unsigned(R_TYPE))) <= X"00000001";
+                ELSE
+                    result(to_integer(unsigned(R_TYPE))) <= (OTHERS => '0');
+                END IF;
 
-        WHEN "100" => -- XOR
-            result(to_integer(unsigned(R_TYPE))) <= r_registerfile_rdata_rs1 XOR registerfile_rdata_rs2;
+            WHEN "100" => -- XOR
+                result(to_integer(unsigned(R_TYPE))) <= r_registerfile_rdata_rs1 XOR registerfile_rdata_rs2;
 
-        WHEN "101" =>
-            execution_done(to_integer(unsigned(R_TYPE))) <= '0';
+            WHEN "101" =>
+                execution_done(to_integer(unsigned(R_TYPE))) <= '0';
 
-            CASE funct7 IS
-                WHEN "0000000" => -- SRL
+                CASE funct7 IS
+                    WHEN "0000000" => -- SRL
 
-                    execution_done(to_integer(unsigned(R_TYPE))) <= '1';
-                    result(to_integer(unsigned(R_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(registerfile_rdata_rs2(4 DOWNTO 0))), false, false);
+                        execution_done(to_integer(unsigned(R_TYPE))) <= '1';
+                        result(to_integer(unsigned(R_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(registerfile_rdata_rs2(4 DOWNTO 0))), false, false);
 
-                WHEN "0100000" => -- SRA
-                    execution_done(to_integer(unsigned(R_TYPE))) <= '1';
-                    result(to_integer(unsigned(R_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(registerfile_rdata_rs2(4 DOWNTO 0))), true, false);
+                    WHEN "0100000" => -- SRA
+                        execution_done(to_integer(unsigned(R_TYPE))) <= '1';
+                        result(to_integer(unsigned(R_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(registerfile_rdata_rs2(4 DOWNTO 0))), true, false);
 
-                WHEN OTHERS =>
-                    decode_error(to_integer(unsigned(R_TYPE))) <= '1';
-            END CASE;
+                    WHEN OTHERS =>
+                        decode_error(to_integer(unsigned(R_TYPE))) <= '1';
+                END CASE;
 
-        WHEN "110" => -- OR
-            result(to_integer(unsigned(R_TYPE))) <= r_registerfile_rdata_rs1 OR registerfile_rdata_rs2;
+            WHEN "110" => -- OR
+                result(to_integer(unsigned(R_TYPE))) <= r_registerfile_rdata_rs1 OR registerfile_rdata_rs2;
 
-        WHEN "111" => -- AND
-            result(to_integer(unsigned(R_TYPE))) <= r_registerfile_rdata_rs1 AND registerfile_rdata_rs2;
-        WHEN OTHERS =>
-            decode_error(to_integer(unsigned(R_TYPE))) <= '1';
-    END CASE;
+            WHEN "111" => -- AND
+                result(to_integer(unsigned(R_TYPE))) <= r_registerfile_rdata_rs1 AND registerfile_rdata_rs2;
+            WHEN OTHERS =>
+                decode_error(to_integer(unsigned(R_TYPE))) <= '1';
+        END CASE;
+    else
+        imm(to_integer(unsigned(R_TYPE))) <= (others => '0');
+        result(to_integer(unsigned(R_TYPE))) <= (others => '0');
+        use_rs1(to_integer(unsigned(R_TYPE))) <= '0';
+        use_rs2(to_integer(unsigned(R_TYPE))) <= '0';
+        next_pc(to_integer(unsigned(R_TYPE))) <= pc + X"00000004";
+
+        decode_error(to_integer(unsigned(R_TYPE))) <= '0';
+
+        daddr(to_integer(unsigned(R_TYPE))) <= (others => '0');
+        wdata(to_integer(unsigned(R_TYPE))) <= (others => '0');
+        dwe(to_integer(unsigned(R_TYPE))) <= '0';
+        instruction_details_array(to_integer(unsigned(R_TYPE))).data_width <= (others => '0');
+    end if;
 END PROCESS;
 
-decode_i_type : PROCESS (imm_i, funct3, funct7, r_registerfile_rdata_rs1, pc) --clk, pc)
+decode_i_type : PROCESS (opcode, imm_i, funct3, funct7, r_registerfile_rdata_rs1, pc) --clk, pc)
 BEGIN
-    imm(to_integer(unsigned(I_TYPE))) <= imm_i;
+    if opcode = I_TYPE then
+        imm(to_integer(unsigned(I_TYPE))) <= imm_i;
 
-    decode_error(to_integer(unsigned(I_TYPE))) <= '0';
-    execution_done(to_integer(unsigned(I_TYPE))) <= '1';
-    next_pc(to_integer(unsigned(I_TYPE))) <= pc + X"00000004";
+        decode_error(to_integer(unsigned(I_TYPE))) <= '0';
+        execution_done(to_integer(unsigned(I_TYPE))) <= '1';
+        next_pc(to_integer(unsigned(I_TYPE))) <= pc + X"00000004";
 
-    use_rs1(to_integer(unsigned(I_TYPE))) <= '1';
-    use_rs2(to_integer(unsigned(I_TYPE))) <= '1';
-    use_rd(to_integer(unsigned(I_TYPE))) <= '1';
+        use_rs1(to_integer(unsigned(I_TYPE))) <= '1';
+        use_rs2(to_integer(unsigned(I_TYPE))) <= '1';
+        use_rd(to_integer(unsigned(I_TYPE))) <= '1';
 
-    result(to_integer(unsigned(I_TYPE))) <= (OTHERS => '0');
+        result(to_integer(unsigned(I_TYPE))) <= (OTHERS => '0');
 
-    dec_counter(to_integer(unsigned(I_TYPE))) <= '0';
-    CASE funct3 IS
-        WHEN "000" => -- ADDI
-            result(to_integer(unsigned(I_TYPE))) <= r_registerfile_rdata_rs1 + imm_i;
+        dec_counter(to_integer(unsigned(I_TYPE))) <= '0';
+        CASE funct3 IS
+            WHEN "000" => -- ADDI
+                result(to_integer(unsigned(I_TYPE))) <= r_registerfile_rdata_rs1 + imm_i;
 
-        WHEN "001" =>
-            CASE funct7 IS
-                WHEN "0000000" => -- SLLI
-                    execution_done(to_integer(unsigned(I_TYPE))) <= '1';
-                    result(to_integer(unsigned(I_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(imm_i(4 DOWNTO 0))), false, true);
+            WHEN "001" =>
+                CASE funct7 IS
+                    WHEN "0000000" => -- SLLI
+                        execution_done(to_integer(unsigned(I_TYPE))) <= '1';
+                        result(to_integer(unsigned(I_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(imm_i(4 DOWNTO 0))), false, true);
 
-                WHEN OTHERS =>
-                    decode_error(to_integer(unsigned(I_TYPE))) <= '1';
-            END CASE;
-        WHEN "010" => -- SLTI
-            IF signed(r_registerfile_rdata_rs1) < signed(imm_i) THEN
-                result(to_integer(unsigned(I_TYPE))) <= X"00000001";
-            ELSE
-                result(to_integer(unsigned(I_TYPE))) <= (OTHERS => '0');
-            END IF;
+                    WHEN OTHERS =>
+                        decode_error(to_integer(unsigned(I_TYPE))) <= '1';
+                END CASE;
+            WHEN "010" => -- SLTI
+                IF signed(r_registerfile_rdata_rs1) < signed(imm_i) THEN
+                    result(to_integer(unsigned(I_TYPE))) <= X"00000001";
+                ELSE
+                    result(to_integer(unsigned(I_TYPE))) <= (OTHERS => '0');
+                END IF;
 
-        WHEN "011" => -- SLTIU
-            IF unsigned(r_registerfile_rdata_rs1) < unsigned(imm_i) THEN
-                result(to_integer(unsigned(I_TYPE))) <= X"00000001";
-            ELSE
-                result(to_integer(unsigned(I_TYPE))) <= (OTHERS => '0');
-            END IF;
+            WHEN "011" => -- SLTIU
+                IF unsigned(r_registerfile_rdata_rs1) < unsigned(imm_i) THEN
+                    result(to_integer(unsigned(I_TYPE))) <= X"00000001";
+                ELSE
+                    result(to_integer(unsigned(I_TYPE))) <= (OTHERS => '0');
+                END IF;
 
-        WHEN "100" => -- XORI
-            result(to_integer(unsigned(I_TYPE))) <= r_registerfile_rdata_rs1 XOR imm_i;
+            WHEN "100" => -- XORI
+                result(to_integer(unsigned(I_TYPE))) <= r_registerfile_rdata_rs1 XOR imm_i;
 
-        WHEN "101" =>
-            execution_done(to_integer(unsigned(I_TYPE))) <= '0';
+            WHEN "101" =>
+                execution_done(to_integer(unsigned(I_TYPE))) <= '0';
 
-            CASE funct7 IS
-                WHEN "0000000" => -- SRLI
-                    execution_done(to_integer(unsigned(I_TYPE))) <= '1';
-                    result(to_integer(unsigned(I_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(imm_i(4 DOWNTO 0))), false, false);
+                CASE funct7 IS
+                    WHEN "0000000" => -- SRLI
+                        execution_done(to_integer(unsigned(I_TYPE))) <= '1';
+                        result(to_integer(unsigned(I_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(imm_i(4 DOWNTO 0))), false, false);
 
-                WHEN "0100000" => -- SRAI
-                    execution_done(to_integer(unsigned(I_TYPE))) <= '1';
-                    result(to_integer(unsigned(I_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(imm_i(4 DOWNTO 0))), true, false);
+                    WHEN "0100000" => -- SRAI
+                        execution_done(to_integer(unsigned(I_TYPE))) <= '1';
+                        result(to_integer(unsigned(I_TYPE))) <= DoShift(r_registerfile_rdata_rs1, to_integer(unsigned(imm_i(4 DOWNTO 0))), true, false);
 
-                WHEN OTHERS =>
-                    decode_error(to_integer(unsigned(I_TYPE))) <= '1';
-            END CASE;
-        WHEN "110" => -- ORI
-            result(to_integer(unsigned(I_TYPE))) <= r_registerfile_rdata_rs1 OR imm_i;
+                    WHEN OTHERS =>
+                        decode_error(to_integer(unsigned(I_TYPE))) <= '1';
+                END CASE;
+            WHEN "110" => -- ORI
+                result(to_integer(unsigned(I_TYPE))) <= r_registerfile_rdata_rs1 OR imm_i;
 
-        WHEN "111" => -- ANDI
-            result(to_integer(unsigned(I_TYPE))) <= r_registerfile_rdata_rs1 AND imm_i;
+            WHEN "111" => -- ANDI
+                result(to_integer(unsigned(I_TYPE))) <= r_registerfile_rdata_rs1 AND imm_i;
 
-        WHEN OTHERS =>
-            decode_error(to_integer(unsigned(I_TYPE))) <= '1';
+            WHEN OTHERS =>
+                decode_error(to_integer(unsigned(I_TYPE))) <= '1';
 
-    END CASE;
-    --end if;
+        END CASE;
+    else
+        imm(to_integer(unsigned(I_TYPE))) <= (others => '0');
+        result(to_integer(unsigned(I_TYPE))) <= (others => '0');
+        use_rs1(to_integer(unsigned(I_TYPE))) <= '0';
+        use_rs2(to_integer(unsigned(I_TYPE))) <= '0';
+        next_pc(to_integer(unsigned(I_TYPE))) <= pc + X"00000004";
+
+        decode_error(to_integer(unsigned(I_TYPE))) <= '0';
+
+        daddr(to_integer(unsigned(I_TYPE))) <= (others => '0');
+        wdata(to_integer(unsigned(I_TYPE))) <= (others => '0');
+        dwe(to_integer(unsigned(I_TYPE))) <= '0';
+        instruction_details_array(to_integer(unsigned(I_TYPE))).data_width <= (others => '0');
+    end if;
 END PROCESS;
 
 --interrupt_error <= instruction_details_array(to_integer(unsigned(opcode))).decode_error;

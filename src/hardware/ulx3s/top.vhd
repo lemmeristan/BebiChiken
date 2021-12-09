@@ -74,14 +74,12 @@ ARCHITECTURE behavioural OF top IS
 
   COMPONENT mmu IS
     GENERIC (
-      num_hosts : INTEGER;
-      num_peripherals : INTEGER
+      peripheral_addresses : peripheral_address_t
     );
 
     PORT (
       rst : IN STD_LOGIC;
       sys_clk : IN STD_LOGIC;
-      --mem_clk : IN STD_LOGIC_VECTOR(num_hosts-1 downto 0); -- not needed; all hosts run on sys_clk
       host_we : IN STD_LOGIC;
       host_re : IN STD_LOGIC;
       host_addr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -91,14 +89,14 @@ ARCHITECTURE behavioural OF top IS
       host_rdy : OUT STD_LOGIC;
       host_wack : OUT STD_LOGIC;
       host_address_invalid : OUT STD_LOGIC;
-      peripheral_we : OUT STD_LOGIC;
-      peripheral_re : OUT STD_LOGIC;
-      peripheral_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-      peripheral_width : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-      peripheral_wdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-      peripheral_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-      peripheral_rdy : IN STD_LOGIC;
-      peripheral_wack : IN STD_LOGIC
+      peripheral_we : OUT peripheral_bit_t;
+      peripheral_re : OUT peripheral_bit_t;
+      peripheral_addr : OUT peripheral_word_t;
+      peripheral_width : OUT peripheral_width_t;
+      peripheral_wdata : OUT peripheral_word_t;
+      peripheral_rdata : IN peripheral_word_t;
+      peripheral_rdy : IN peripheral_bit_t;
+      peripheral_wack : IN peripheral_bit_t
 
     );
   END COMPONENT;
@@ -300,6 +298,12 @@ ARCHITECTURE behavioural OF top IS
 
   SIGNAL spi_io : STD_LOGIC_VECTOR(3 DOWNTO 0);
 
+  signal periph_we, periph_re, periph_wack, periph_rdy : peripheral_bit_t;
+  signal periph_wdata, periph_rdata, periph_address : peripheral_word_t;
+  signal periph_width : peripheral_width_t;
+
+  signal periph_addresses : peripheral_address_t(0 to 860160);
+
 BEGIN
 
   u1 : USRMCLK PORT MAP(
@@ -341,11 +345,11 @@ BEGIN
   i_uart : uart PORT MAP(
     rst => rst, clk => clk,
     txd => ftdi_rxd,
-    mem_addr => mem_addr_uart, mem_wdata => mem_wdata_uart,
-    mem_rdata => mem_rdata_uart,
-    mem_we => mem_we_uart, mem_re => mem_re_uart,
-    mem_wack => mem_wack_uart,
-    mem_rdy => mem_rdy_uart
+    mem_addr => periph_address(PERIPH_UART), mem_wdata => periph_wdata(PERIPH_UART),
+    mem_rdata => periph_rdata(PERIPH_UART),
+    mem_we => periph_we(PERIPH_UART), mem_re => periph_re(PERIPH_UART),
+    mem_wack => periph_wack(PERIPH_UART),
+    mem_rdy => periph_rdy(PERIPH_UART)
   );
 
   -- i_timebase : timebase PORT MAP(
@@ -390,9 +394,12 @@ BEGIN
   -- );
   inst_re <= '1';
 
+
+  periph_addresses <= (786433 => PERIPH_UART, 851968 to 860160 => PERIPH_SDRAM, others => PERIPH_INVALID);
+
   i_mmu : mmu GENERIC MAP(
-    num_hosts => 1,
-    num_peripherals => 1
+    peripheral_addresses => periph_addresses
+    
   )
 
   PORT MAP(
@@ -407,14 +414,14 @@ BEGIN
     host_rdy => mem_rdy,
     host_wack => mem_wack,
     --host_address_invalid => '0',
-    peripheral_we => mem_we_uart,
-    peripheral_re => mem_re_uart,
-    peripheral_addr => mem_addr_uart,
-    peripheral_width => mem_width_uart,
-    peripheral_wdata => mem_wdata_uart,
-    peripheral_rdata => mem_rdata_uart,
-    peripheral_rdy => mem_rdy_uart,
-    peripheral_wack => mem_wack_uart
+    peripheral_we => periph_we,
+    peripheral_re => periph_re,
+    peripheral_addr => periph_address,
+    peripheral_width => periph_width,
+    peripheral_wdata => periph_wdata,
+    peripheral_rdata => periph_rdata,
+    peripheral_rdy => periph_rdy,
+    peripheral_wack => periph_wack
 
   );
   i_quadflash_cache : quadflash_cache GENERIC MAP(
@@ -509,20 +516,7 @@ BEGIN
     data_in_rd => registerfile_wdata_rd,
     we => registerfile_we
   );
-  -- comp_hdmi : hdmi PORT MAP(
-
-  --   rst => rst, clk => clk,
-  --   mem_addr => mem_addr, mem_wdata => mem_wdata,
-  --   mem_rdata => i_mem_rdata(PERIPHERAL_HDMI),
-  --   mem_we => mem_we, mem_re => mem_re,
-  --   mem_width => mem_width,
-  --   mem_rdy => i_mem_rdy(PERIPHERAL_HDMI), mem_wack => i_mem_wack(PERIPHERAL_HDMI),
-
-  --   address_valid => i_address_valid(PERIPHERAL_HDMI),
-
-  --   gpdi_dp => gpdi_dp
-  --   --gpdi_dn : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
-  -- );
+  
 
   -- PROCESS (i_address_valid, i_mem_rdata, i_mem_rdy, i_mem_wack)
   -- BEGIN
@@ -564,5 +558,52 @@ BEGIN
   -- OLED_RES <= int_gpio(2);
   -- OLED_VCCEN <= int_gpio(3);
   -- OLED_PMODEN <= int_gpio(4);
+
+  -- i_sdram_cache : sdram_cache
+
+  --   GENERIC MAP(
+  --       vendor => '1',
+  --       num_ports => 2,
+  --       base_address => X"01000000",
+  --       clk_freq => 25
+  --   )
+
+  --   PORT MAP(
+  --       reset => rst, clk => pixclk, -- clk_25mhz,
+  --       mem_addr => mem_addr, mem_wdata => mem_wdata,
+  --       mem_rdata => mem_rdata,
+  --       mem_we => mem_we, mem_re => mem_re,
+  --       mem_width => mem_width,
+  --       mem_rdy => mem_rdy, mem_wack => mem_wack,
+  --       mem_clk => mem_clk,
+
+  --       sdram_a => sdram_a,
+  --       sdram_ba => sdram_ba,
+  --       sdram_dq => sdram_d,
+  --       sdram_cke => sdram_cke,
+  --       sdram_cs_n => sdram_csn,
+  --       sdram_ras_n => sdram_rasn,
+  --       sdram_cas_n => sdram_casn,
+  --       sdram_we_n => sdram_wen,
+  --       sdram_dqml => sdram_dqm(0),
+  --       sdram_dqmh => sdram_dqm(1),
+  --       addr_valid => addr_valid
+
+  --   );
+
+
+  --   i_hdmi : HDMI_test_hires PORT MAP(
+  --       pclk => clk_25mhz,
+  --       gpdi_dp => gpdi_dp,
+  --       GFX_X => X,
+  --       GFX_Y => Y,
+  --       red => current_pixel(23 DOWNTO 16),
+  --       green => current_pixel(15 DOWNTO 8),
+  --       blue => current_pixel(7 DOWNTO 0),
+  --       pixclk => pixclk);
+
+
+
+
 
 END behavioural;

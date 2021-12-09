@@ -197,18 +197,39 @@ void _external_interrupt()
   2002cc:	00008067          	ret
 
 002002d0 <main>:
+void _misaligned_instruction()
+{
+}
 
 void main()
 {
-    while(1){
-
-     HAL_GPIO_SetDirections(0xFFFFFFFF);
-  2002d0:	c0002737          	lui	a4,0xc0002
-  2002d4:	fff00793          	li	a5,-1
-  2002d8:	00f72023          	sw	a5,0(a4) # c0002000 <main+0xbfe01d30>
-     HAL_GPIO_SetOutputs(0xFFFFFFFF);
-  2002dc:	00f72223          	sw	a5,4(a4)
-    while(1){
-  2002e0:	ff9ff06f          	j	2002d8 <main+0x8>
-  2002e4:	0000                	unimp
+  2002d0:	d0000737          	lui	a4,0xd0000
+    for(int x=0; x<1920; x++) {
+        for(int y=0; y<1080; y++) {
+            *((uint32_t *) (0xD0000000+(y*1920)+x)) = 0xFF00FF00;
+  2002d4:	ff0106b7          	lui	a3,0xff010
+    for(int x=0; x<1920; x++) {
+  2002d8:	d01fb637          	lui	a2,0xd01fb
+{
+  2002dc:	78070713          	addi	a4,a4,1920 # d0000780 <main+0xcfe004b0>
+            *((uint32_t *) (0xD0000000+(y*1920)+x)) = 0xFF00FF00;
+  2002e0:	f0068693          	addi	a3,a3,-256 # ff00ff00 <main+0xfee0fc30>
+    for(int x=0; x<1920; x++) {
+  2002e4:	b8060613          	addi	a2,a2,-1152 # d01fab80 <main+0xcfffa8b0>
+  2002e8:	88070793          	addi	a5,a4,-1920
+            *((uint32_t *) (0xD0000000+(y*1920)+x)) = 0xFF00FF00;
+  2002ec:	00d7a023          	sw	a3,0(a5)
+        for(int y=0; y<1080; y++) {
+  2002f0:	00178793          	addi	a5,a5,1
+  2002f4:	fee79ce3          	bne	a5,a4,2002ec <main+0x1c>
+    for(int x=0; x<1920; x++) {
+  2002f8:	78078713          	addi	a4,a5,1920
+  2002fc:	fec716e3          	bne	a4,a2,2002e8 <main+0x18>
+     while (1)
+     {
+         HAL_UART_PutChar(".");
+         // HAL_Timebase_DelayMS(100);
+     }*/
+  200300:	00008067          	ret
+  200304:	0000                	unimp
 	...
