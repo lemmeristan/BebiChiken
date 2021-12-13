@@ -1,12 +1,12 @@
 PROJECTNAME=bebichiken
 
-HDMI_VERILOGS=() #(HDMI_clock.v HDMI_test_hires.v TMDS_encoder.v) # 
-SDRAM_VERILOGS=() #(dualport_ram.v) #
+HDMI_VERILOGS=(HDMI_clock.v HDMI_test_hires.v TMDS_encoder.v) # () #
+SDRAM_VERILOGS=(dualport_ram.v) #() #
 SPIFLASH_VERILOGS=(simple_dualport_ram_8k_lattice.v)
 PERIPHERALS_VERILOGS=("${HDMI_VERILOGS[@]/#/peripherals/hdmi/} ${SDRAM_VERILOGS[@]/#/peripherals/sdram/} ${SPIFLASH_VERILOGS[@]/#/peripherals/spiflash/}")
 
 
-SDRAM_VHDLS=() #(sdram_cache.vhd)
+SDRAM_VHDLS=(sdram_cache.vhd) #() #
 SPIFLASH_VHDLS=(quadflash_cache.vhd)
 UART_VHDLS=(uart.vhd)
 PERIPHERALS_VHDLS=("${UART_VHDLS[@]/#/peripherals/uart/} ${SDRAM_VHDLS[@]/#/peripherals/sdram/} ${SPIFLASH_VHDLS[@]/#/peripherals/spiflash/}")
