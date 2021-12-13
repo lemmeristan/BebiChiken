@@ -652,74 +652,74 @@ BEGIN
   -- OLED_PMODEN <= int_gpio(4);
 
 
-  sdram_mem_addr <= (0 => periph_address(PERIPH_SDRAM), 1 => hdmi_mem_addr);
-  sdram_mem_wdata <= (0 => periph_wdata(PERIPH_SDRAM), 1 => hdmi_mem_wdata);
-  periph_rdata(PERIPH_SDRAM) <= sdram_mem_rdata(0);
+  -- sdram_mem_addr <= (0 => periph_address(PERIPH_SDRAM), 1 => hdmi_mem_addr);
+  -- sdram_mem_wdata <= (0 => periph_wdata(PERIPH_SDRAM), 1 => hdmi_mem_wdata);
+  -- periph_rdata(PERIPH_SDRAM) <= sdram_mem_rdata(0);
 
 
-  sdram_mem_we <= (0 => periph_we(PERIPH_SDRAM), 1 => hdmi_mem_we);
-  sdram_mem_re <= (0 => periph_re(PERIPH_SDRAM), 1 => hdmi_mem_re);
-  sdram_mem_width <= (0 => periph_width(PERIPH_SDRAM), 1 => hdmi_mem_width);
-  periph_rdy(PERIPH_SDRAM) <= sdram_mem_rdy(0);
-  periph_wack(PERIPH_SDRAM) <= sdram_mem_wack(0);
-  sdram_mem_clk <= (0 => clk, 1 => pixclk);
+  -- sdram_mem_we <= (0 => periph_we(PERIPH_SDRAM), 1 => hdmi_mem_we);
+  -- sdram_mem_re <= (0 => periph_re(PERIPH_SDRAM), 1 => hdmi_mem_re);
+  -- sdram_mem_width <= (0 => periph_width(PERIPH_SDRAM), 1 => hdmi_mem_width);
+  -- periph_rdy(PERIPH_SDRAM) <= sdram_mem_rdy(0);
+  -- periph_wack(PERIPH_SDRAM) <= sdram_mem_wack(0);
+  -- sdram_mem_clk <= (0 => clk, 1 => pixclk);
 
 
 
-  i_sdram_cache : sdram_cache
+  -- i_sdram_cache : sdram_cache
 
-    GENERIC MAP(
-        vendor => '1',
-        num_ports => 2,
-        clk_freq => 125
-    )
+  --   GENERIC MAP(
+  --       vendor => '1',
+  --       num_ports => 2,
+  --       clk_freq => 125
+  --   )
 
-    PORT MAP(
-        reset => rst, clk => pixclk, -- clk_25mhz,
-        mem_addr => sdram_mem_addr, mem_wdata => sdram_mem_wdata,
-        mem_rdata => sdram_mem_rdata,
-        mem_we => sdram_mem_we, mem_re => sdram_mem_re,
-        mem_width => sdram_mem_width,
-        mem_rdy => sdram_mem_rdy, mem_wack => sdram_mem_wack,
-        mem_clk => sdram_mem_clk,
+  --   PORT MAP(
+  --       reset => rst, clk => pixclk, -- clk_25mhz,
+  --       mem_addr => sdram_mem_addr, mem_wdata => sdram_mem_wdata,
+  --       mem_rdata => sdram_mem_rdata,
+  --       mem_we => sdram_mem_we, mem_re => sdram_mem_re,
+  --       mem_width => sdram_mem_width,
+  --       mem_rdy => sdram_mem_rdy, mem_wack => sdram_mem_wack,
+  --       mem_clk => sdram_mem_clk,
 
-        sdram_a => sdram_a,
-        sdram_ba => sdram_ba,
-        sdram_dq => sdram_d,
-        sdram_cke => sdram_cke,
-        sdram_cs_n => sdram_csn,
-        sdram_ras_n => sdram_rasn,
-        sdram_cas_n => sdram_casn,
-        sdram_we_n => sdram_wen,
-        sdram_dqml => sdram_dqm(0),
-        sdram_dqmh => sdram_dqm(1) --,
-        --addr_valid => addr_valid
+  --       sdram_a => sdram_a,
+  --       sdram_ba => sdram_ba,
+  --       sdram_dq => sdram_d,
+  --       sdram_cke => sdram_cke,
+  --       sdram_cs_n => sdram_csn,
+  --       sdram_ras_n => sdram_rasn,
+  --       sdram_cas_n => sdram_casn,
+  --       sdram_we_n => sdram_wen,
+  --       sdram_dqml => sdram_dqm(0),
+  --       sdram_dqmh => sdram_dqm(1) --,
+  --       --addr_valid => addr_valid
 
-    );
-
-
-    i_hdmi : HDMI_test_hires PORT MAP(
-      pclk => clk_25mhz,
-      gpdi_dp => gpdi_dp,
-      GFX_X => X,
-      GFX_Y => Y,
-      red => current_pixel(23 DOWNTO 16),
-      green => current_pixel(15 DOWNTO 8),
-      blue => current_pixel(7 DOWNTO 0),
-      half_clk_TMDS => half_clk_TMDS,
-      pixclk => pixclk);
+  --   );
 
 
-      hdmi_mem_wack <= sdram_mem_wack(1);
-      hdmi_mem_rdata <= sdram_mem_rdata(1);
-      hdmi_mem_rdy <= sdram_mem_rdy(1);
-      hdmi_mem_addr <= "00000" & X"0000" & X(8 DOWNTO 0) & "00";
-      current_pixel <= hdmi_mem_rdata when hdmi_mem_rdy = '1' else X"00FF0000";
+  --   i_hdmi : HDMI_test_hires PORT MAP(
+  --     pclk => clk_25mhz,
+  --     gpdi_dp => gpdi_dp,
+  --     GFX_X => X,
+  --     GFX_Y => Y,
+  --     red => current_pixel(23 DOWNTO 16),
+  --     green => current_pixel(15 DOWNTO 8),
+  --     blue => current_pixel(7 DOWNTO 0),
+  --     half_clk_TMDS => half_clk_TMDS,
+  --     pixclk => pixclk);
+
+
+  --     hdmi_mem_wack <= sdram_mem_wack(1);
+  --     hdmi_mem_rdata <= sdram_mem_rdata(1);
+  --     hdmi_mem_rdy <= sdram_mem_rdy(1);
+  --     hdmi_mem_addr <= "00000" & X"0000" & X(8 DOWNTO 0) & "00";
+  --     current_pixel <= hdmi_mem_rdata when hdmi_mem_rdy = '1' else X"00FF0000";
       
 
-        hdmi_mem_re <= '1';
-        hdmi_mem_width <= "10";
-        hdmi_mem_we <= '0';
+  --       hdmi_mem_re <= '1';
+  --       hdmi_mem_width <= "10";
+  --       hdmi_mem_we <= '0';
 
 
 

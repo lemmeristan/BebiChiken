@@ -179,31 +179,46 @@ BEGIN
     -- END PROCESS;
     host_address_invalid <= '0';
 
-    PROCESS (rst, sys_clk)
-    variable temp : peripherals_t;
-    BEGIN
-        IF rst = '1' THEN
-        peripheral_we <= (others => '0');
-        peripheral_re <= (others => '0');
-        peripheral_addr <= (others => (OTHERS => '0')); --(others => host_addr(0)); --
-        peripheral_width <= (others => (OTHERS => '0')); --(others => "10"); --
-        peripheral_wdata <= (others => (OTHERS => '0')); --(others => host_wdata(0)); --
-        host_rdata <= (OTHERS => '0'); --(others => peripheral_rdata(IDX_SDRAM));--
-        host_rdy <= '0';
-        host_wack <= '0';
-            state <= GOOD;
-        ELSIF rising_edge(sys_clk) THEN
-            state <= n_state;
-            temp := f_address_to_peripheral(host_addr);
-            peripheral_we(temp) <= host_we;
-            peripheral_re(temp) <= host_re;
-            peripheral_addr(temp) <= host_addr;
-            peripheral_width(temp) <= host_width;
-            peripheral_wdata(temp) <= host_wdata;
-            host_rdata <= peripheral_rdata(temp);
-            host_rdy <= peripheral_rdy(temp);
-            host_wack <= peripheral_wack(temp);
-        END IF;
-    END PROCESS;
+    -- PROCESS (rst, sys_clk)
+    -- variable temp : peripherals_t;
+    -- BEGIN
+    --     IF rst = '1' THEN
+    --     peripheral_we <= (others => '0');
+    --     peripheral_re <= (others => '0');
+    --     peripheral_addr <= (others => (OTHERS => '0')); --(others => host_addr(0)); --
+    --     peripheral_width <= (others => (OTHERS => '0')); --(others => "10"); --
+    --     peripheral_wdata <= (others => (OTHERS => '0')); --(others => host_wdata(0)); --
+    --     host_rdata <= (OTHERS => '0'); --(others => peripheral_rdata(IDX_SDRAM));--
+    --     host_rdy <= '0';
+    --     host_wack <= '0';
+    --         state <= GOOD;
+    --     ELSIF rising_edge(sys_clk) THEN
+    --         state <= n_state;
+            --temp := f_address_to_peripheral(host_addr);
+            process(sys_clk)
+            begin
+            if rising_Edge(sys_clk) then
 
+
+                peripheral_we(f_address_to_peripheral(host_addr)) <= host_we;
+                peripheral_wdata <= (others => host_wdata);
+                host_wack <= peripheral_wack(f_address_to_peripheral(host_addr));
+
+            --peripheral_addr(f_address_to_peripheral(host_addr)) <= host_addr;
+            --peripheral_width(f_address_to_peripheral(host_addr)) <= host_width;
+            --peripheral_wdata(f_address_to_peripheral(host_addr)) <= host_wdata;
+            end if;
+        end process;
+    --     END IF;
+    -- END PROCESS;
+
+
+
+    peripheral_addr <= (others => host_addr);
+    peripheral_width <= (others => host_width);
+
+    host_rdata <= peripheral_rdata(f_address_to_peripheral(host_addr));
+    host_rdy <= peripheral_rdy(f_address_to_peripheral(host_addr));
+
+    peripheral_re(f_address_to_peripheral(host_addr)) <= host_re;
 END behavioural;
