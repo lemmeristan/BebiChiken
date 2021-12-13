@@ -144,11 +144,11 @@ END;
 
 IMPURE FUNCTION DoShift (
     value : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    shamt : INTEGER RANGE 0 TO 31;
+    shamt : STD_LOGIC_VECTOR(4 DOWNTO 0);
     arithmetic_shift : BOOLEAN;
     shleft : BOOLEAN
 ) RETURN STD_LOGIC_VECTOR IS
-    VARIABLE ires : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    VARIABLE ires, temp : STD_LOGIC_VECTOR(31 DOWNTO 0);
     VARIABLE appendbit : STD_LOGIC;
 BEGIN
     IF arithmetic_shift = true THEN
@@ -157,278 +157,62 @@ BEGIN
         appendbit := '0';
     END IF;
 
-    IF shamt > 31 THEN
+    IF shamt = "11111" THEN
         ires := (OTHERS => appendbit);
         RETURN ires;
-    ELSIF shamt = 0 THEN
+    ELSIF shamt = "00000" THEN
         RETURN value;
     END IF;
 
     IF shleft = true THEN
         ires := value;
-        --        FOR I IN 1 TO shamt LOOP
-        IF shamt > 0 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
 
-        IF shamt > 1 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
+        if (shamt and "10000") /= "00000" then
+            ires := ires(15 downto 0) & X"0000";
+        end if;
 
-        IF shamt > 2 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
+        if (shamt and "01000") /= "00000" then
+            ires := ires(23 downto 0) & X"00";
+        end if;
 
-        IF shamt > 3 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
+        if (shamt and "00100") /= "00000" then
+            ires := ires(27 downto 0) & X"0";
+        end if;
 
-        IF shamt > 4 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
+        if (shamt and "00010") /= "00000" then
+            ires := ires(29 downto 0) & "00";
+        end if;
 
-        IF shamt > 5 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
+        if (shamt and "00001") /= "00000" then
+            ires := ires(30 downto 0) & '0';
+        end if;
 
-        IF shamt > 6 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 7 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 8 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 9 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 10 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 10 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 11 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 12 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 13 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 14 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 15 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 16 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 17 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 18 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 19 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 20 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 21 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 22 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 23 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 24 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 25 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 26 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 27 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 28 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 29 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        IF shamt > 30 THEN
-            ires := ires(30 DOWNTO 0) & '0';
-        END IF;
-
-        --        END LOOP;
     ELSE
         ires := value;
+        
+        temp := (others => appendbit);
 
-        IF shamt > 0 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
+        if (shamt and "10000") /= "00000" then
+            ires := temp(15 downto 0) & ires(31 downto 16);
+        end if;
 
-        IF shamt > 1 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
+        if (shamt and "01000") /= "00000" then
+            ires := temp(7 downto 0) & ires(31 downto 8);
+        end if;
 
-        IF shamt > 2 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
+        if (shamt and "00100") /= "00000" then
+            ires := temp(3 downto 0) & ires(31 downto 4);
+        end if;
 
-        IF shamt > 3 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
+        if (shamt and "00010") /= "00000" then
+            ires := temp(1 downto 0) & ires(31 downto 2);
+        end if;
 
-        IF shamt > 4 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
+        if (shamt and "00001") /= "00000" then
+            ires := temp(0) & ires(31 DOWNTO 1);
+        end if;
 
-        IF shamt > 5 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 6 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 7 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 8 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 9 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 10 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 10 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 11 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 12 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 13 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 14 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 15 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 16 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 17 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 18 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 19 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 20 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 21 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 22 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 23 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 24 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 25 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 26 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 27 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 28 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 29 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-
-        IF shamt > 30 THEN
-            ires := appendbit & ires(31 DOWNTO 1);
-        END IF;
-        -- FOR I IN 1 TO shamt LOOP
-        --     ires := appendbit & ires(31 DOWNTO 1);
-        -- END LOOP;
+        
     END IF;
 
     -- IF shleft = true THEN
@@ -913,7 +697,7 @@ BEGIN
 
             WHEN "001" => -- SLL
                 update_pc(OPCODE_R_TYPE) <= '1';
-                result(OPCODE_R_TYPE) <= DoShift(registerfile_rdata_rs1, to_integer(unsigned(registerfile_rdata_rs2(4 DOWNTO 0))), false, true);
+                result(OPCODE_R_TYPE) <= DoShift(registerfile_rdata_rs1, registerfile_rdata_rs2(4 DOWNTO 0), false, true);
 
             WHEN "010" => -- SLT
                 IF signed(registerfile_rdata_rs1) < signed(registerfile_rdata_rs2) THEN
@@ -939,11 +723,11 @@ BEGIN
                     WHEN "0000000" => -- SRL
 
                         update_pc(OPCODE_R_TYPE) <= '1';
-                        result(OPCODE_R_TYPE) <= DoShift(registerfile_rdata_rs1, to_integer(unsigned(registerfile_rdata_rs2(4 DOWNTO 0))), false, false);
+                        result(OPCODE_R_TYPE) <= DoShift(registerfile_rdata_rs1, registerfile_rdata_rs2(4 DOWNTO 0), false, false);
 
                     WHEN "0100000" => -- SRA
                         update_pc(OPCODE_R_TYPE) <= '1';
-                        result(OPCODE_R_TYPE) <= DoShift(registerfile_rdata_rs1, to_integer(unsigned(registerfile_rdata_rs2(4 DOWNTO 0))), true, false);
+                        result(OPCODE_R_TYPE) <= DoShift(registerfile_rdata_rs1, registerfile_rdata_rs2(4 DOWNTO 0), true, false);
 
                     WHEN OTHERS =>
                         decode_error(OPCODE_R_TYPE) <= '1';
@@ -979,7 +763,7 @@ BEGIN
                 CASE funct7 IS
                     WHEN "0000000" => -- SLLI
                         update_pc(OPCODE_I_TYPE) <= '1';
-                        result(OPCODE_I_TYPE) <= DoShift(registerfile_rdata_rs1, to_integer(unsigned(imm_i(4 DOWNTO 0))), false, true);
+                        result(OPCODE_I_TYPE) <= DoShift(registerfile_rdata_rs1, imm_i(4 DOWNTO 0), false, true);
 
                     WHEN OTHERS =>
                         decode_error(OPCODE_I_TYPE) <= '1';
@@ -1007,11 +791,11 @@ BEGIN
                 CASE funct7 IS
                     WHEN "0000000" => -- SRLI
                         update_pc(OPCODE_I_TYPE) <= '1';
-                        result(OPCODE_I_TYPE) <= DoShift(registerfile_rdata_rs1, to_integer(unsigned(imm_i(4 DOWNTO 0))), false, false);
+                        result(OPCODE_I_TYPE) <= DoShift(registerfile_rdata_rs1, imm_i(4 DOWNTO 0), false, false);
 
                     WHEN "0100000" => -- SRAI
                         update_pc(OPCODE_I_TYPE) <= '1';
-                        result(OPCODE_I_TYPE) <= DoShift(registerfile_rdata_rs1, to_integer(unsigned(imm_i(4 DOWNTO 0))), true, false);
+                        result(OPCODE_I_TYPE) <= DoShift(registerfile_rdata_rs1, imm_i(4 DOWNTO 0), true, false);
 
                     WHEN OTHERS =>
                         decode_error(OPCODE_I_TYPE) <= '1';
