@@ -209,7 +209,8 @@ COMPONENT regfile_wide IS
         writeback_pc : in opcode_word_t;
 
         rs1_data_out, rs2_data_out, pc : out std_logic_vector(31 downto 0);
-        rs1_locked, rs2_locked, pc_locked : out std_logic
+        rs1_locked, rs2_locked, pc_locked : out std_logic;
+        uses_rs1, uses_rs2, uses_rd, updates_pc : out std_logic 
 
     );
 END COMPONENT;
@@ -223,13 +224,14 @@ COMPONENT execunit IS
 
         we                                  : IN STD_LOGIC;
         rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-        rd                                  : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
 
         writeback_we     : OUT STD_LOGIC;
         writeback_result : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        update_pc : OUT STD_LOGIC
+        update_pc : OUT STD_LOGIC;
+        uses_rs1, uses_rs2, updates_rd, updates_pc : out std_logic 
+
 
     );
 END COMPONENT;
@@ -282,7 +284,7 @@ SIGNAL writeback : opcode_bit_t := (OTHERS => '0');
 SIGNAL update_pc : opcode_bit_t := (OTHERS => '1');
 SIGNAL dwe, dre : opcode_bit_t := (OTHERS => '0');
 SIGNAL selected : opcode_bit_t := (OTHERS => '0');
-SIGNAL next_pc, r_next_pc, r_instruction : opcode_word_t := (OTHERS => (OTHERS => '0'));
+SIGNAL next_pc, r_next_pc : opcode_word_t := (OTHERS => (OTHERS => '0'));
 SIGNAL result : opcode_word_t := (OTHERS => (OTHERS => '0'));
 SIGNAL wdata : opcode_word_t := (OTHERS => (OTHERS => '0'));
 SIGNAL daddr : opcode_word_t := (OTHERS => (OTHERS => '0'));
@@ -290,7 +292,7 @@ SIGNAL daddr : opcode_word_t := (OTHERS => (OTHERS => '0'));
 SIGNAL i_data_wdata, i_data_addr : STD_LOGIC_VECTOR(31 DOWNTO 0);
 SIGNAL i_data_we, i_data_re : STD_LOGIC;
 
-signal registerfile_rdata_rs1, registerfile_rdata_rs2 : std_logic_vector(31 downto 0);
+signal registerfile_rdata_rs1, registerfile_rdata_rs2, r_instruction : std_logic_vector(31 downto 0);
 signal registerfile_rs1, registerfile_rs2, registerfile_rd : std_logic_vector(4 downto 0);
 signal lock_rd, lock_pc, rs1_locked, rs2_locked, pc_locked : std_logic;
 signal new_rd_lock_owner, new_pc_lock_owner : opcode_t;
@@ -299,29 +301,39 @@ signal writeback_data : opcode_word_t;
 signal writeback_pc : opcode_word_t;
 signal eu_we : opcode_bit_t;
 
+signal uses_rs1, uses_rs2, updates_pc, updates_rd : opcode_bit_t;
+
+signal allready : std_logic;
+
 
 BEGIN
 
 process(rst,clk)
 begin
     if rst = '1' then
-        eu_we <= (others => '0');
-        update_pc(OPCODE_INVALID) <= '0';
-        lock_rd <= '0';
-        new_pc_lock_owner <= OPCODE_INVALID;
+        r_instruction <= (others => '0');
     elsif rising_edge(clk) then
-        eu_we <= (others => '0');
-        update_pc(OPCODE_INVALID) <= '0';
-        if (inst_rdy = '1') and (pc_locked = '0') and (rs1_locked = '0') and (rs2_locked = '0') then
-            eu_we(f_decode_opcode(inst_rdata)) <= '1';
-            update_pc(OPCODE_INVALID) <= '1';
-            lock_rd <= '1';
-            new_pc_lock_owner <= f_decode_opcode(inst_rdata);
-        end if;
+        r_instruction <= inst_rdata;
     end if;
 end process;
 
 inst_addr <= pc;
+lock_rd <= updates_rd(f_decode_opcode(r_instruction)) and allready;
+lock_pc <= updates_pc(f_decode_opcode(r_instruction)) and allready;
+writeback_pc(OPCODE_INVALID) <= pc + X"00000004";
+
+allready <= '1' when (inst_rdy = '1') and (pc_locked = '0') 
+and ((uses_rs1(f_decode_opcode(r_instruction)) = '0') or ((uses_rs1(f_decode_opcode(r_instruction)) = '1') and (rs1_locked = '0'))) 
+and ((uses_rs2(f_decode_opcode(r_instruction)) = '0') or ((uses_rs2(f_decode_opcode(r_instruction)) = '1') and (rs2_locked = '0')))  else '0';
+update_pc(OPCODE_INVALID) <= allready;
+
+process(r_instruction, allready)
+begin
+    eu_we <= (others => '0');
+    eu_we(f_decode_opcode(r_instruction)) <= allready;
+end process;
+
+new_pc_lock_owner <= f_decode_opcode(r_instruction);
 
 
 i_regfile_wide : regfile_wide
@@ -359,7 +371,9 @@ execunit_gen : FOR op IN opcode_t GENERATE
             writeback_result => writeback_data(op),
     
             next_pc => writeback_pc(op),
-            update_pc => update_pc(op)
+            update_pc => update_pc(op),
+
+            uses_rs1 => uses_rs1(op), uses_rs2 => uses_rs2(op), updates_rd => updates_rd(op), updates_pc => updates_pc(op) 
         );
     END GENERATE exclude_invalid;
 
