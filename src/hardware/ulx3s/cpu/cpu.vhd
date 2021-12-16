@@ -348,6 +348,7 @@ execunit_gen : FOR op IN opcode_t GENERATE
 
     exclude_invalid : IF op /= OPCODE_INVALID GENERATE
         i_eu : execunit
+        GENERIC MAP (operation => op)
         PORT MAP(
             rst => rst, clk => clk,
 
