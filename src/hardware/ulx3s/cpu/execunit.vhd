@@ -16,7 +16,6 @@ ENTITY execunit IS
         rd                                  : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
 
         writeback_we     : OUT STD_LOGIC;
-        writeback_rd     : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
         writeback_result : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -334,7 +333,6 @@ BEGIN
     BEGIN
         IF rising_edge(clk) THEN
             r_we         <= we;
-            writeback_rd <= r_rd;
             writeback_we <= r_we;
 
             IF we = '1' THEN
@@ -342,7 +340,6 @@ BEGIN
                 r_rs2_data    <= rs2_data;
                 r_instruction <= instruction;
                 r_pc          <= pc;
-                r_rd          <= rd;
             END IF;
         END IF;
     END PROCESS;
