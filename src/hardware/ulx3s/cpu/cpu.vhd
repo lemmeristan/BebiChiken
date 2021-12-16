@@ -305,6 +305,8 @@ signal uses_rs1, uses_rs2, updates_pc, updates_rd : opcode_bit_t;
 
 signal allready : std_logic;
 
+signal decoded : opcode_t;
+
 
 BEGIN
 
@@ -312,28 +314,30 @@ process(rst,clk)
 begin
     if rst = '1' then
         r_instruction <= (others => '0');
+        decoded <= OPCODE_INVALID;
     elsif rising_edge(clk) then
         r_instruction <= inst_rdata;
+        decoded <= f_decode_opcode(inst_rdata);
     end if;
 end process;
 
 inst_addr <= pc;
-lock_rd <= updates_rd(f_decode_opcode(r_instruction)) and allready;
-lock_pc <= updates_pc(f_decode_opcode(r_instruction)) and allready;
+lock_rd <= updates_rd(decoded) and allready;
+lock_pc <= updates_pc(decoded) and allready;
 writeback_pc(OPCODE_INVALID) <= pc + X"00000004";
 
 allready <= '1' when (inst_rdy = '1') and (pc_locked = '0') 
-and ((uses_rs1(f_decode_opcode(r_instruction)) = '0') or ((uses_rs1(f_decode_opcode(r_instruction)) = '1') and (rs1_locked = '0'))) 
-and ((uses_rs2(f_decode_opcode(r_instruction)) = '0') or ((uses_rs2(f_decode_opcode(r_instruction)) = '1') and (rs2_locked = '0')))  else '0';
+and ((uses_rs1(decoded) = '0') or ((uses_rs1(decoded) = '1') and (rs1_locked = '0'))) 
+and ((uses_rs2(decoded) = '0') or ((uses_rs2(decoded) = '1') and (rs2_locked = '0')))  else '0';
 update_pc(OPCODE_INVALID) <= allready;
 
 process(r_instruction, allready)
 begin
     eu_we <= (others => '0');
-    eu_we(f_decode_opcode(r_instruction)) <= allready;
+    eu_we(decoded) <= allready;
 end process;
 
-new_pc_lock_owner <= f_decode_opcode(r_instruction);
+new_pc_lock_owner <= decoded;
 
 
 i_regfile_wide : regfile_wide
