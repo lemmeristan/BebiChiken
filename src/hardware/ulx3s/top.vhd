@@ -56,14 +56,14 @@ ARCHITECTURE behavioural OF top IS
   CONSTANT num_hosts : INTEGER := 1;
   CONSTANT num_peripherals : INTEGER := 1;
 
-  COMPONENT registerfile PORT (
-    clk : IN STD_LOGIC;
-    rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-    data_out_rs1, data_out_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    data_in_rd : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    we : IN STD_LOGIC
-    );
-  END COMPONENT;
+  -- COMPONENT registerfile PORT (
+  --   clk : IN STD_LOGIC;
+  --   rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+  --   data_out_rs1, data_out_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+  --   data_in_rd : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+  --   we : IN STD_LOGIC
+  --   );
+--  END COMPONENT;
   COMPONENT cpu PORT (
     rst, clk : IN STD_LOGIC;
 
@@ -81,11 +81,11 @@ ARCHITECTURE behavioural OF top IS
     data_re, data_we : OUT STD_LOGIC;
     data_rdy, data_wack : IN STD_LOGIC;
 
-    -- Register file
-    registerfile_rs1, registerfile_rs2, registerfile_rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-    registerfile_wdata_rd : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    registerfile_rdata_rs1, registerfile_rdata_rs2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    registerfile_we : OUT STD_LOGIC;
+    -- -- Register file
+    -- registerfile_rs1, registerfile_rs2, registerfile_rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+    -- registerfile_wdata_rd : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    -- registerfile_rdata_rs1, registerfile_rdata_rs2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    -- registerfile_we : OUT STD_LOGIC;
 
     err : OUT STD_LOGIC
     );
@@ -398,6 +398,8 @@ ARCHITECTURE behavioural OF top IS
   );
   END COMPONENT;
 
+  signal cpu_clk : std_logic;
+
 
 BEGIN
 
@@ -584,8 +586,10 @@ BEGIN
   flash_csn <= spi_csn;
   spi_do <= flash_miso;
 
+  cpu_clk <= pixclk;
+
   i_cpu : cpu PORT MAP(
-    rst => rst, clk => clk,
+    rst => rst, clk => cpu_clk,
 
     -- Instruction memory bus
     inst_width => inst_width, inst_addr => inst_addr, inst_rdata => inst_rdata,
@@ -593,21 +597,21 @@ BEGIN
     inst_rdy => inst_rdy,
 
     data_width => mem_width, data_addr => mem_addr, data_wdata => mem_wdata,
-    data_rdata => mem_rdata, data_re => mem_re, data_we => mem_we, data_rdy => mem_rdy, data_wack => mem_wack,
+    data_rdata => mem_rdata, data_re => mem_re, data_we => mem_we, data_rdy => mem_rdy, data_wack => mem_wack
 
     -- Register file
-    registerfile_rs1 => registerfile_rs1, registerfile_rs2 => registerfile_rs2, registerfile_rd => registerfile_rd,
-    registerfile_wdata_rd => registerfile_wdata_rd,
-    registerfile_rdata_rs1 => registerfile_rdata_rs1, registerfile_rdata_rs2 => registerfile_rdata_rs2,
-    registerfile_we => registerfile_we
+    -- registerfile_rs1 => registerfile_rs1, registerfile_rs2 => registerfile_rs2, registerfile_rd => registerfile_rd,
+    -- registerfile_wdata_rd => registerfile_wdata_rd,
+    -- registerfile_rdata_rs1 => registerfile_rdata_rs1, registerfile_rdata_rs2 => registerfile_rdata_rs2,
+    -- registerfile_we => registerfile_we
   );
-  regfile : registerfile PORT MAP(
-    clk => clk,
-    rs1 => registerfile_rs1, rs2 => registerfile_rs2, rd => registerfile_rd,
-    data_out_rs1 => registerfile_rdata_rs1, data_out_rs2 => registerfile_rdata_rs2,
-    data_in_rd => registerfile_wdata_rd,
-    we => registerfile_we
-  );
+  -- regfile : registerfile PORT MAP(
+  --   clk => clk,
+  --   rs1 => registerfile_rs1, rs2 => registerfile_rs2, rd => registerfile_rd,
+  --   data_out_rs1 => registerfile_rdata_rs1, data_out_rs2 => registerfile_rdata_rs2,
+  --   data_in_rd => registerfile_wdata_rd,
+  --   we => registerfile_we
+  -- );
   
 
   -- PROCESS (i_address_valid, i_mem_rdata, i_mem_rdy, i_mem_wack)

@@ -20,7 +20,7 @@ ENTITY execunit IS
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         update_pc : OUT STD_LOGIC;
 
-        uses_rs1, uses_rs2, updates_rd, updates_pc : out std_logic 
+        uses_rs1, uses_rs2, updates_rd, updates_pc, busy : out std_logic 
 
     );
 END execunit;
@@ -344,6 +344,8 @@ BEGIN
             END IF;
         END IF;
     END PROCESS;
+
+    busy <= r_we;
 
     PROCESS (r_rs1_data, r_rs2_data, r_pc)
     BEGIN
