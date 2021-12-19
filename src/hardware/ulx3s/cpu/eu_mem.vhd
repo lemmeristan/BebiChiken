@@ -6,19 +6,14 @@ LIBRARY work;
 USE work.bebichiken.ALL;
 
 ENTITY eu_mem IS
-    GENERIC (operation : opcode_t := OPCODE_I_TYPE_ADDI);
-
     PORT (
         rst, clk : IN STD_LOGIC;
 
         we                                  : IN STD_LOGIC;
-        rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rs1_data, rs2_data, instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         writeback_we     : OUT STD_LOGIC;
         writeback_result : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-        next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        update_pc : OUT STD_LOGIC;
 
         mem_we, mem_re : out std_logic;
         mem_wack, mem_rdy : in std_logic;
@@ -330,7 +325,7 @@ ARCHITECTURE behavioural OF eu_mem IS
         RETURN imm;
 
     END;
-    SIGNAL r_rs1_data, r_rs2_data, r_instruction, r_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL r_rs1_data, r_rs2_data, r_instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
     signal r_we : std_logic;
 
     type state_t is (S_IDLE, S_BUSY);
@@ -339,20 +334,24 @@ ARCHITECTURE behavioural OF eu_mem IS
 BEGIN
 
 
-    PROCESS (clk)
+    PROCESS (rst, clk)
     BEGIN
-        IF rising_edge(clk) THEN
+        if rst = '1' then
+            r_rs1_data <= (others => '0');
+            r_rs2_data <= (others => '0');
+            r_instruction <= (others => '0');
+            state <= S_IDLE;
+        elsIF rising_edge(clk) THEN
 
             state <= n_state;
 
-            r_we         <= we;
-            writeback_we <= r_we;
+            --r_we         <= we;
+            --writeback_we <= r_we;
 
             IF we = '1' THEN
                 r_rs1_data    <= rs1_data;
                 r_rs2_data    <= rs2_data;
                 r_instruction <= instruction;
-                r_pc          <= pc;
             END IF;
         END IF;
     END PROCESS;
@@ -364,10 +363,13 @@ BEGIN
     -- not formally correct, still need to account for funct3(2), i.e.: r_instruction(14), and sign extension
     -- preferrably not even feeding execution unit if instruction is invalid
 
-    process(state, we, r_instruction, mem_rdy, mem_wack)
+    process(state, we, state, r_instruction, mem_rdy, mem_wack)
     begin
         n_state <= state;
         busy <= '1';
+        mem_re <= '0';
+        mem_we <= '0';
+        writeback_we <= '0';
         case state is
             when S_IDLE =>
                 busy <= '0';
@@ -379,6 +381,7 @@ BEGIN
                     mem_re <= '1';
                     if mem_rdy = '1' then
                         writeback_we <= '1';
+                        n_state <= S_IDLE;
                     end if;
 
                 elsif f_decode_opcode(r_instruction) = OPCODE_S_TYPE then

@@ -57,8 +57,8 @@ BEGIN
     begin
         if rst = '1' then
             locks <= (others => OPCODE_INVALID);
-            --registers <= (32 => entry_point, others => (others => '0'));
-            --registers(32) <= entry_point;
+            registers <= (32 => entry_point, others => (others => '0'));
+            registers(32) <= entry_point;
         elsif rising_edge(clk) then
             for i in 0 to 31 loop
                 if locks(i) = OPCODE_INVALID then
