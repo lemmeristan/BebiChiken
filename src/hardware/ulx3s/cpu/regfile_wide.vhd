@@ -34,7 +34,7 @@ ARCHITECTURE behavioural OF regfile_wide IS
 
     signal locks : lock_owner_t(32 downto 0);
     TYPE registers_t IS ARRAY (32 DOWNTO 0) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL registers : registers_t := (OTHERS => (OTHERS => '0'));
+    SIGNAL registers : registers_t; -- := (OTHERS => (OTHERS => '0'));
 
     --    ATTRIBUTE syn_ramstyle : STRING;
     --    ATTRIBUTE syn_ramstyle OF registers : SIGNAL IS "rw_check";
@@ -58,7 +58,7 @@ BEGIN
         if rst = '1' then
             locks <= (others => OPCODE_INVALID);
             registers <= (32 => entry_point, others => (others => '0'));
-            registers(32) <= entry_point;
+            --registers(32) <= entry_point;
         elsif rising_edge(clk) then
             for i in 0 to 31 loop
                 if locks(i) = OPCODE_INVALID then

@@ -331,9 +331,16 @@ ARCHITECTURE behavioural OF execunit IS
 BEGIN
 
 
-    PROCESS (clk)
+    PROCESS (rst, clk)
     BEGIN
-        IF rising_edge(clk) THEN
+        if rst = '1' then
+            r_we <= '0';
+            writeback_we <= '0';
+            r_rs1_data <= (others => '0');
+            r_rs2_data <= (others => '0');
+            r_instruction <= (others => '0');
+            r_pc <= (others => '0');
+        elsIF rising_edge(clk) THEN
             r_we         <= we;
             writeback_we <= r_we;
 
