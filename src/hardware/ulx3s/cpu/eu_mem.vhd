@@ -331,6 +331,8 @@ ARCHITECTURE behavioural OF eu_mem IS
     type state_t is (S_IDLE, S_BUSY);
     signal state, n_state : state_t;
 
+    signal op : opcode_t;
+
 BEGIN
 
 
@@ -363,6 +365,8 @@ BEGIN
     -- not formally correct, still need to account for funct3(2), i.e.: r_instruction(14), and sign extension
     -- preferrably not even feeding execution unit if instruction is invalid
 
+    op <= f_decode_opcode(r_instruction);
+
     process(state, we, state, r_instruction, mem_rdy, mem_wack)
     begin
         n_state <= state;
@@ -377,14 +381,14 @@ BEGIN
                     n_state <= S_BUSY;
                 end if;
             when S_BUSY =>
-                if f_decode_opcode(r_instruction) = OPCODE_I_TYPE_LOAD then
+                if op = OPCODE_I_TYPE_LOAD then
                     mem_re <= '1';
                     if mem_rdy = '1' then
                         writeback_we <= '1';
                         n_state <= S_IDLE;
                     end if;
 
-                elsif f_decode_opcode(r_instruction) = OPCODE_S_TYPE then
+                elsif op = OPCODE_S_TYPE then
                     mem_we <= '1';
                     if mem_wack = '1' then
                         n_state <= S_IDLE;
