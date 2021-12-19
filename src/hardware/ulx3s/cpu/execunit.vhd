@@ -325,7 +325,7 @@ ARCHITECTURE behavioural OF execunit IS
         RETURN imm;
 
     END;
-    SIGNAL r_rs1_data, r_rs2_data, r_instruction, r_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL r_rs1_data, r_rs2_data, r_instruction, r_pc, i_writeback_result : STD_LOGIC_VECTOR(31 DOWNTO 0);
     signal r_we : std_logic;
 
 BEGIN
@@ -336,6 +336,7 @@ BEGIN
         if rst = '1' then
             r_we <= '0';
             writeback_we <= '0';
+            writeback_result <= (others => '0');
             r_rs1_data <= (others => '0');
             r_rs2_data <= (others => '0');
             r_instruction <= (others => '0');
@@ -343,6 +344,7 @@ BEGIN
         elsIF rising_edge(clk) THEN
             r_we         <= we;
             writeback_we <= r_we;
+            writeback_result <= i_writeback_result;
 
             IF we = '1' THEN
                 r_rs1_data    <= rs1_data;
@@ -358,7 +360,7 @@ BEGIN
     PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)
     BEGIN
         update_pc        <= '0';
-        writeback_result <= (OTHERS => '0');
+        i_writeback_result <= (OTHERS => '0');
         next_pc <= r_pc + X"00000004";
 
         --updates_pc <= '0';
@@ -369,77 +371,77 @@ BEGIN
         CASE operation IS
             WHEN OPCODE_R_TYPE_ADD =>
                 --uses_rs2 <= '1';
-                writeback_result <= r_rs1_data + r_rs2_data;
+                i_writeback_result <= r_rs1_data + r_rs2_data;
             WHEN OPCODE_R_TYPE_SUB =>
                 --uses_rs2 <= '1';
-                writeback_result <= r_rs1_data - r_rs2_data;
+                i_writeback_result <= r_rs1_data - r_rs2_data;
             WHEN OPCODE_R_TYPE_SLL =>
                 --uses_rs2 <= '1';
-                writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), false, true);
+                i_writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), false, true);
             WHEN OPCODE_R_TYPE_SLT =>
                 --uses_rs2 <= '1';
                 IF signed(r_rs1_data) < signed(r_rs2_data) THEN
-                    writeback_result <= X"00000001";
+                    i_writeback_result <= X"00000001";
                 ELSE
-                    writeback_result <= (OTHERS => '0');
+                    i_writeback_result <= (OTHERS => '0');
                 END IF;
             WHEN OPCODE_R_TYPE_SLTU =>
                 --uses_rs2 <= '1';
                 IF unsigned(r_rs1_data) < unsigned(r_rs2_data) THEN
-                    writeback_result <= X"00000001";
+                    i_writeback_result <= X"00000001";
                 ELSE
-                    writeback_result <= (OTHERS => '0');
+                    i_writeback_result <= (OTHERS => '0');
                 END IF;
             WHEN OPCODE_R_TYPE_XOR =>
                 --uses_rs2 <= '1';
-                writeback_result <= r_rs1_data XOR r_rs2_data;
+                i_writeback_result <= r_rs1_data XOR r_rs2_data;
 
             WHEN OPCODE_R_TYPE_SRL =>
                 --uses_rs2 <= '1';
-                writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), false, false);
+                i_writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), false, false);
 
             WHEN OPCODE_R_TYPE_SRA =>
             --uses_rs2 <= '1';
-                writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), true, false);
+                i_writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), true, false);
 
             WHEN OPCODE_R_TYPE_OR =>
             --uses_rs2 <= '1';
-                writeback_result <= r_rs1_data OR r_rs2_data;
+                i_writeback_result <= r_rs1_data OR r_rs2_data;
 
             WHEN OPCODE_R_TYPE_AND =>
             --uses_rs2 <= '1';    
-            writeback_result <= r_rs1_data AND r_rs2_data;
+            i_writeback_result <= r_rs1_data AND r_rs2_data;
 
             WHEN OPCODE_I_TYPE_ADDI =>
-                writeback_result <= r_rs1_data + f_decode_imm(r_instruction);
+                i_writeback_result <= r_rs1_data + f_decode_imm(r_instruction);
             WHEN OPCODE_I_TYPE_SLLI =>
-                writeback_result <= DoShift(r_rs1_data, f_decode_imm(r_instruction)(4 DOWNTO 0), false, true);
+                i_writeback_result <= DoShift(r_rs1_data, f_decode_imm(r_instruction)(4 DOWNTO 0), false, true);
             WHEN OPCODE_I_TYPE_SLTI =>
                 IF signed(r_rs1_data) < signed(f_decode_imm(r_instruction)) THEN
-                    writeback_result <= X"00000001";
+                    i_writeback_result <= X"00000001";
                 ELSE
-                    writeback_result <= (OTHERS => '0');
+                    i_writeback_result <= (OTHERS => '0');
                 END IF;
             WHEN OPCODE_I_TYPE_SLTIU =>
                 IF unsigned(r_rs1_data) < unsigned(f_decode_imm(r_instruction)) THEN
-                    writeback_result <= X"00000001";
+                    i_writeback_result <= X"00000001";
                 ELSE
-                    writeback_result <= (OTHERS => '0');
+                    i_writeback_result <= (OTHERS => '0');
                 END IF;
             WHEN OPCODE_I_TYPE_XORI =>
-                writeback_result <= r_rs1_data XOR f_decode_imm(r_instruction);
+                i_writeback_result <= r_rs1_data XOR f_decode_imm(r_instruction);
 
             WHEN OPCODE_I_TYPE_SRLI =>
-                writeback_result <= DoShift(r_rs1_data, f_decode_imm(r_instruction)(4 DOWNTO 0), false, false);
+                i_writeback_result <= DoShift(r_rs1_data, f_decode_imm(r_instruction)(4 DOWNTO 0), false, false);
 
             WHEN OPCODE_I_TYPE_SRAI =>
-                writeback_result <= DoShift(r_rs1_data, f_decode_imm(r_instruction)(4 DOWNTO 0), true, false);
+                i_writeback_result <= DoShift(r_rs1_data, f_decode_imm(r_instruction)(4 DOWNTO 0), true, false);
 
             WHEN OPCODE_I_TYPE_ORI =>
-                writeback_result <= r_rs1_data OR f_decode_imm(r_instruction);
+                i_writeback_result <= r_rs1_data OR f_decode_imm(r_instruction);
 
             WHEN OPCODE_I_TYPE_ANDI =>
-                writeback_result <= r_rs1_data AND f_decode_imm(r_instruction);
+                i_writeback_result <= r_rs1_data AND f_decode_imm(r_instruction);
 
                 --WHEN OPCODE_I_TYPE_LOAD =>
 
@@ -488,21 +490,21 @@ BEGIN
                 END IF;
             WHEN OPCODE_U_TYPE_LUI =>
                 --uses_rs1 <= '0';
-                writeback_result <= f_decode_imm(r_instruction);
+                i_writeback_result <= f_decode_imm(r_instruction);
             WHEN OPCODE_U_TYPE_AUIPC =>
                 --uses_rs1 <= '0';
-                writeback_result <= r_pc + f_decode_imm(r_instruction);
+                i_writeback_result <= r_pc + f_decode_imm(r_instruction);
 
             WHEN OPCODE_J_TYPE_JAL =>
                 --uses_rs1 <= '0';
-                writeback_result <= r_pc + X"00000004";
+                i_writeback_result <= r_pc + X"00000004";
                 next_pc <= r_pc + f_decode_imm(r_instruction);
                 update_pc <= '1';
                 --updates_pc <= '1';
 
             WHEN OPCODE_J_TYPE_JALR =>
                 next_pc <= (f_decode_imm(r_instruction) + r_rs1_data) AND X"FFFFFFFE";
-                writeback_result <= r_pc + X"00000004";
+                i_writeback_result <= r_pc + X"00000004";
                 update_pc <= '1';
                 --updates_pc <= '1';
 

@@ -329,24 +329,19 @@ ARCHITECTURE behavioural OF cpu IS
 
     --SIGNAL instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-    ALIAS funct7 : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata(31 DOWNTO 25);
-    ALIAS rs2 : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(24 DOWNTO 20);
-    ALIAS rs1 : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(19 DOWNTO 15);
-    ALIAS funct3 : STD_LOGIC_VECTOR(2 DOWNTO 0) IS inst_rdata(14 DOWNTO 12);
-    ALIAS rd : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(11 DOWNTO 7);
-    ALIAS opcode : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata(6 DOWNTO 0);
 
-    SIGNAL pc, n_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
+
+    SIGNAL pc: STD_LOGIC_VECTOR(31 DOWNTO 0);
     --SIGNAL imm_i, imm_s, imm_b, imm_u, imm_j, imm_jalr : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
     TYPE state_t IS (FETCH_INSTRUCTION, EXECUTE_1, EXECUTE_2, EXECUTE_3, EXECUTE_4, EXECUTE_5, EXECUTE_6, EXECUTE_7, EXECUTE_8, SEND_CHAR_0, SEND_CHAR_1, SEND_CHAR_2, SEND_CHAR_3, PANIC);
     --ATTRIBUTE syn_encoding : STRING;
     --ATTRIBUTE syn_encoding OF state_t : TYPE IS "one-hot";
-    SIGNAL state, n_state : state_t;
-    SIGNAL set_instruction : STD_LOGIC;
+    --SIGNAL state, n_state : state_t;
+    --SIGNAL set_instruction : STD_LOGIC;
 
     ATTRIBUTE syn_keep : BOOLEAN;
-    SIGNAL set_instruction_of_opcode : opcode_bit_t;
+    --SIGNAL set_instruction_of_opcode : opcode_bit_t;
     --SIGNAL instruction_of_opcode, registerfile_rdata_rs1_of_opcode, registerfile_rdata_rs2_of_opcode : opcode_word_t;
     --ATTRIBUTE syn_keep OF instruction_of_opcode, registerfile_rdata_rs1_of_opcode, registerfile_rdata_rs2_of_opcode : SIGNAL IS true;
     SIGNAL decode_error : opcode_bit_t := (OTHERS => '1');
@@ -363,12 +358,12 @@ ARCHITECTURE behavioural OF cpu IS
     --SIGNAL i_data_we, i_data_re : STD_LOGIC;
 
     SIGNAL registerfile_rdata_rs1, registerfile_rdata_rs2, r_instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL registerfile_rs1, registerfile_rs2, registerfile_rd : STD_LOGIC_VECTOR(4 DOWNTO 0);
+    --SIGNAL registerfile_rs1, registerfile_rs2, registerfile_rd : STD_LOGIC_VECTOR(4 DOWNTO 0);
     SIGNAL lock_rd, lock_pc, rs1_locked, rs2_locked, pc_locked : STD_LOGIC;
     SIGNAL new_rd_lock_owner, new_pc_lock_owner : opcode_t;
-    SIGNAL writeback_we : opcode_bit_t;
-    SIGNAL writeback_data : opcode_word_t;
-    SIGNAL writeback_pc : opcode_word_t;
+    SIGNAL writeback_we : opcode_bit_t := (others => '0');
+    SIGNAL writeback_data : opcode_word_t := (others => (others => '0'));
+    SIGNAL writeback_pc : opcode_word_t := (others => (others => '0'));
     SIGNAL eu_we, eu_busy, execunit_busy : opcode_bit_t;
 
     SIGNAL uses_rs1, uses_rs2, updates_pc, updates_rd : opcode_bit_t := (OTHERS => '0');
@@ -379,6 +374,16 @@ ARCHITECTURE behavioural OF cpu IS
 
     SIGNAL eu_mem_busy, eu_mem_we : STD_LOGIC;
     --signal writeback_data_eu_mem : std_logic_vector(31 downto 0);
+
+    ALIAS funct7 : STD_LOGIC_VECTOR(6 DOWNTO 0) IS r_instruction(31 DOWNTO 25);
+    ALIAS rs2 : STD_LOGIC_VECTOR(4 DOWNTO 0) IS r_instruction(24 DOWNTO 20);
+    ALIAS rs1 : STD_LOGIC_VECTOR(4 DOWNTO 0) IS r_instruction(19 DOWNTO 15);
+    ALIAS funct3 : STD_LOGIC_VECTOR(2 DOWNTO 0) IS r_instruction(14 DOWNTO 12);
+    ALIAS rd : STD_LOGIC_VECTOR(4 DOWNTO 0) IS r_instruction(11 DOWNTO 7);
+    ALIAS opcode : STD_LOGIC_VECTOR(6 DOWNTO 0) IS r_instruction(6 DOWNTO 0);
+
+
+
 BEGIN
 
     PROCESS (rst, clk)
@@ -392,19 +397,19 @@ BEGIN
         END IF;
     END PROCESS;
 
-    decoded <= f_decode_opcode(inst_rdata);
+    decoded <= f_decode_opcode(r_instruction);
     inst_addr <= pc;
     inst_re <= '1';
     inst_width <= "10"; -- unused
     new_pc_lock_owner <= decoded;
     new_rd_lock_owner <= decoded;
-    lock_rd <= f_updates_rd(inst_rdata) AND allready;
-    lock_pc <= f_updates_pc(inst_rdata) and allready;  --updates_pc(decoded) AND allready;
+    lock_rd <= f_updates_rd(r_instruction) AND allready;
+    lock_pc <= f_updates_pc(r_instruction) and allready;  --updates_pc(decoded) AND allready;
     writeback_pc(OPCODE_INVALID) <= pc + X"00000004";
 
     allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0')
-        AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (rs1_locked = '0')))
-        AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (rs2_locked = '0')))
+        AND ((f_uses_rs1(r_instruction) = '0') OR ((f_uses_rs1(r_instruction) = '1') AND (rs1_locked = '0')))
+        AND ((f_uses_rs2(r_instruction) = '0') OR ((f_uses_rs2(r_instruction) = '1') AND (rs2_locked = '0')))
         AND (eu_busy(decoded) = '0')
         ELSE
         '0';
@@ -421,7 +426,7 @@ BEGIN
 
         rst => rst,
         clk => clk,
-        rs1 => registerfile_rs1, rs2 => registerfile_rs2, rd => registerfile_rd,
+        rs1 => rs1, rs2 => rs2, rd => rd,
         lock_rd => lock_rd, lock_pc => lock_pc,
         new_rd_lock_owner => new_rd_lock_owner, new_pc_lock_owner => new_pc_lock_owner,
         update_pc => update_pc,
@@ -435,6 +440,8 @@ BEGIN
 
     );
 
+    writeback_we(OPCODE_INVALID) <= '0';
+
     execunit_gen : FOR op IN opcode_t GENERATE
 
         exclude_invalid : IF (op /= OPCODE_INVALID) AND (op /= OPCODE_I_TYPE_LOAD) AND (op /= OPCODE_S_TYPE) GENERATE -- I know it's not the optimal way, probably better to use const list
@@ -444,7 +451,7 @@ BEGIN
                 rst => rst, clk => clk,
 
                 we => eu_we(op),
-                rs1_data => registerfile_rdata_rs1, rs2_data => registerfile_rdata_rs2, instruction => inst_rdata, pc => pc,
+                rs1_data => registerfile_rdata_rs1, rs2_data => registerfile_rdata_rs2, instruction => r_instruction, pc => pc,
 
                 writeback_we => writeback_we(op),
                 writeback_result => writeback_data(op),
@@ -464,8 +471,8 @@ BEGIN
         --uses_rs1(OPCODE_S_TYPE) <= '1';
         --uses_rs1(OPCODE_I_TYPE_LOAD) <= '1';
 
---        uses_rs1 <= f_uses_rs1(inst_rdata);
---        uses_rs2 <= f_uses_rs2(inst_rdata);
+--        uses_rs1 <= f_uses_rs1(r_instruction);
+--        uses_rs2 <= f_uses_rs2(r_instruction);
         
         --updates_rd (OPCODE_I_TYPE_LOAD) <= '1';
 
@@ -483,7 +490,7 @@ BEGIN
             rst => rst, clk => clk,
 
             we => eu_mem_we,
-            rs1_data => registerfile_rdata_rs1, rs2_data => registerfile_rdata_rs2, instruction => inst_rdata, 
+            rs1_data => registerfile_rdata_rs1, rs2_data => registerfile_rdata_rs2, instruction => r_instruction, 
 
             writeback_we => writeback_we(OPCODE_I_TYPE_LOAD),
             writeback_result => writeback_data(OPCODE_I_TYPE_LOAD),

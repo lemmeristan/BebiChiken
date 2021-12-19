@@ -367,7 +367,7 @@ BEGIN
 
     op <= f_decode_opcode(r_instruction);
 
-    process(state, we, state, r_instruction, mem_rdy, mem_wack)
+    process(state, we, state, op, mem_rdy, mem_wack)
     begin
         n_state <= state;
         busy <= '1';
