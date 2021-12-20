@@ -281,10 +281,11 @@ ARCHITECTURE behavioural OF cpu IS
     COMPONENT regfile_single IS
         PORT (
             clk, rst : IN STD_LOGIC;
-            rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+            rs1, rs2 : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
             rs1_data_out, rs2_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            rs1_data_in, rs2_data_in : in std_logic_vector(31 downto 0);
-            update_rs1, update_rs2 : IN STD_LOGIC
+            rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+            update_rd : IN STD_LOGIC;
+            rd_data_in : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
 
         );
     END COMPONENT;
@@ -302,6 +303,7 @@ ARCHITECTURE behavioural OF cpu IS
 
             next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             update_pc : OUT STD_LOGIC;
+            rd : out std_logic_vector(4 downto 0);
             --uses_rs1, uses_rs2, updates_rd, updates_pc, 
             busy : OUT STD_LOGIC
         );
@@ -322,6 +324,8 @@ ARCHITECTURE behavioural OF cpu IS
             mem_wdata, mem_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             mem_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
             mem_width : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+
+            rd : out std_logic_vector(4 downto 0);
 
             busy : OUT STD_LOGIC
         );
@@ -366,7 +370,6 @@ ARCHITECTURE behavioural OF cpu IS
 
     SIGNAL registerfile_rdata_rs1, registerfile_rdata_rs2, r_instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
     --SIGNAL registerfile_rs1, registerfile_rs2, registerfile_rd : STD_LOGIC_VECTOR(4 DOWNTO 0);
-    SIGNAL lock_rd, lock_pc, rs1_locked, rs2_locked, pc_locked : STD_LOGIC;
     SIGNAL new_rd_lock_owner, new_pc_lock_owner : opcode_t;
     SIGNAL writeback_we : opcode_bit_t := (others => '0');
     SIGNAL writeback_data : opcode_word_t := (others => (others => '0'));
@@ -396,6 +399,10 @@ ARCHITECTURE behavioural OF cpu IS
     type owner_t is array(NATURAL RANGE <>) of opcode_t;
     signal owner : owner_t(32 downto 0) := (others => OPCODE_INVALID);
 
+    signal rd_out : opcode_regidx_t;
+
+    signal update_rd : std_logic;
+
 
 
 BEGIN
@@ -404,10 +411,15 @@ BEGIN
     update_rs2 <= allready and f_uses_rs2(r_instruction);
 
 
+    rd_out(OPCODE_INVALID) <= (others => '0');
+
+
     PROCESS (rst, clk)
     BEGIN
         IF rst = '1' THEN
             r_instruction <= (OTHERS => '0');
+            owner <= (others => OPCODE_INVALID);
+            pc <= entry_point;
             --        decoded <= OPCODE_INVALID;
         ELSIF rising_edge(clk) THEN
             r_instruction <= inst_rdata;
@@ -425,11 +437,17 @@ BEGIN
                 pc <= writeback_pc(owner(32));
             end if;
 
-            eu_we <= (OTHERS => '0');
-            eu_we(f_decode_opcode(r_instruction)) <= allready;
+
 
         END IF;
     END PROCESS;
+
+
+    process(r_instruction, allready)
+    begin
+        eu_we <= (OTHERS => '0');
+        eu_we(f_decode_opcode(r_instruction)) <= allready;
+    end process;
 
     inst_addr <= pc;
     inst_re <= '1';
@@ -439,7 +457,7 @@ BEGIN
 
     execunit_busy(OPCODE_INVALID) <= '0';
 
-    allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0')
+    allready <= '1' WHEN (inst_rdy = '1') AND (execunit_busy(owner(32)) = '0')
         AND ((f_uses_rs1(r_instruction) = '0') OR ((f_uses_rs1(r_instruction) = '1') AND (execunit_busy(owner(to_integer(unsigned(rs1)))) = '0')))
         AND ((f_uses_rs2(r_instruction) = '0') OR ((f_uses_rs2(r_instruction) = '1') AND (execunit_busy(owner(to_integer(unsigned(rs2)))) = '0')))
         AND (execunit_busy(f_decode_opcode(r_instruction)) = '0')
@@ -451,21 +469,26 @@ BEGIN
     PORT MAP(
 
         clk => clk, rst => rst,
-        rs1 => rs1, rs2 => rs2, rd => rd,
-        rs1_data_out => writeback_data(OPCODE_INVALID), rs2_data_out => writeback_data(OPCODE_INVALID),
-        rs1_data_in => rs1_data_in, rs2_data_in => rs1_data_in,
-        update_rs1 => update_rs1, update_rs2 => update_rs2
+        rs1 => rs1, rs2 => rs2,
+        rs1_data_out => rs1_data_out, rs2_data_out => rs2_data_out,
+        rd => rd_out(f_decode_opcode(r_instruction)),
+        update_rd => update_rd,
+        rd_data_in => writeback_data(f_decode_opcode(r_instruction))
 
     );
 
-    rs1_data_in <= writeback_data(owner(to_integer(unsigned(rs1))));
-    rs2_data_in <= writeback_data(owner(to_integer(unsigned(rs2))));
+
+    update_rd <= f_updates_rd(r_instruction) when owner(to_integer(unsigned(rd_out(f_decode_opcode(r_instruction))))) /= OPCODE_INVALID else '0';
+
+
+    rs1_data_in <= rs1_data_out when owner(to_integer(unsigned(rs1))) = OPCODE_INVALID else writeback_data(owner(to_integer(unsigned(rs1))));
+    rs2_data_in <= rs2_data_out when owner(to_integer(unsigned(rs2))) = OPCODE_INVALID else writeback_data(owner(to_integer(unsigned(rs2))));
 
     writeback_we(OPCODE_INVALID) <= '0';
 
 
-    registerfile_rdata_rs1 <= writeback_data(owner(to_integer(unsigned(rs1))));
-    registerfile_rdata_rs2 <= writeback_data(owner(to_integer(unsigned(rs2))));
+    registerfile_rdata_rs1 <= writeback_data(owner(to_integer(unsigned(rs1)))) when owner(to_integer(unsigned(rs1))) /= OPCODE_INVALID else rs1_data_out;
+    registerfile_rdata_rs2 <= writeback_data(owner(to_integer(unsigned(rs2)))) when owner(to_integer(unsigned(rs2))) /= OPCODE_INVALID else rs2_data_out;
 
     execunit_gen : FOR op IN opcode_t GENERATE
 
@@ -483,6 +506,8 @@ BEGIN
 
                 next_pc => writeback_pc(op),
                 update_pc => update_pc(op),
+
+                rd => rd_out(op),
 
                 busy => execunit_busy(op)
             );
@@ -512,6 +537,7 @@ BEGIN
 
             mem_wack => data_wack, mem_rdy => data_rdy, mem_rdata => data_rdata, mem_wdata => data_wdata, mem_addr => data_addr, mem_width => data_width,
             mem_re => data_re, mem_we => data_we,
+            rd => rd_out(OPCODE_I_TYPE_LOAD),
             busy => eu_mem_busy
         );
 

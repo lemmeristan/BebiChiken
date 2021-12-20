@@ -21,6 +21,8 @@ ENTITY eu_mem IS
         mem_rdata : in std_logic_vector(31 downto 0);
         mem_width : out std_logic_vector(1 downto 0);
 
+        rd : out std_logic_vector(4 downto 0);
+
         busy : out std_logic 
 
     );
@@ -334,6 +336,9 @@ ARCHITECTURE behavioural OF eu_mem IS
     signal op : opcode_t;
 
 BEGIN
+
+
+    rd <= r_instruction(11 DOWNTO 7);
 
 
     PROCESS (rst, clk)

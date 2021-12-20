@@ -21,6 +21,7 @@ ENTITY execunit IS
         update_pc : OUT STD_LOGIC;
 
         --uses_rs1, uses_rs2, updates_rd, updates_pc, 
+        rd : out std_logic_vector(4 downto 0);
         busy : out std_logic 
 
     );
@@ -329,6 +330,8 @@ ARCHITECTURE behavioural OF execunit IS
     signal r_we : std_logic;
 
 BEGIN
+
+rd <= r_instruction(11 DOWNTO 7);
 
 
     PROCESS (rst, clk)

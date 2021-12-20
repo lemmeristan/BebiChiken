@@ -6,10 +6,12 @@ USE IEEE.std_logic_unsigned.ALL;
 ENTITY regfile_single IS
     PORT (
         clk, rst : IN STD_LOGIC;
-        rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+        rs1, rs2 : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
         rs1_data_out, rs2_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        rs1_data_in, rs2_data_in : in std_logic_vector(31 downto 0);
-        update_rs1, update_rs2 : IN STD_LOGIC
+        rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+        update_rd : IN STD_LOGIC;
+        rd_data_in : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
+        
     );
 END regfile_single;
 
@@ -18,8 +20,8 @@ ARCHITECTURE behavioural OF regfile_single IS
     TYPE registers_t IS ARRAY (31 DOWNTO 0) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL registers : registers_t := (OTHERS => (OTHERS => '0'));
 
-        ATTRIBUTE syn_ramstyle : STRING;
-        ATTRIBUTE syn_ramstyle OF registers : SIGNAL IS "rw_check";
+        -- ATTRIBUTE syn_ramstyle : STRING;
+        -- ATTRIBUTE syn_ramstyle OF registers : SIGNAL IS "rw_check";
     --attribute noprune: boolean; attribute noprune of data_in_r: signal is true;
 
 BEGIN
@@ -30,12 +32,9 @@ BEGIN
 --    		registers <= (others => (others => '0'));
 --        els
         IF rising_edge(clk) THEN
-            IF update_rs1 = '1' THEN
-                registers(to_integer(unsigned(rs1))) <= rs1_data_in;
+            IF update_rd = '1' THEN
+                registers(to_integer(unsigned(rd))) <= rd_data_in;
             END IF;
-            IF (rs1 /= rs2) and (update_rs2 = '1') THEN
-            registers(to_integer(unsigned(rs2))) <= rs2_data_in;
-        END IF;
           
         END IF;
     END PROCESS;
