@@ -5,7 +5,7 @@ USE IEEE.std_logic_unsigned.ALL;
 
 ENTITY regfile_single IS
     PORT (
-        clk : IN STD_LOGIC;
+        clk, rst : IN STD_LOGIC;
         rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
         rs1_data_out, rs2_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         rs1_data_in, rs2_data_in : in std_logic_vector(31 downto 0);
@@ -18,28 +18,38 @@ ARCHITECTURE behavioural OF regfile_single IS
     TYPE registers_t IS ARRAY (31 DOWNTO 0) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL registers : registers_t := (OTHERS => (OTHERS => '0'));
 
-    --    ATTRIBUTE syn_ramstyle : STRING;
-    --    ATTRIBUTE syn_ramstyle OF registers : SIGNAL IS "rw_check";
+        ATTRIBUTE syn_ramstyle : STRING;
+        ATTRIBUTE syn_ramstyle OF registers : SIGNAL IS "rw_check";
     --attribute noprune: boolean; attribute noprune of data_in_r: signal is true;
 
 BEGIN
 
-    PROCESS (clk)
+    PROCESS (rst, clk)
     BEGIN
+--    	if rst = '1' then
+--    		registers <= (others => (others => '0'));
+--        els
         IF rising_edge(clk) THEN
             IF update_rs1 = '1' THEN
                 registers(to_integer(unsigned(rs1))) <= rs1_data_in;
             END IF;
-            IF update_rs2 = '1' THEN
-                registers(to_integer(unsigned(rs2))) <= rs2_data_in;
-            END IF;
-            
+          
         END IF;
     END PROCESS;
 
-    data_out_rs1 <= registers(to_integer(unsigned(rs1))) WHEN rs1 /= "00000" ELSE
+
+    process(rst, clk)
+    begin
+        if rising_edge(clk) then
+            IF (rs1 /= rs2) and (update_rs2 = '1') THEN
+            registers(to_integer(unsigned(rs2))) <= rs2_data_in;
+        END IF;
+        end if;
+    end process;
+
+     rs1_data_out <= registers(to_integer(unsigned(rs1))) WHEN rs1 /= "00000" ELSE
         (OTHERS => '0');
-    data_out_rs2 <= registers(to_integer(unsigned(rs2))) WHEN rs2 /= "00000" ELSE
+    rs2_data_out <= registers(to_integer(unsigned(rs2))) WHEN rs2 /= "00000" ELSE
         (OTHERS => '0');
 
 END behavioural;

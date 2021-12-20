@@ -262,22 +262,14 @@ ARCHITECTURE behavioural OF cpu IS
     END;
 
 
-    COMPONENT regfile_wide IS
+    COMPONENT regfile_single IS
         GENERIC (entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0));
         PORT (
-            rst, clk : IN STD_LOGIC;
+            clk, rst : IN STD_LOGIC;
             rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-            lock_rd, lock_pc : IN STD_LOGIC;
-            new_rd_lock_owner, new_pc_lock_owner : IN opcode_t;
-            update_pc : IN opcode_bit_t;
-
-            writeback_we : IN opcode_bit_t;
-            writeback_data : IN opcode_word_t;
-            writeback_pc : IN opcode_word_t;
-
-            rs1_data_out, rs2_data_out, pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            rs1_locked, rs2_locked, pc_locked : OUT STD_LOGIC --;
-            --uses_rs1, uses_rs2, uses_rd, updates_pc : out std_logic 
+            rs1_data_out, rs2_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            rs1_data_in, rs2_data_in : in std_logic_vector(31 downto 0);
+            update_rs1, update_rs2 : IN STD_LOGIC
 
         );
     END COMPONENT;
@@ -383,8 +375,19 @@ ARCHITECTURE behavioural OF cpu IS
     ALIAS opcode : STD_LOGIC_VECTOR(6 DOWNTO 0) IS r_instruction(6 DOWNTO 0);
 
 
+    signal rs1_data_out , rs2_data_out ,    rs1_data_in , rs2_data_in  : std_logic_vector(31 downto 0);
+    signal update_rs1 , update_rs2  : std_logic;
+
+    type owner_t is array(NATURAL RANGE <>) of opcode_t;
+    signal owner : owner_t(32 downto 0) := (others => OPCODE_INVALID);
+
+
 
 BEGIN
+
+    update_rs1 <= allready and f_uses_rs1(r_instruction);
+    update_rs2 <= allready and f_uses_rs2(r_instruction);
+
 
     PROCESS (rst, clk)
     BEGIN
@@ -394,6 +397,19 @@ BEGIN
         ELSIF rising_edge(clk) THEN
             r_instruction <= inst_rdata;
             --        decoded <= f_decode_opcode(inst_rdata);
+
+            if (allready = '1') and (f_updates_rd(inst_rdata) = '1') then
+                owner(to_integer(unsigned(rd))) <= f_decode_opcode(r_instruction);
+            end if;
+
+            if (allready = '1') and (f_updates_pc(inst_rdata) = '1') then
+                owner(32) <= f_decode_opcode(r_instruction);
+            end if;
+
+            if execunit_busy(owner(32)) = '0' then
+                pc <= writeback_pc(owner(32));
+            end if;
+
         END IF;
     END PROCESS;
 
@@ -407,10 +423,11 @@ BEGIN
     lock_pc <= f_updates_pc(r_instruction) and allready;  --updates_pc(decoded) AND allready;
     writeback_pc(OPCODE_INVALID) <= pc + X"00000004";
 
+    execunit_busy(OPCODE_INVALID) <= '0';
+
     allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0')
-        AND ((f_uses_rs1(r_instruction) = '0') OR ((f_uses_rs1(r_instruction) = '1') AND (rs1_locked = '0')))
-        AND ((f_uses_rs2(r_instruction) = '0') OR ((f_uses_rs2(r_instruction) = '1') AND (rs2_locked = '0')))
-        AND (eu_busy(decoded) = '0')
+        AND ((f_uses_rs1(r_instruction) = '0') OR ((f_uses_rs1(r_instruction) = '1') AND (execunit_busy(owner(to_integer(unsigned(rs1)))) = '0')))
+        AND ((f_uses_rs2(r_instruction) = '0') OR ((f_uses_rs2(r_instruction) = '1') AND (execunit_busy(owner(to_integer(unsigned(rs2)))) = '0')))
         ELSE
         '0';
     update_pc(OPCODE_INVALID) <= allready;
@@ -420,27 +437,23 @@ BEGIN
         eu_we <= (OTHERS => '0');
         eu_we(decoded) <= allready;
     END PROCESS;
-    i_regfile_wide : regfile_wide
+    i_regfile_single : regfile_single
     GENERIC MAP(entry_point => entry_point)
     PORT MAP(
 
-        rst => rst,
-        clk => clk,
+        clk => clk, rst => rst,
         rs1 => rs1, rs2 => rs2, rd => rd,
-        lock_rd => lock_rd, lock_pc => lock_pc,
-        new_rd_lock_owner => new_rd_lock_owner, new_pc_lock_owner => new_pc_lock_owner,
-        update_pc => update_pc,
-
-        writeback_we => writeback_we,
-        writeback_data => writeback_data,
-        writeback_pc => writeback_pc,
-
-        rs1_data_out => registerfile_rdata_rs1, rs2_data_out => registerfile_rdata_rs2, pc => pc,
-        rs1_locked => rs1_locked, rs2_locked => rs2_locked, pc_locked => pc_locked
+        rs1_data_out => writeback_data(OPCODE_INVALID), rs2_data_out => writeback_data(OPCODE_INVALID),
+        rs1_data_in => writeback_data(owner(to_integer(unsigned(rs1)))), rs2_data_in => writeback_data(owner(to_integer(unsigned(rs2)))),
+        update_rs1 => update_rs1, update_rs2 => update_rs2
 
     );
 
     writeback_we(OPCODE_INVALID) <= '0';
+
+
+    registerfile_rdata_rs1 <= writeback_data(owner(to_integer(unsigned(rs1))));
+    registerfile_rdata_rs2 <= writeback_data(owner(to_integer(unsigned(rs2))));
 
     execunit_gen : FOR op IN opcode_t GENERATE
 
