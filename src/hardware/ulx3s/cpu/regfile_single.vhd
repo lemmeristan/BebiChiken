@@ -33,19 +33,14 @@ BEGIN
             IF update_rs1 = '1' THEN
                 registers(to_integer(unsigned(rs1))) <= rs1_data_in;
             END IF;
+            IF (rs1 /= rs2) and (update_rs2 = '1') THEN
+            registers(to_integer(unsigned(rs2))) <= rs2_data_in;
+        END IF;
           
         END IF;
     END PROCESS;
 
 
-    process(rst, clk)
-    begin
-        if rising_edge(clk) then
-            IF (rs1 /= rs2) and (update_rs2 = '1') THEN
-            registers(to_integer(unsigned(rs2))) <= rs2_data_in;
-        END IF;
-        end if;
-    end process;
 
      rs1_data_out <= registers(to_integer(unsigned(rs1))) WHEN rs1 /= "00000" ELSE
         (OTHERS => '0');

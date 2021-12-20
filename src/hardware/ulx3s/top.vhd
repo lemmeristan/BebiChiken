@@ -586,10 +586,10 @@ BEGIN
   flash_csn <= spi_csn;
   spi_do <= flash_miso;
 
-  cpu_clk <= pixclk;
+  cpu_clk <= clk_25mhz;
 
   i_cpu : cpu PORT MAP(
-    rst => rst, clk => cpu_clk,
+    rst => rst, clk => clk_25mhz,
 
     -- Instruction memory bus
     inst_width => inst_width, inst_addr => inst_addr, inst_rdata => inst_rdata,

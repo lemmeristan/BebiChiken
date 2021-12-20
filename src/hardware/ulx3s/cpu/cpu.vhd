@@ -198,7 +198,17 @@ ARCHITECTURE behavioural OF cpu IS
     BEGIN
         opcode := f_decode_opcode(instruction);
 
-        IF opcode = OPCODE_U_TYPE_LUI OR opcode = OPCODE_U_TYPE_AUIPC OR opcode = OPCODE_J_TYPE_JAL THEN
+        IF opcode = OPCODE_I_TYPE_LOAD OR opcode = OPCODE_S_TYPE OR opcode = OPCODE_J_TYPE_JALR
+        or opcode = OPCODE_B_TYPE_BEQ or opcode = OPCODE_B_TYPE_BNE or opcode = OPCODE_B_TYPE_BLT
+        or opcode = OPCODE_B_TYPE_BGE or opcode = OPCODE_B_TYPE_BLTU or opcode = OPCODE_B_TYPE_BGEU
+        or opcode = OPCODE_R_TYPE_ADD OR opcode = OPCODE_R_TYPE_SUB OR opcode = OPCODE_R_TYPE_SLL
+        OR opcode = OPCODE_R_TYPE_SLT or opcode = OPCODE_R_TYPE_SLTU or opcode = OPCODE_R_TYPE_XOR
+        or opcode = OPCODE_R_TYPE_SRL or opcode = OPCODE_R_TYPE_SRA or opcode = OPCODE_R_TYPE_OR
+        or opcode = OPCODE_R_TYPE_AND or opcode = OPCODE_I_TYPE_ADDI or opcode = OPCODE_I_TYPE_SLLI
+        or opcode = OPCODE_I_TYPE_SLTI or opcode = OPCODE_I_TYPE_SLTIU or opcode = OPCODE_I_TYPE_XORI
+        or opcode = OPCODE_I_TYPE_SRLI or opcode = OPCODE_I_TYPE_SRAI or opcode = OPCODE_I_TYPE_ORI
+        or opcode = OPCODE_I_TYPE_ANDI
+         THEN
             RETURN '1';
         END IF;
 
@@ -212,12 +222,18 @@ ARCHITECTURE behavioural OF cpu IS
     BEGIN
         opcode := f_decode_opcode(instruction);
 
-        IF opcode = OPCODE_R_TYPE_ADD OR opcode = OPCODE_R_TYPE_SUB OR opcode = OPCODE_R_TYPE_SLL
+        IF opcode = OPCODE_S_TYPE
         OR opcode = OPCODE_R_TYPE_SLT or opcode = OPCODE_R_TYPE_SLTU or opcode = OPCODE_R_TYPE_XOR
         or opcode = OPCODE_R_TYPE_SRL or opcode = OPCODE_R_TYPE_SRA or opcode = OPCODE_R_TYPE_OR
         or opcode = OPCODE_R_TYPE_AND or opcode = OPCODE_B_TYPE_BEQ or opcode = OPCODE_B_TYPE_BNE
         or opcode = OPCODE_B_TYPE_BLT or opcode = OPCODE_B_TYPE_BGE or opcode = OPCODE_B_TYPE_BLTU
-        or opcode = OPCODE_B_TYPE_BGEU then
+        or opcode = OPCODE_B_TYPE_BGEU
+        or opcode = OPCODE_R_TYPE_ADD OR opcode = OPCODE_R_TYPE_SUB OR opcode = OPCODE_R_TYPE_SLL
+        OR opcode = OPCODE_R_TYPE_SLT or opcode = OPCODE_R_TYPE_SLTU or opcode = OPCODE_R_TYPE_XOR
+        or opcode = OPCODE_R_TYPE_SRL or opcode = OPCODE_R_TYPE_SRA or opcode = OPCODE_R_TYPE_OR
+        or opcode = OPCODE_R_TYPE_AND
+
+         then
             RETURN '1';
         END IF;
 
@@ -263,7 +279,6 @@ ARCHITECTURE behavioural OF cpu IS
 
 
     COMPONENT regfile_single IS
-        GENERIC (entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0));
         PORT (
             clk, rst : IN STD_LOGIC;
             rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -406,21 +421,20 @@ BEGIN
                 owner(32) <= f_decode_opcode(r_instruction);
             end if;
 
-            if execunit_busy(owner(32)) = '0' then
+            if (allready = '1') and (execunit_busy(owner(32)) = '0') then
                 pc <= writeback_pc(owner(32));
             end if;
+
+            eu_we <= (OTHERS => '0');
+            eu_we(f_decode_opcode(r_instruction)) <= allready;
 
         END IF;
     END PROCESS;
 
-    decoded <= f_decode_opcode(r_instruction);
     inst_addr <= pc;
     inst_re <= '1';
     inst_width <= "10"; -- unused
-    new_pc_lock_owner <= decoded;
-    new_rd_lock_owner <= decoded;
-    lock_rd <= f_updates_rd(r_instruction) AND allready;
-    lock_pc <= f_updates_pc(r_instruction) and allready;  --updates_pc(decoded) AND allready;
+
     writeback_pc(OPCODE_INVALID) <= pc + X"00000004";
 
     execunit_busy(OPCODE_INVALID) <= '0';
@@ -428,26 +442,24 @@ BEGIN
     allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0')
         AND ((f_uses_rs1(r_instruction) = '0') OR ((f_uses_rs1(r_instruction) = '1') AND (execunit_busy(owner(to_integer(unsigned(rs1)))) = '0')))
         AND ((f_uses_rs2(r_instruction) = '0') OR ((f_uses_rs2(r_instruction) = '1') AND (execunit_busy(owner(to_integer(unsigned(rs2)))) = '0')))
+        AND (execunit_busy(f_decode_opcode(r_instruction)) = '0')
         ELSE
         '0';
     update_pc(OPCODE_INVALID) <= allready;
 
-    PROCESS (decoded, allready)
-    BEGIN
-        eu_we <= (OTHERS => '0');
-        eu_we(decoded) <= allready;
-    END PROCESS;
     i_regfile_single : regfile_single
-    GENERIC MAP(entry_point => entry_point)
     PORT MAP(
 
         clk => clk, rst => rst,
         rs1 => rs1, rs2 => rs2, rd => rd,
         rs1_data_out => writeback_data(OPCODE_INVALID), rs2_data_out => writeback_data(OPCODE_INVALID),
-        rs1_data_in => writeback_data(owner(to_integer(unsigned(rs1)))), rs2_data_in => writeback_data(owner(to_integer(unsigned(rs2)))),
+        rs1_data_in => rs1_data_in, rs2_data_in => rs1_data_in,
         update_rs1 => update_rs1, update_rs2 => update_rs2
 
     );
+
+    rs1_data_in <= writeback_data(owner(to_integer(unsigned(rs1))));
+    rs2_data_in <= writeback_data(owner(to_integer(unsigned(rs2))));
 
     writeback_we(OPCODE_INVALID) <= '0';
 
@@ -472,22 +484,12 @@ BEGIN
                 next_pc => writeback_pc(op),
                 update_pc => update_pc(op),
 
-                --uses_rs1 => uses_rs1(op), uses_rs2 => uses_rs2(op), updates_rd => updates_rd(op), updates_pc => updates_pc(op), 
                 busy => execunit_busy(op)
             );
         END GENERATE exclude_invalid;
 
     END GENERATE execunit_gen;
 
-    
-        --uses_rs2(OPCODE_S_TYPE) <= '1';
-        --uses_rs1(OPCODE_S_TYPE) <= '1';
-        --uses_rs1(OPCODE_I_TYPE_LOAD) <= '1';
-
---        uses_rs1 <= f_uses_rs1(r_instruction);
---        uses_rs2 <= f_uses_rs2(r_instruction);
-        
-        --updates_rd (OPCODE_I_TYPE_LOAD) <= '1';
 
         process(execunit_busy, eu_mem_busy)
         begin
