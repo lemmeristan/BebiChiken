@@ -403,6 +403,8 @@ ARCHITECTURE behavioural OF cpu IS
 
     signal update_rd : std_logic;
 
+    signal regfile_rd : std_logic_vector(4 downto 0);
+    signal rd_data_in : std_logic_vector(31 downto 0);
 
 
 BEGIN
@@ -471,11 +473,14 @@ BEGIN
         clk => clk, rst => rst,
         rs1 => rs1, rs2 => rs2,
         rs1_data_out => rs1_data_out, rs2_data_out => rs2_data_out,
-        rd => rd_out(f_decode_opcode(r_instruction)),
+        rd => regfile_rd,
         update_rd => update_rd,
-        rd_data_in => writeback_data(f_decode_opcode(r_instruction))
+        rd_data_in => rd_data_in
 
     );
+
+    regfile_rd <= rd_out(f_decode_opcode(r_instruction));
+    rd_data_in <=  writeback_data(f_decode_opcode(r_instruction));
 
 
     update_rd <= f_updates_rd(r_instruction) when owner(to_integer(unsigned(rd_out(f_decode_opcode(r_instruction))))) /= OPCODE_INVALID else '0';
