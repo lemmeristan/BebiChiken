@@ -23,7 +23,7 @@ ENTITY eu_mem IS
 
         rd : out std_logic_vector(4 downto 0);
 
-        busy : out std_logic 
+        busy, rdy : out std_logic 
 
     );
 END eu_mem;
@@ -381,6 +381,7 @@ BEGIN
         writeback_we <= '0';
         case state is
             when S_IDLE =>
+                rdy <= '1';
                 busy <= '0';
                 if we = '1' then
                     n_state <= S_BUSY;

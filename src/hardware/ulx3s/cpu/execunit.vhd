@@ -22,7 +22,7 @@ ENTITY execunit IS
 
         --uses_rs1, uses_rs2, updates_rd, updates_pc, 
         rd : out std_logic_vector(4 downto 0);
-        busy : out std_logic 
+        busy, rdy : out std_logic
 
     );
 END execunit;
@@ -344,12 +344,16 @@ rd <= r_instruction(11 DOWNTO 7);
             r_rs2_data <= (others => '0');
             r_instruction <= (others => '0');
             r_pc <= (others => '0');
+            rdy <= '0';
         elsIF rising_edge(clk) THEN
             r_we         <= we;
             writeback_we <= r_we;
-            writeback_result <= i_writeback_result;
-
+            if r_we = '1' then
+                rdy <= '1';
+                writeback_result <= i_writeback_result;
+            end if;
             IF we = '1' THEN
+                rdy <= '0';
                 r_rs1_data    <= rs1_data;
                 r_rs2_data    <= rs2_data;
                 r_instruction <= instruction;

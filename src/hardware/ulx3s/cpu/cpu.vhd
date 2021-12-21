@@ -305,7 +305,7 @@ ARCHITECTURE behavioural OF cpu IS
             update_pc : OUT STD_LOGIC;
             rd : out std_logic_vector(4 downto 0);
             --uses_rs1, uses_rs2, updates_rd, updates_pc, 
-            busy : OUT STD_LOGIC
+            busy, rdy : OUT STD_LOGIC
         );
     END COMPONENT;
 
@@ -327,7 +327,7 @@ ARCHITECTURE behavioural OF cpu IS
 
             rd : out std_logic_vector(4 downto 0);
 
-            busy : OUT STD_LOGIC
+            busy, rdy : OUT STD_LOGIC
         );
     END COMPONENT;
 
@@ -405,12 +405,11 @@ ARCHITECTURE behavioural OF cpu IS
 
     signal regfile_rd : std_logic_vector(4 downto 0);
     signal rd_data_in : std_logic_vector(31 downto 0);
+    signal eu_rdy : opcode_bit_t;
 
 
 BEGIN
 
-    update_rs1 <= allready and f_uses_rs1(r_instruction);
-    update_rs2 <= allready and f_uses_rs2(r_instruction);
 
 
     rd_out(OPCODE_INVALID) <= (others => '0');
@@ -428,11 +427,11 @@ BEGIN
             --        decoded <= f_decode_opcode(inst_rdata);
 
             if (allready = '1') and (f_updates_rd(inst_rdata) = '1') then
-                owner(to_integer(unsigned(rd))) <= f_decode_opcode(r_instruction);
+                owner(to_integer(unsigned(rd))) <= f_decode_opcode(inst_rdata);
             end if;
 
             if (allready = '1') and (f_updates_pc(inst_rdata) = '1') then
-                owner(32) <= f_decode_opcode(r_instruction);
+                owner(32) <= f_decode_opcode(inst_rdata);
             end if;
 
             if (allready = '1') and (execunit_busy(owner(32)) = '0') then
@@ -445,10 +444,13 @@ BEGIN
     END PROCESS;
 
 
-    process(r_instruction, allready)
+    update_rs1 <= allready and f_uses_rs1(inst_rdata);
+    update_rs2 <= allready and f_uses_rs2(inst_rdata);
+
+    process(inst_rdata, allready)
     begin
         eu_we <= (OTHERS => '0');
-        eu_we(f_decode_opcode(r_instruction)) <= allready;
+        eu_we(f_decode_opcode(inst_rdata)) <= allready;
     end process;
 
     inst_addr <= pc;
@@ -459,10 +461,10 @@ BEGIN
 
     execunit_busy(OPCODE_INVALID) <= '0';
 
-    allready <= '1' WHEN (inst_rdy = '1') AND (execunit_busy(owner(32)) = '0')
-        AND ((f_uses_rs1(r_instruction) = '0') OR ((f_uses_rs1(r_instruction) = '1') AND (execunit_busy(owner(to_integer(unsigned(rs1)))) = '0')))
-        AND ((f_uses_rs2(r_instruction) = '0') OR ((f_uses_rs2(r_instruction) = '1') AND (execunit_busy(owner(to_integer(unsigned(rs2)))) = '0')))
-        AND (execunit_busy(f_decode_opcode(r_instruction)) = '0')
+    allready <= '1' WHEN (inst_rdy = '1') AND (eu_rdy(owner(32)) = '0')
+        AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '0')))
+        AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '0')))
+        AND (execunit_busy(f_decode_opcode(inst_rdata)) = '0')
         ELSE
         '0';
     update_pc(OPCODE_INVALID) <= allready;
@@ -479,11 +481,11 @@ BEGIN
 
     );
 
-    regfile_rd <= rd_out(f_decode_opcode(r_instruction));
-    rd_data_in <=  writeback_data(f_decode_opcode(r_instruction));
+    regfile_rd <= rd_out(f_decode_opcode(inst_rdata));
+    rd_data_in <=  writeback_data(f_decode_opcode(inst_rdata));
 
 
-    update_rd <= f_updates_rd(r_instruction) when owner(to_integer(unsigned(rd_out(f_decode_opcode(r_instruction))))) /= OPCODE_INVALID else '0';
+    update_rd <= f_updates_rd(inst_rdata) when owner(to_integer(unsigned(rd_out(f_decode_opcode(inst_rdata))))) /= OPCODE_INVALID else '0';
 
 
     rs1_data_in <= rs1_data_out when owner(to_integer(unsigned(rs1))) = OPCODE_INVALID else writeback_data(owner(to_integer(unsigned(rs1))));
@@ -504,7 +506,7 @@ BEGIN
                 rst => rst, clk => clk,
 
                 we => eu_we(op),
-                rs1_data => registerfile_rdata_rs1, rs2_data => registerfile_rdata_rs2, instruction => r_instruction, pc => pc,
+                rs1_data => registerfile_rdata_rs1, rs2_data => registerfile_rdata_rs2, instruction => inst_rdata, pc => pc,
 
                 writeback_we => writeback_we(op),
                 writeback_result => writeback_data(op),
@@ -514,7 +516,8 @@ BEGIN
 
                 rd => rd_out(op),
 
-                busy => execunit_busy(op)
+                busy => execunit_busy(op),
+                rdy => eu_rdy(op)
             );
         END GENERATE exclude_invalid;
 
@@ -535,7 +538,7 @@ BEGIN
             rst => rst, clk => clk,
 
             we => eu_mem_we,
-            rs1_data => registerfile_rdata_rs1, rs2_data => registerfile_rdata_rs2, instruction => r_instruction, 
+            rs1_data => registerfile_rdata_rs1, rs2_data => registerfile_rdata_rs2, instruction => inst_rdata, 
 
             writeback_we => writeback_we(OPCODE_I_TYPE_LOAD),
             writeback_result => writeback_data(OPCODE_I_TYPE_LOAD),
@@ -543,7 +546,8 @@ BEGIN
             mem_wack => data_wack, mem_rdy => data_rdy, mem_rdata => data_rdata, mem_wdata => data_wdata, mem_addr => data_addr, mem_width => data_width,
             mem_re => data_re, mem_we => data_we,
             rd => rd_out(OPCODE_I_TYPE_LOAD),
-            busy => eu_mem_busy
+            busy => eu_mem_busy,
+            rdy => eu_rdy(OPCODE_I_TYPE_LOAD)
         );
 
 END behavioural;
