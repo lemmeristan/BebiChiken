@@ -370,7 +370,7 @@ ARCHITECTURE behavioural OF cpu IS
 
     SIGNAL registerfile_rdata_rs1, registerfile_rdata_rs2, r_instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
     --SIGNAL registerfile_rs1, registerfile_rs2, registerfile_rd : STD_LOGIC_VECTOR(4 DOWNTO 0);
-    SIGNAL new_rd_lock_owner, new_pc_lock_owner : opcode_t;
+    --SIGNAL new_rd_lock_owner, new_pc_lock_owner : opcode_t;
     SIGNAL writeback_we : opcode_bit_t := (others => '0');
     SIGNAL writeback_data : opcode_word_t := (others => (others => '0'));
     SIGNAL writeback_pc : opcode_word_t := (others => (others => '0'));
@@ -380,7 +380,7 @@ ARCHITECTURE behavioural OF cpu IS
 
     SIGNAL allready : STD_LOGIC;
 
-    SIGNAL decoded : opcode_t;
+    --SIGNAL decoded : opcode_t;
 
     SIGNAL eu_mem_busy, eu_mem_we : STD_LOGIC;
     --signal writeback_data_eu_mem : std_logic_vector(31 downto 0);
@@ -430,13 +430,20 @@ BEGIN
                 owner(to_integer(unsigned(rd))) <= f_decode_opcode(inst_rdata);
             end if;
 
-            if (allready = '1') and (f_updates_pc(inst_rdata) = '1') then
-                owner(32) <= f_decode_opcode(inst_rdata);
+            if (allready = '1') then
+                if (f_updates_pc(inst_rdata) = '1') then
+                    owner(32) <= f_decode_opcode(inst_rdata);
+                else
+                
+                    owner(32) <= OPCODE_INVALID;
+                    end if;
             end if;
 
-            if (allready = '1') and (execunit_busy(owner(32)) = '0') then
+            if (allready = '1') and (eu_rdy(owner(32)) = '1') then
                 pc <= writeback_pc(owner(32));
             end if;
+
+
 
 
 
@@ -461,7 +468,7 @@ BEGIN
 
     execunit_busy(OPCODE_INVALID) <= '0';
 
-    allready <= '1' WHEN (inst_rdy = '1') AND (eu_rdy(owner(32)) = '0')
+    allready <= '1' WHEN (inst_rdy = '1') AND (eu_rdy(owner(32)) = '1')
         AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '0')))
         AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '0')))
         AND (execunit_busy(f_decode_opcode(inst_rdata)) = '0')
@@ -499,7 +506,7 @@ BEGIN
 
     execunit_gen : FOR op IN opcode_t GENERATE
 
-        exclude_invalid : IF (op /= OPCODE_INVALID) AND (op /= OPCODE_I_TYPE_LOAD) AND (op /= OPCODE_S_TYPE) GENERATE -- I know it's not the optimal way, probably better to use const list
+        exclude_invalid : IF op = OPCODE_R_TYPE_ADD or op = OPCODE_I_TYPE_ADDI or op = OPCODE_B_TYPE_BEQ or op = OPCODE_U_TYPE_LUI or op = OPCODE_U_TYPE_AUIPC or op = OPCODE_J_TYPE_JAL  GENERATE --(op /= OPCODE_INVALID) AND (op /= OPCODE_I_TYPE_LOAD) AND (op /= OPCODE_S_TYPE) GENERATE -- I know it's not the optimal way, probably better to use const list
             i_eu : execunit
             GENERIC MAP(operation => op)
             PORT MAP(

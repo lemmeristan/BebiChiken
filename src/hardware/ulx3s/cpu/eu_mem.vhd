@@ -379,6 +379,7 @@ BEGIN
         mem_re <= '0';
         mem_we <= '0';
         writeback_we <= '0';
+        rdy <= '0';
         case state is
             when S_IDLE =>
                 rdy <= '1';
