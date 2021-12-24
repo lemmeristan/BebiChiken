@@ -14,8 +14,7 @@ ENTITY execunit IS
         we                                  : IN STD_LOGIC;
         rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-        writeback_we     : OUT STD_LOGIC;
-        writeback_result : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         update_pc : OUT STD_LOGIC;
@@ -337,8 +336,9 @@ BEGIN
     BEGIN
         if rst = '1' then
             r_we <= '0';
-            writeback_we <= '0';
-            writeback_result <= (others => '0');
+            writeback_rd <= (others => '0');
+            writeback_rs1 <= (others => '0');
+            writeback_rs2 <= (others => '0');
             r_rs1_data <= (others => '0');
             r_rs2_data <= (others => '0');
             r_instruction <= (others => '0');
@@ -350,11 +350,12 @@ BEGIN
         rd <= r_instruction(11 DOWNTO 7);
 
             r_we         <= we;
-            writeback_we <= r_we;
             if r_we = '1' then
                 next_pc <= i_next_pc;
                 rdy <= '1';
-                writeback_result <= i_writeback_result;
+                writeback_rd <= i_writeback_result;
+                writeback_rs1 <= i_writeback_result;
+                writeback_rs2 <= i_writeback_result;
             end if;
             IF we = '1' THEN
                 rdy <= '0';
@@ -374,53 +375,38 @@ BEGIN
         i_writeback_result <= (OTHERS => '0');
         i_next_pc <= r_pc + X"00000004";
 
-        --updates_pc <= '0';
-        --updates_rd <= '0';
-        --uses_rs1 <= '1';
-        --uses_rs2 <= '0';
-
         CASE operation IS
             WHEN OPCODE_R_TYPE_ADD =>
-                --uses_rs2 <= '1';
                 i_writeback_result <= r_rs1_data + r_rs2_data;
             WHEN OPCODE_R_TYPE_SUB =>
-                --uses_rs2 <= '1';
                 i_writeback_result <= r_rs1_data - r_rs2_data;
             WHEN OPCODE_R_TYPE_SLL =>
-                --uses_rs2 <= '1';
                 i_writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), false, true);
             WHEN OPCODE_R_TYPE_SLT =>
-                --uses_rs2 <= '1';
                 IF signed(r_rs1_data) < signed(r_rs2_data) THEN
                     i_writeback_result <= X"00000001";
                 ELSE
                     i_writeback_result <= (OTHERS => '0');
                 END IF;
             WHEN OPCODE_R_TYPE_SLTU =>
-                --uses_rs2 <= '1';
                 IF unsigned(r_rs1_data) < unsigned(r_rs2_data) THEN
                     i_writeback_result <= X"00000001";
                 ELSE
                     i_writeback_result <= (OTHERS => '0');
                 END IF;
             WHEN OPCODE_R_TYPE_XOR =>
-                --uses_rs2 <= '1';
                 i_writeback_result <= r_rs1_data XOR r_rs2_data;
 
             WHEN OPCODE_R_TYPE_SRL =>
-                --uses_rs2 <= '1';
                 i_writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), false, false);
 
             WHEN OPCODE_R_TYPE_SRA =>
-            --uses_rs2 <= '1';
                 i_writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), true, false);
 
             WHEN OPCODE_R_TYPE_OR =>
-            --uses_rs2 <= '1';
                 i_writeback_result <= r_rs1_data OR r_rs2_data;
 
             WHEN OPCODE_R_TYPE_AND =>
-            --uses_rs2 <= '1';    
             i_writeback_result <= r_rs1_data AND r_rs2_data;
 
             WHEN OPCODE_I_TYPE_ADDI =>
@@ -459,65 +445,48 @@ BEGIN
                 --WHEN OPCODE_S_TYPE     =>
             WHEN OPCODE_B_TYPE_BEQ =>
                 update_pc <= '1';
-                --uses_rs2 <= '1';
-                --updates_pc <= '1';
                 IF signed(r_rs1_data) = signed(r_rs2_data) THEN
-                    i_next_pc <= r_pc + f_decode_imm(r_instruction); --imm_b;
+                    i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_B_TYPE_BNE =>
                 update_pc <= '1';
-                --uses_rs2 <= '1';
-                --updates_pc <= '1';
                 IF signed(r_rs1_data) /= signed(r_rs2_data) THEN
-                    i_next_pc <= r_pc + f_decode_imm(r_instruction); --imm_b;
+                    i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_B_TYPE_BLT =>
                 update_pc <= '1';
-                --uses_rs2 <= '1';
-                --updates_pc <= '1';
                 IF signed(r_rs1_data) < signed(r_rs2_data) THEN
-                    i_next_pc <= r_pc + f_decode_imm(r_instruction); --imm_b;
+                    i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_B_TYPE_BGE =>
                 update_pc <= '1';
-                --uses_rs2 <= '1';
-                --updates_pc <= '1';
                 IF signed(r_rs1_data) >= signed(r_rs2_data) THEN
-                    i_next_pc <= r_pc + f_decode_imm(r_instruction); --imm_b;
+                    i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_B_TYPE_BLTU =>
                 update_pc <= '1';
-                --uses_rs2 <= '1';
-                --updates_pc <= '1';
                 IF unsigned(r_rs1_data) < unsigned(r_rs2_data) THEN
-                    i_next_pc <= r_pc + f_decode_imm(r_instruction); --imm_b;
+                    i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_B_TYPE_BGEU =>
                 update_pc <= '1';
-                --uses_rs2 <= '1';
-                --updates_pc <= '1';
                 IF unsigned(r_rs1_data) >= unsigned(r_rs2_data) THEN
-                    i_next_pc <= r_pc + f_decode_imm(r_instruction); --imm_b;
+                    i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_U_TYPE_LUI =>
-                --uses_rs1 <= '0';
                 i_writeback_result <= f_decode_imm(r_instruction);
             WHEN OPCODE_U_TYPE_AUIPC =>
-                --uses_rs1 <= '0';
                 i_writeback_result <= r_pc + f_decode_imm(r_instruction);
 
             WHEN OPCODE_J_TYPE_JAL =>
-                --uses_rs1 <= '0';
                 i_writeback_result <= r_pc + X"00000004";
                 i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 update_pc <= '1';
-                --updates_pc <= '1';
 
             WHEN OPCODE_J_TYPE_JALR =>
                 i_next_pc <= (f_decode_imm(r_instruction) + r_rs1_data) AND X"FFFFFFFE";
                 i_writeback_result <= r_pc + X"00000004";
                 update_pc <= '1';
-                --updates_pc <= '1';
 
             WHEN OTHERS =>
         END CASE;

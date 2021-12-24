@@ -34,6 +34,21 @@ PACKAGE bebichiken IS
   TYPE opcode_bit_t IS ARRAY(opcode_t) OF STD_LOGIC;
 
 
+  TYPE opcode_group_t IS (
+    OPCODE_R_TYPE,
+    OPCODE_I_TYPE,
+    OPCODE_MEM_TYPE,
+    OPCODE_B_TYPE,
+    OPCODE_U_TYPE,
+    OPCODE_J_TYPE,
+    OPCODE_INVALID);
+  TYPE opcode_group_word_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
+  TYPE opcode_group_regidx_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(4 DOWNTO 0);
+  TYPE opcode_group_width_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(1 DOWNTO 0);
+  TYPE opcode_group_bit_t IS ARRAY(opcode_group_t) OF STD_LOGIC;
+
+
+
   TYPE lock_owner_t IS ARRAY(NATURAL RANGE <>) of opcode_t;
 
 

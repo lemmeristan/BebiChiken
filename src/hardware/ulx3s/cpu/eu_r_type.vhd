@@ -5,29 +5,27 @@ USE IEEE.std_logic_unsigned.ALL;
 LIBRARY work;
 USE work.bebichiken.ALL;
 
-ENTITY eu_mem IS
+ENTITY eu_r_type IS
+
     PORT (
         rst, clk : IN STD_LOGIC;
 
         we                                  : IN STD_LOGIC;
-        rs1_data, rs2_data, instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-        mem_we, mem_re : out std_logic;
-        mem_wack, mem_rdy : in std_logic;
-        mem_wdata, mem_addr : out std_logic_vector(31 downto 0);
-        mem_rdata : in std_logic_vector(31 downto 0);
-        mem_width : out std_logic_vector(1 downto 0);
+        next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        update_pc : OUT STD_LOGIC;
 
+        --uses_rs1, uses_rs2, updates_rd, updates_pc, 
         rd : out std_logic_vector(4 downto 0);
-
-        busy, rdy : out std_logic 
+        busy, rdy : out std_logic
 
     );
-END eu_mem;
+END eu_r_type;
 
-ARCHITECTURE behavioural OF eu_mem IS
+ARCHITECTURE behavioural OF eu_r_type IS
     FUNCTION DoShift (
         value            : STD_LOGIC_VECTOR(31 DOWNTO 0);
         shamt            : STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -326,94 +324,108 @@ ARCHITECTURE behavioural OF eu_mem IS
         RETURN imm;
 
     END;
-    SIGNAL r_rs1_data, r_rs2_data, r_instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL r_rs1_data, r_rs2_data, r_instruction, r_pc, i_writeback_result, i_next_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
     signal r_we : std_logic;
-
-    type state_t is (S_IDLE, S_BUSY);
-    signal state, n_state : state_t;
-
-    signal op : opcode_t;
-    signal writeback_we : std_logic;
 
 BEGIN
 
-
-    rd <= r_instruction(11 DOWNTO 7);
 
 
     PROCESS (rst, clk)
     BEGIN
         if rst = '1' then
-            r_rs1_data <= (others => '0');
-            r_rs2_data <= (others => '0');
-            r_instruction <= (others => '0');
-            state <= S_IDLE;
+            r_we <= '0';
             writeback_rd <= (others => '0');
             writeback_rs1 <= (others => '0');
             writeback_rs2 <= (others => '0');
+            r_rs1_data <= (others => '0');
+            r_rs2_data <= (others => '0');
+            r_instruction <= (others => '0');
+            r_pc <= (others => '0');
+            rdy <= '0';
+            next_pc <= (others => '0');
+            rd <= (others => '0');
         elsIF rising_edge(clk) THEN
+        rd <= r_instruction(11 DOWNTO 7);
 
-            state <= n_state;
-
-            --r_we         <= we;
-            --writeback_we <= r_we;
-
-            if writeback_we = '1' then
-                writeback_rd <= mem_rdata;
-                writeback_rs1 <= mem_rdata;
-                writeback_rs2 <= mem_rdata;
+            r_we         <= we;
+            if r_we = '1' then
+                next_pc <= i_next_pc;
+                rdy <= '1';
+                writeback_rd <= i_writeback_result;
+                writeback_rs1 <= i_writeback_result;
+                writeback_rs2 <= i_writeback_result;
             end if;
-
             IF we = '1' THEN
+                rdy <= '0';
                 r_rs1_data    <= rs1_data;
                 r_rs2_data    <= rs2_data;
                 r_instruction <= instruction;
+                r_pc          <= pc;
             END IF;
         END IF;
     END PROCESS;
 
-    mem_addr <= rs1_data + f_decode_imm(r_instruction);
-    mem_wdata <= rs2_data;
-    mem_width <= r_instruction(13 downto 12);
-    -- not formally correct, still need to account for funct3(2), i.e.: r_instruction(14), and sign extension
-    -- preferrably not even feeding execution unit if instruction is invalid
+    busy <= r_we;
 
-    op <= f_decode_opcode(r_instruction);
+    PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)
+    BEGIN
+        update_pc        <= '0';
+        i_writeback_result <= (OTHERS => '0');
+        i_next_pc <= r_pc + X"00000004";
 
-    process(state, we, state, op, mem_rdy, mem_wack)
-    begin
-        n_state <= state;
-        busy <= '1';
-        mem_re <= '0';
-        mem_we <= '0';
-        writeback_we <= '0';
-        rdy <= '0';
-        case state is
-            when S_IDLE =>
-                rdy <= '1';
-                busy <= '0';
-                if we = '1' then
-                    n_state <= S_BUSY;
-                end if;
-            when S_BUSY =>
-                if op = OPCODE_I_TYPE_LOAD then
-                    mem_re <= '1';
-                    if mem_rdy = '1' then
-                        writeback_we <= '1';
-                        n_state <= S_IDLE;
-                    end if;
+        --updates_pc <= '0';
+        --updates_rd <= '0';
+        --uses_rs1 <= '1';
+        --uses_rs2 <= '0';
 
-                elsif op = OPCODE_S_TYPE then
-                    mem_we <= '1';
-                    if mem_wack = '1' then
-                        n_state <= S_IDLE;
-                    end if;
-                else
-                    n_state <= S_IDLE;
-                end if;
-        end case;
-    end process;
+        CASE f_decode_opcode(r_instruction) IS
+            WHEN OPCODE_R_TYPE_ADD =>
+                --uses_rs2 <= '1';
+                i_writeback_result <= r_rs1_data + r_rs2_data;
+            WHEN OPCODE_R_TYPE_SUB =>
+                --uses_rs2 <= '1';
+                i_writeback_result <= r_rs1_data - r_rs2_data;
+            WHEN OPCODE_R_TYPE_SLL =>
+                --uses_rs2 <= '1';
+                i_writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), false, true);
+            WHEN OPCODE_R_TYPE_SLT =>
+                --uses_rs2 <= '1';
+                IF signed(r_rs1_data) < signed(r_rs2_data) THEN
+                    i_writeback_result <= X"00000001";
+                ELSE
+                    i_writeback_result <= (OTHERS => '0');
+                END IF;
+            WHEN OPCODE_R_TYPE_SLTU =>
+                --uses_rs2 <= '1';
+                IF unsigned(r_rs1_data) < unsigned(r_rs2_data) THEN
+                    i_writeback_result <= X"00000001";
+                ELSE
+                    i_writeback_result <= (OTHERS => '0');
+                END IF;
+            WHEN OPCODE_R_TYPE_XOR =>
+                --uses_rs2 <= '1';
+                i_writeback_result <= r_rs1_data XOR r_rs2_data;
 
-                    
+            WHEN OPCODE_R_TYPE_SRL =>
+                --uses_rs2 <= '1';
+                i_writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), false, false);
+
+            WHEN OPCODE_R_TYPE_SRA =>
+            --uses_rs2 <= '1';
+                i_writeback_result <= DoShift(r_rs1_data, r_rs2_data(4 DOWNTO 0), true, false);
+
+            WHEN OPCODE_R_TYPE_OR =>
+            --uses_rs2 <= '1';
+                i_writeback_result <= r_rs1_data OR r_rs2_data;
+
+            WHEN OPCODE_R_TYPE_AND =>
+            --uses_rs2 <= '1';    
+            i_writeback_result <= r_rs1_data AND r_rs2_data;
+
+
+            WHEN OTHERS =>
+        END CASE;
+    END PROCESS;
 
 END behavioural;
