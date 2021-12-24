@@ -888,7 +888,7 @@ BEGIN
             rdy => eu_rdy(OPCODE_R_TYPE)
         );
 
-        i_eu_u : eu_r_type
+        i_eu_u : eu_u_type
         PORT MAP(
             rst => rst, clk => clk,
 
