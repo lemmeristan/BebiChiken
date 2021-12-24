@@ -86,7 +86,7 @@ BEGIN
 
     we_shifted <= DoShift(we, rd);
 
-    rs1_data_out <= DoShift(registers1, rs1)(31 downto 0);
-    rs2_data_out <=  DoShift(registers2, rs2)(31 downto 0);
+    rs1_data_out <= DoShift(registers1, rs1)(31 downto 0) when rs1 /= "00000" else (others => '0');
+    rs2_data_out <=  DoShift(registers2, rs2)(31 downto 0) when rs2 /= "00000" else (others => '0');
 
 END behavioural;
