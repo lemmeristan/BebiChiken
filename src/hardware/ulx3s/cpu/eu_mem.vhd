@@ -13,6 +13,8 @@ ENTITY eu_mem IS
         rs1_data, rs2_data, instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        writeback_we :  out std_logic;
+
 
         mem_we, mem_re : out std_logic;
         mem_wack, mem_rdy : in std_logic;
@@ -333,7 +335,7 @@ ARCHITECTURE behavioural OF eu_mem IS
     signal state, n_state : state_t;
 
     signal op : opcode_t;
-    signal writeback_we : std_logic;
+    --signal writeback_we : std_logic;
 
 BEGIN
 

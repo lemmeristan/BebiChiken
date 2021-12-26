@@ -14,6 +14,8 @@ ENTITY eu_j_type IS
         rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        writeback_we :  out std_logic;
+
 
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         update_pc : OUT STD_LOGIC;
@@ -345,10 +347,13 @@ BEGIN
             rdy <= '0';
             next_pc <= (others => '0');
             rd <= (others => '0');
+            update_pc <= '0';
         elsIF rising_edge(clk) THEN
         rd <= r_instruction(11 DOWNTO 7);
 
             r_we         <= we;
+            update_pc <= r_we;
+            writeback_we <= r_we;
             if r_we = '1' then
                 next_pc <= i_next_pc;
                 rdy <= '1';
@@ -370,7 +375,6 @@ BEGIN
 
     PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)
     BEGIN
-        update_pc        <= '0';
         i_writeback_result <= (OTHERS => '0');
         i_next_pc <= r_pc + X"00000004";
 
@@ -380,12 +384,10 @@ BEGIN
             WHEN OPCODE_J_TYPE_JAL =>
                 i_writeback_result <= r_pc + X"00000004";
                 i_next_pc <= r_pc + f_decode_imm(r_instruction);
-                update_pc <= '1';
 
             WHEN OPCODE_J_TYPE_JALR =>
                 i_next_pc <= (f_decode_imm(r_instruction) + r_rs1_data) AND X"FFFFFFFE";
                 i_writeback_result <= r_pc + X"00000004";
-                update_pc <= '1';
 
             WHEN OTHERS =>
         END CASE;

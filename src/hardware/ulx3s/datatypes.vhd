@@ -49,7 +49,7 @@ PACKAGE bebichiken IS
 
 
 
-  TYPE lock_owner_t IS ARRAY(NATURAL RANGE <>) of opcode_t;
+  TYPE lock_owner_t IS ARRAY(NATURAL RANGE <>) of opcode_group_t;
 
 
 

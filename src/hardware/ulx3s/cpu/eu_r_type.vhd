@@ -14,6 +14,8 @@ ENTITY eu_r_type IS
         rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        writeback_we :  out std_logic;
+
 
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         update_pc : OUT STD_LOGIC;
@@ -349,6 +351,7 @@ BEGIN
         rd <= r_instruction(11 DOWNTO 7);
 
             r_we         <= we;
+            writeback_we <= r_we;
             if r_we = '1' then
                 next_pc <= i_next_pc;
                 rdy <= '1';
