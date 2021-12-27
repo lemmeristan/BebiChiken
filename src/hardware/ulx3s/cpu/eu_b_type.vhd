@@ -343,10 +343,12 @@ BEGIN
             rdy <= '0';
             next_pc <= (others => '0');
             rd <= (others => '0');
+            update_pc <= '0';
         elsIF rising_edge(clk) THEN
         rd <= r_instruction(11 DOWNTO 7);
 
             r_we         <= we;
+            update_pc <= r_we;
             if r_we = '1' then
                 next_pc <= i_next_pc;
                 rdy <= '1';
@@ -368,39 +370,32 @@ BEGIN
 
     PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)
     BEGIN
-        update_pc        <= '0';
         i_writeback_result <= (OTHERS => '0');
         i_next_pc <= r_pc + X"00000004";
 
         CASE f_decode_opcode(r_instruction) IS
 
             WHEN OPCODE_B_TYPE_BEQ =>
-                update_pc <= '1';
                 IF signed(r_rs1_data) = signed(r_rs2_data) THEN
                     i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_B_TYPE_BNE =>
-                update_pc <= '1';
                 IF signed(r_rs1_data) /= signed(r_rs2_data) THEN
                     i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_B_TYPE_BLT =>
-                update_pc <= '1';
                 IF signed(r_rs1_data) < signed(r_rs2_data) THEN
                     i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_B_TYPE_BGE =>
-                update_pc <= '1';
                 IF signed(r_rs1_data) >= signed(r_rs2_data) THEN
                     i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_B_TYPE_BLTU =>
-                update_pc <= '1';
                 IF unsigned(r_rs1_data) < unsigned(r_rs2_data) THEN
                     i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;
             WHEN OPCODE_B_TYPE_BGEU =>
-                update_pc <= '1';
                 IF unsigned(r_rs1_data) >= unsigned(r_rs2_data) THEN
                     i_next_pc <= r_pc + f_decode_imm(r_instruction);
                 END IF;

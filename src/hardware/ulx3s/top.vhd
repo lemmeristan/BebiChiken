@@ -427,7 +427,6 @@ BEGIN
   --led <= rst & int_gpio(6 DOWNTO 0);
   --led <= mem_addr(7 DOWNTO 0);
   --led <= inst_rdata(31 DOWNTO 24);
-  led <= (hasrdy & inst_re) & mem_we & (inst_addr(4 DOWNTO 0)); --hasrdy & inst_re & inst_addr(5 DOWNTO 0); --"000000"; --
   -- PROCESS (gpio_dir, gpio_value)
   -- BEGIN
   --   FOR i IN 0 TO 31 LOOP
@@ -554,10 +553,13 @@ BEGIN
 
       r_inst_rdy <= '0';
       inst_rdata <= (OTHERS => '0');
+      led <= (others => '0');
     ELSIF rising_edge(clk_25mhz) THEN
       IF r_inst_rdy = '1' THEN
         hasrdy <= '1';
       END IF;
+      led <= inst_addr(7 DOWNTO 0); --hasrdy & inst_re & inst_addr(5 DOWNTO 0); --"000000"; --
+
 
       r_inst_rdy <= i_inst_rdy;
       inst_rdata <= i_inst_rdata;
