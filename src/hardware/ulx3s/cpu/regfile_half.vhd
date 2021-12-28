@@ -15,14 +15,8 @@ ENTITY regfile_half IS
         clk, rst                   : IN STD_LOGIC;
         rs1, rs2, rd                   : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
         rs1_data_out, rs2_data_out, pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        update_rd, lock_pc                  : IN STD_LOGIC;
-        rd_data_in                 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-        new_pc_lock_owner : in opcode_group_t;
-        update_pc : in opcode_group_bit_t;
-
-        next_pc : in opcode_group_word_t;
-        pc_locked : out std_logic
+        update_rd, update_pc                  : IN STD_LOGIC;
+        rd_data_in, next_pc                 : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
 
     );
 END regfile_half;
@@ -32,7 +26,6 @@ ARCHITECTURE behavioural OF regfile_half IS
 
     
 
-    signal pc_lock_owner : opcode_group_t;
     TYPE registers_t IS ARRAY (31 DOWNTO 0) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL registers1, registers2 : registers_t; -- := (OTHERS => (OTHERS => '0'));
 
@@ -42,7 +35,6 @@ ARCHITECTURE behavioural OF regfile_half IS
 
 BEGIN
 
-    pc_locked <= '0' when pc_lock_owner = OPCODE_INVALID else '1';
     rs1_data_out <= registers1(to_integer(unsigned(rs1))) WHEN rs1 /= "00000" ELSE
         (OTHERS => '0');
     rs2_data_out <= registers2(to_integer(unsigned(rs2))) WHEN rs2 /= "00000" ELSE
@@ -53,7 +45,6 @@ BEGIN
     process(rst, clk)
     begin
         if rst = '1' then
-            pc_lock_owner <= OPCODE_INVALID;
             registers1 <= (others => (others => '0'));
             registers2 <= (others => (others => '0'));
             pc <= entry_point;
@@ -64,11 +55,8 @@ BEGIN
                 registers2(to_integer(unsigned(rd))) <= rd_data_in;
             end if;
             
-            if lock_pc = '1' then
-                pc_lock_owner <= new_pc_lock_owner;
-            elsif update_pc(pc_lock_owner) = '1' then
-                pc <= next_pc(pc_lock_owner);
-                pc_lock_owner <= OPCODE_INVALID;
+            if update_pc = '1' then
+                pc <= next_pc;
             end if;
                 
 

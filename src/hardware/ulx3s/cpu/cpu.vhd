@@ -486,17 +486,11 @@ ARCHITECTURE behavioural OF cpu IS
             entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0)
         );
         PORT (
-            clk, rst : IN STD_LOGIC;
-            rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+            clk, rst                   : IN STD_LOGIC;
+            rs1, rs2, rd                   : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
             rs1_data_out, rs2_data_out, pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            update_rd, lock_pc : IN STD_LOGIC;
-            rd_data_in : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            new_pc_lock_owner : IN opcode_group_t;
-            update_pc : IN opcode_group_bit_t;
-
-            next_pc : IN opcode_group_word_t;
-            pc_locked : OUT STD_LOGIC
+            update_rd, update_pc                  : IN STD_LOGIC;
+            rd_data_in, next_pc                 : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
 
         );
     END COMPONENT;
@@ -650,7 +644,7 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL update_pc : opcode_group_bit_t := (OTHERS => '1');
     SIGNAL dwe, dre : opcode_bit_t := (OTHERS => '0');
     SIGNAL selected : opcode_bit_t := (OTHERS => '0');
-    SIGNAL next_pc, r_next_pc : opcode_group_word_t := (OTHERS => (OTHERS => '0'));
+    SIGNAL i_next_pc, r_next_pc : opcode_group_word_t := (OTHERS => (OTHERS => '0'));
     SIGNAL result : opcode_word_t := (OTHERS => (OTHERS => '0'));
     SIGNAL wdata : opcode_word_t := (OTHERS => (OTHERS => '0'));
     SIGNAL daddr : opcode_word_t := (OTHERS => (OTHERS => '0'));
@@ -755,17 +749,17 @@ BEGIN
     GENERIC MAP(entry_point => entry_point)
     PORT MAP(
 
+        clk, rst                   : IN STD_LOGIC;
+        rs1, rs2, rd                   : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+        rs1_data_out, rs2_data_out, pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        update_rd, update_pc                  : IN STD_LOGIC;
+        rd_data_in, next_pc                 : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
+
         clk => clk, rst => rst,
         rs1 => rs1, rs2 => rs2, rd => regfile_rd,
         rs1_data_out => writeback_rs1(OPCODE_INVALID), rs2_data_out => writeback_rs2(OPCODE_INVALID), pc => pc,
-        update_rd => update_rd, lock_pc => lock_pc,
-        rd_data_in => rd_data_in,
-
-        new_pc_lock_owner => new_pc_lock_owner,
-        update_pc => update_pc,
-
-        next_pc => next_pc,
-        pc_locked => pc_locked
+        update_rd => update_rd, update_pc => update_pc,
+        rd_data_in => rd_data_in, next_pc => next_pc
 
     );
     rs1_data <= writeback_rs1(owner(to_integer(unsigned(rs1)))) WHEN rs1 /= "00000" ELSE (OTHERS => '0'); -- have to do it like this or else ghdl won't synth :(
@@ -799,8 +793,8 @@ BEGIN
         writeback_rs1 => writeback_rs1(OPCODE_B_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_B_TYPE),
 
-        update_pc => update_pc(OPCODE_B_TYPE),
-        next_pc => next_pc(OPCODE_B_TYPE),
+        --update_pc => update_pc(OPCODE_B_TYPE),
+        next_pc => i_next_pc(OPCODE_B_TYPE),
 
         rd => rd_out(OPCODE_B_TYPE),
         busy => eu_busy(OPCODE_B_TYPE),
@@ -818,8 +812,8 @@ BEGIN
         writeback_rs1 => writeback_rs1(OPCODE_I_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_I_TYPE),
 
-        update_pc => update_pc(OPCODE_I_TYPE),
-        next_pc => next_pc(OPCODE_I_TYPE),
+        --update_pc => update_pc(OPCODE_I_TYPE),
+        next_pc => i_next_pc(OPCODE_I_TYPE),
 
         rd => rd_out(OPCODE_I_TYPE),
         busy => eu_busy(OPCODE_I_TYPE),
@@ -837,8 +831,8 @@ BEGIN
         writeback_rs1 => writeback_rs1(OPCODE_J_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_J_TYPE),
 
-        update_pc => update_pc(OPCODE_J_TYPE),
-        next_pc => next_pc(OPCODE_J_TYPE),
+        --update_pc => update_pc(OPCODE_J_TYPE),
+        next_pc => i_next_pc(OPCODE_J_TYPE),
 
         rd => rd_out(OPCODE_J_TYPE),
         busy => eu_busy(OPCODE_J_TYPE),
@@ -856,8 +850,8 @@ BEGIN
         writeback_rs1 => writeback_rs1(OPCODE_R_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_R_TYPE),
 
-        update_pc => update_pc(OPCODE_R_TYPE),
-        next_pc => next_pc(OPCODE_R_TYPE),
+        --update_pc => update_pc(OPCODE_R_TYPE),
+        next_pc => i_next_pc(OPCODE_R_TYPE),
 
         rd => rd_out(OPCODE_R_TYPE),
         busy => eu_busy(OPCODE_R_TYPE),
@@ -875,8 +869,8 @@ BEGIN
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_U_TYPE),
 
-        update_pc => update_pc(OPCODE_U_TYPE),
-        next_pc => next_pc(OPCODE_U_TYPE),
+        --update_pc => update_pc(OPCODE_U_TYPE),
+        next_pc => i_next_pc(OPCODE_U_TYPE),
 
         rd => rd_out(OPCODE_U_TYPE),
         busy => eu_busy(OPCODE_U_TYPE),
