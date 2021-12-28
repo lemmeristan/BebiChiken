@@ -3,7 +3,10 @@
 blah:
         lui	a5,0xc0001
         li	a4, 'h'
+
         sw	a4,0(a5)
+//                        j blah
+
         li	a4, 'e'
         sw	a4,0(a5)
 

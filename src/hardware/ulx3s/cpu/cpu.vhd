@@ -13,17 +13,17 @@ ENTITY cpu IS
 
         -- Instruction memory bus
         inst_width : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00" -> 1 byte, "01" -> 2 bytes, "10" -> 4 bytes, "11" -> invalid / 8 bytes for RV64
-        inst_addr  : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        inst_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         inst_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-        inst_re    : OUT STD_LOGIC;
-        inst_rdy   : IN STD_LOGIC;
+        inst_re : OUT STD_LOGIC;
+        inst_rdy : IN STD_LOGIC;
 
         -- Data memory bus
-        data_width            : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00" -> 1 byte, "01" -> 2 bytes, "10" -> 4 bytes, "11" -> invalid / 8 bytes for RV64
+        data_width : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00" -> 1 byte, "01" -> 2 bytes, "10" -> 4 bytes, "11" -> invalid / 8 bytes for RV64
         data_addr, data_wdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        data_rdata            : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-        data_re, data_we      : OUT STD_LOGIC;
-        data_rdy, data_wack   : IN STD_LOGIC;
+        data_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        data_re, data_we : OUT STD_LOGIC;
+        data_rdy, data_wack : IN STD_LOGIC;
 
         -- Register file
         --registerfile_rs1, registerfile_rs2, registerfile_rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -350,9 +350,9 @@ ARCHITECTURE behavioural OF cpu IS
         VARIABLE opcode : opcode_t;
     BEGIN
 
-    if instruction(19 downto 15) = "00000" then
-        return '0';
-    end if;
+        IF instruction(19 DOWNTO 15) = "00000" THEN
+            RETURN '0';
+        END IF;
 
         opcode := f_decode_opcode(instruction);
 
@@ -363,8 +363,8 @@ ARCHITECTURE behavioural OF cpu IS
             OR opcode = OPCODE_R_TYPE_ADD OR opcode = OPCODE_R_TYPE_SUB OR opcode = OPCODE_R_TYPE_SLL
             OR opcode = OPCODE_R_TYPE_SLT OR opcode = OPCODE_R_TYPE_SLTU OR opcode = OPCODE_R_TYPE_XOR
             OR opcode = OPCODE_R_TYPE_SRL OR opcode = OPCODE_R_TYPE_SRA OR opcode = OPCODE_R_TYPE_OR
-            OR opcode = OPCODE_R_TYPE_AND 
-            OR opcode = OPCODE_I_TYPE_ADDI OR opcode = OPCODE_I_TYPE_SLLI OR opcode = OPCODE_I_TYPE_SLTI 
+            OR opcode = OPCODE_R_TYPE_AND
+            OR opcode = OPCODE_I_TYPE_ADDI OR opcode = OPCODE_I_TYPE_SLLI OR opcode = OPCODE_I_TYPE_SLTI
             OR opcode = OPCODE_I_TYPE_SLTIU OR opcode = OPCODE_I_TYPE_XORI OR opcode = OPCODE_I_TYPE_SRLI
             OR opcode = OPCODE_I_TYPE_SRAI OR opcode = OPCODE_I_TYPE_ORI OR opcode = OPCODE_I_TYPE_ANDI
             THEN
@@ -380,14 +380,14 @@ ARCHITECTURE behavioural OF cpu IS
         VARIABLE opcode : opcode_t;
     BEGIN
 
-    if instruction(24 downto 20) = "00000" then
-        return '0';
-    end if;
+        IF instruction(24 DOWNTO 20) = "00000" THEN
+            RETURN '0';
+        END IF;
 
         opcode := f_decode_opcode(instruction);
 
         IF opcode = OPCODE_S_TYPE
-            OR opcode = OPCODE_B_TYPE_BEQ OR opcode = OPCODE_B_TYPE_BNE OR opcode = OPCODE_B_TYPE_BLT 
+            OR opcode = OPCODE_B_TYPE_BEQ OR opcode = OPCODE_B_TYPE_BNE OR opcode = OPCODE_B_TYPE_BLT
             OR opcode = OPCODE_B_TYPE_BGE OR opcode = OPCODE_B_TYPE_BLTU OR opcode = OPCODE_B_TYPE_BGEU
             OR opcode = OPCODE_R_TYPE_ADD OR opcode = OPCODE_R_TYPE_SUB OR opcode = OPCODE_R_TYPE_SLL
             OR opcode = OPCODE_R_TYPE_SLT OR opcode = OPCODE_R_TYPE_SLTU OR opcode = OPCODE_R_TYPE_XOR
@@ -405,24 +405,24 @@ ARCHITECTURE behavioural OF cpu IS
         instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0))
         RETURN STD_LOGIC IS
         VARIABLE opcode : opcode_t;
-        variable i_rd : std_logic_vector(4 downto 0);
+        VARIABLE i_rd : STD_LOGIC_VECTOR(4 DOWNTO 0);
     BEGIN
-        if instruction(11 downto 7) = "00000" then
-            return '0';
-        end if;
+        IF instruction(11 DOWNTO 7) = "00000" THEN
+            RETURN '0';
+        END IF;
 
         opcode := f_decode_opcode(instruction);
 
         IF opcode = OPCODE_I_TYPE_LOAD
-            OR opcode = OPCODE_U_TYPE_LUI 
+            OR opcode = OPCODE_U_TYPE_LUI
             OR opcode = OPCODE_U_TYPE_AUIPC
-            OR opcode = OPCODE_J_TYPE_JAL 
-            OR opcode = OPCODE_J_TYPE_JALR 
+            OR opcode = OPCODE_J_TYPE_JAL
+            OR opcode = OPCODE_J_TYPE_JALR
             OR opcode = OPCODE_R_TYPE_ADD OR opcode = OPCODE_R_TYPE_SUB OR opcode = OPCODE_R_TYPE_SLL
             OR opcode = OPCODE_R_TYPE_SLT OR opcode = OPCODE_R_TYPE_SLTU OR opcode = OPCODE_R_TYPE_XOR
             OR opcode = OPCODE_R_TYPE_SRL OR opcode = OPCODE_R_TYPE_SRA OR opcode = OPCODE_R_TYPE_OR
-            OR opcode = OPCODE_R_TYPE_AND 
-            OR opcode = OPCODE_I_TYPE_ADDI OR opcode = OPCODE_I_TYPE_SLLI OR opcode = OPCODE_I_TYPE_SLTI 
+            OR opcode = OPCODE_R_TYPE_AND
+            OR opcode = OPCODE_I_TYPE_ADDI OR opcode = OPCODE_I_TYPE_SLLI OR opcode = OPCODE_I_TYPE_SLTI
             OR opcode = OPCODE_I_TYPE_SLTIU OR opcode = OPCODE_I_TYPE_XORI OR opcode = OPCODE_I_TYPE_SRLI
             OR opcode = OPCODE_I_TYPE_SRAI OR opcode = OPCODE_I_TYPE_ORI OR opcode = OPCODE_I_TYPE_ANDI
             THEN
@@ -439,25 +439,25 @@ ARCHITECTURE behavioural OF cpu IS
     BEGIN
         opcode := f_decode_opcode(instruction);
 
-        IF opcode = OPCODE_J_TYPE_JAL 
-        OR opcode = OPCODE_J_TYPE_JALR 
-        OR opcode = OPCODE_B_TYPE_BEQ OR opcode = OPCODE_B_TYPE_BNE OR opcode = OPCODE_B_TYPE_BLT
-        OR opcode = OPCODE_B_TYPE_BGE OR opcode = OPCODE_B_TYPE_BLTU OR opcode = OPCODE_B_TYPE_BGEU
-        THEN
+        IF opcode = OPCODE_J_TYPE_JAL
+            OR opcode = OPCODE_J_TYPE_JALR
+            OR opcode = OPCODE_B_TYPE_BEQ OR opcode = OPCODE_B_TYPE_BNE OR opcode = OPCODE_B_TYPE_BLT
+            OR opcode = OPCODE_B_TYPE_BGE OR opcode = OPCODE_B_TYPE_BLTU OR opcode = OPCODE_B_TYPE_BGEU
+            THEN
             RETURN '1';
         END IF;
 
         RETURN '0';
     END;
     FUNCTION f_shift_up (
-        opcode    : IN opcode_t;
+        opcode : IN opcode_t;
         registers : IN STD_LOGIC_VECTOR(1023 DOWNTO 0)
     )
         RETURN STD_LOGIC_VECTOR IS
-        VARIABLE ires  : STD_LOGIC_VECTOR(1023 DOWNTO 0);
+        VARIABLE ires : STD_LOGIC_VECTOR(1023 DOWNTO 0);
         VARIABLE found : STD_LOGIC;
     BEGIN
-        ires  := registers;
+        ires := registers;
         found := '0';
         FOR op IN opcode_t LOOP
             ires := ires(991 DOWNTO 0) & X"00000000";
@@ -481,27 +481,25 @@ ARCHITECTURE behavioural OF cpu IS
 
     --     );
     -- END COMPONENT;
-
-
     COMPONENT regfile_half IS
-    GENERIC(
-        entry_point : std_logic_vector(31 downto 0)
-    );
-    PORT (
-        clk, rst                   : IN STD_LOGIC;
-        rs1, rs2, rd                   : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-        rs1_data_out, rs2_data_out, pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        update_rd, lock_pc                  : IN STD_LOGIC;
-        rd_data_in                 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        GENERIC (
+            entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0)
+        );
+        PORT (
+            clk, rst : IN STD_LOGIC;
+            rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+            rs1_data_out, rs2_data_out, pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            update_rd, lock_pc : IN STD_LOGIC;
+            rd_data_in : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-        new_pc_lock_owner : in opcode_group_t;
-        update_pc : in opcode_group_bit_t;
+            new_pc_lock_owner : IN opcode_group_t;
+            update_pc : IN opcode_group_bit_t;
 
-        next_pc : in opcode_group_word_t;
-        pc_locked : out std_logic
+            next_pc : IN opcode_group_word_t;
+            pc_locked : OUT STD_LOGIC
 
-    );
-END COMPONENT;
+        );
+    END COMPONENT;
 
     COMPONENT execunit IS
         GENERIC (operation : opcode_t);
@@ -509,14 +507,14 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                  : IN STD_LOGIC;
+            we : IN STD_LOGIC;
             rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
             writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-            next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             update_pc : OUT STD_LOGIC;
-            rd        : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+            rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
             --uses_rs1, uses_rs2, updates_rd, updates_pc, 
             busy, rdy : OUT STD_LOGIC
         );
@@ -526,16 +524,16 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                              : IN STD_LOGIC;
+            we : IN STD_LOGIC;
             rs1_data, rs2_data, instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
             writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-            mem_we, mem_re      : OUT STD_LOGIC;
-            mem_wack, mem_rdy   : IN STD_LOGIC;
+            mem_we, mem_re : OUT STD_LOGIC;
+            mem_wack, mem_rdy : IN STD_LOGIC;
             mem_wdata, mem_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            mem_rdata           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-            mem_width           : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+            mem_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            mem_width : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
 
             rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
 
@@ -547,15 +545,15 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                  : IN STD_LOGIC;
+            we : IN STD_LOGIC;
             rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
             writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-            next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             update_pc : OUT STD_LOGIC;
 
-            rd        : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+            rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
             busy, rdy : OUT STD_LOGIC
 
         );
@@ -565,15 +563,15 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                  : IN STD_LOGIC;
+            we : IN STD_LOGIC;
             rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
             writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-            next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             update_pc : OUT STD_LOGIC;
 
-            rd        : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+            rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
             busy, rdy : OUT STD_LOGIC
 
         );
@@ -583,15 +581,15 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                  : IN STD_LOGIC;
+            we : IN STD_LOGIC;
             rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
             writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-            next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             update_pc : OUT STD_LOGIC;
 
-            rd        : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+            rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
             busy, rdy : OUT STD_LOGIC
 
         );
@@ -600,15 +598,15 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                  : IN STD_LOGIC;
+            we : IN STD_LOGIC;
             rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
             writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-            next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             update_pc : OUT STD_LOGIC;
 
-            rd        : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+            rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
             busy, rdy : OUT STD_LOGIC
 
         );
@@ -617,15 +615,15 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                  : IN STD_LOGIC;
+            we : IN STD_LOGIC;
             rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
             writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-            next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             update_pc : OUT STD_LOGIC;
 
-            rd        : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+            rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
             busy, rdy : OUT STD_LOGIC
 
         );
@@ -646,35 +644,35 @@ END COMPONENT;
     --ATTRIBUTE syn_encoding : STRING;
     --ATTRIBUTE syn_encoding OF state_t : TYPE IS "one-hot";
 
-    ATTRIBUTE syn_keep                                                   : BOOLEAN;
-    SIGNAL decode_error                                                  : opcode_bit_t  := (OTHERS => '1');
-    SIGNAL writeback                                                     : opcode_bit_t  := (OTHERS => '0');
-    SIGNAL update_pc                                                     : opcode_group_bit_t  := (OTHERS => '1');
-    SIGNAL dwe, dre                                                      : opcode_bit_t  := (OTHERS => '0');
-    SIGNAL selected                                                      : opcode_bit_t  := (OTHERS => '0');
-    SIGNAL next_pc, r_next_pc                                            : opcode_group_word_t := (OTHERS => (OTHERS => '0'));
-    SIGNAL result                                                        : opcode_word_t := (OTHERS => (OTHERS => '0'));
-    SIGNAL wdata                                                         : opcode_word_t := (OTHERS => (OTHERS => '0'));
-    SIGNAL daddr                                                         : opcode_word_t := (OTHERS => (OTHERS => '0'));
+    ATTRIBUTE syn_keep : BOOLEAN;
+    SIGNAL decode_error : opcode_bit_t := (OTHERS => '1');
+    SIGNAL writeback : opcode_bit_t := (OTHERS => '0');
+    SIGNAL update_pc : opcode_group_bit_t := (OTHERS => '1');
+    SIGNAL dwe, dre : opcode_bit_t := (OTHERS => '0');
+    SIGNAL selected : opcode_bit_t := (OTHERS => '0');
+    SIGNAL next_pc, r_next_pc : opcode_group_word_t := (OTHERS => (OTHERS => '0'));
+    SIGNAL result : opcode_word_t := (OTHERS => (OTHERS => '0'));
+    SIGNAL wdata : opcode_word_t := (OTHERS => (OTHERS => '0'));
+    SIGNAL daddr : opcode_word_t := (OTHERS => (OTHERS => '0'));
     SIGNAL registerfile_rdata_rs1, registerfile_rdata_rs2, r_instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL writeback_we                                                  : opcode_group_bit_t  := (OTHERS => '0');
-    SIGNAL writeback_rd, writeback_rs1, writeback_rs2                    : opcode_group_word_t := (OTHERS => (OTHERS => '0'));
-    SIGNAL writeback_pc                                                  : opcode_group_word_t := (OTHERS => (OTHERS => '0'));
-    SIGNAL eu_we, eu_busy, execunit_busy                                 : opcode_group_bit_t;
+    SIGNAL writeback_we : opcode_group_bit_t := (OTHERS => '0');
+    SIGNAL writeback_rd, writeback_rs1, writeback_rs2 : opcode_group_word_t := (OTHERS => (OTHERS => '0'));
+    SIGNAL writeback_pc : opcode_group_word_t := (OTHERS => (OTHERS => '0'));
+    SIGNAL eu_we, eu_busy, execunit_busy : opcode_group_bit_t;
 
     SIGNAL uses_rs1, uses_rs2, updates_pc, updates_rd : opcode_bit_t := (OTHERS => '0');
 
-    SIGNAL allready               : STD_LOGIC;
+    SIGNAL allready : STD_LOGIC;
     SIGNAL eu_mem_busy, eu_mem_we : STD_LOGIC;
 
-    ALIAS funct7                                                : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata(31 DOWNTO 25);
-    ALIAS rs2                                                   : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(24 DOWNTO 20);
-    ALIAS rs1                                                   : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(19 DOWNTO 15);
-    ALIAS funct3                                                : STD_LOGIC_VECTOR(2 DOWNTO 0) IS inst_rdata(14 DOWNTO 12);
-    ALIAS rd                                                    : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(11 DOWNTO 7);
-    ALIAS opcode                                                : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata(6 DOWNTO 0);
-    SIGNAL rs1_data_out, rs2_data_out, rs1_data_in, rs2_data_in : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL update_rs1, update_rs2                               : STD_LOGIC;
+    ALIAS funct7 : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata(31 DOWNTO 25);
+    ALIAS rs2 : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(24 DOWNTO 20);
+    ALIAS rs1 : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(19 DOWNTO 15);
+    ALIAS funct3 : STD_LOGIC_VECTOR(2 DOWNTO 0) IS inst_rdata(14 DOWNTO 12);
+    ALIAS rd : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(11 DOWNTO 7);
+    ALIAS opcode : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata(6 DOWNTO 0);
+    SIGNAL rs1_data_out, rs2_data_out : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL update_rs1, update_rs2 : STD_LOGIC;
 
     TYPE owner_t IS ARRAY(NATURAL RANGE <>) OF opcode_group_t;
     SIGNAL owner : owner_t(32 DOWNTO 0) := (OTHERS => OPCODE_INVALID);
@@ -685,79 +683,76 @@ END COMPONENT;
 
     SIGNAL regfile_rd : STD_LOGIC_VECTOR(4 DOWNTO 0);
     SIGNAL rd_data_in : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL eu_rdy     : opcode_group_bit_t;
+    SIGNAL eu_rdy : opcode_group_bit_t;
 
     SIGNAL decoded : opcode_group_t;
 
     SIGNAL rd_registers, rd_registers_shifted : STD_LOGIC_VECTOR(1023 DOWNTO 0);
 
     SIGNAL n_pc, rs1_data, rs2_data : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    signal lock_pc : std_logic;
-    signal new_pc_lock_owner : opcode_group_t;
-    signal pc_locked : std_logic;
+    SIGNAL lock_pc : STD_LOGIC;
+    SIGNAL new_pc_lock_owner : opcode_group_t;
+    SIGNAL pc_locked : STD_LOGIC;
+
+    SIGNAL pc_locked_r, pc_locked_r_r : STD_LOGIC;
+
+    SIGNAL rs1_data_in, rs2_data_in : opcode_group_word_t;
 
 BEGIN
-allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0')
-AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '1')))
-AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '1')))
-AND (eu_busy(f_decode_exec_unit(inst_rdata)) = '0')
-ELSE
-'0';
+    allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0') AND (pc_locked_r = '0') AND (pc_locked_r_r = '0')
+        AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '1')))
+        AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '1')))
+        AND (eu_busy(f_decode_exec_unit(inst_rdata)) = '0')
+        ELSE
+        '0';
 
-    inst_addr  <= pc;
-    inst_re    <= '1';
+    inst_addr <= pc;
+    inst_re <= '1';
     inst_width <= "10"; -- unused
-
-
     next_pc(OPCODE_INVALID) <= pc + X"00000004"; -- when pc < X"00200034" else entry_point;
     rd_out(OPCODE_INVALID) <= (OTHERS => '0');
-    eu_rdy(OPCODE_INVALID)  <= '1';
+    eu_rdy(OPCODE_INVALID) <= '1';
     eu_busy(OPCODE_INVALID) <= '0';
-
-
     new_pc_lock_owner <= f_decode_exec_unit(inst_rdata);
 
-    regfile_rd             <= rd_out(f_decode_exec_unit(inst_rdata));
-    rd_data_in             <= writeback_rd(f_decode_exec_unit(inst_rdata));
+    regfile_rd <= rd_out(f_decode_exec_unit(inst_rdata));
 
+    rd_data_in <= writeback_rd(f_decode_exec_unit(inst_rdata));
+    update_rd <= '1' WHEN eu_rdy(f_decode_exec_unit(inst_rdata)) = '1' AND owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) /= OPCODE_INVALID ELSE '0';
 
     PROCESS (inst_rdata, allready)
     BEGIN
         eu_we <= (OTHERS => '0');
         update_pc(OPCODE_INVALID) <= '0';
         lock_pc <= '0';
-        update_rd <= '0';
-        if allready = '1' then
+        IF allready = '1' THEN
             eu_we(f_decode_exec_unit(inst_rdata)) <= '1';
             update_pc(OPCODE_INVALID) <= '1';
             lock_pc <= f_updates_pc(inst_rdata);
-            update_rd <= f_updates_rd(inst_rdata);
-        end if;
+        END IF;
     END PROCESS;
 
     PROCESS (rst, clk)
     BEGIN
         IF rst = '1' THEN
             owner <= (OTHERS => OPCODE_INVALID);
+            pc_locked_r <= '0';
+            pc_locked_r_r <= '0';
         ELSIF rising_edge(clk) THEN
-            if allready = '1' then
+            pc_locked_r <= pc_locked;
+            pc_locked_r_r <= pc_locked_r;
+            IF allready = '1' THEN
 
-                IF (owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) = f_decode_exec_unit(inst_rdata)) THEN
-                    owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) <= OPCODE_INVALID;
-                END IF;
+                owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) <= OPCODE_INVALID;
 
                 IF (f_updates_rd(inst_rdata) = '1') THEN
                     owner(to_integer(unsigned(rd))) <= f_decode_exec_unit(inst_rdata);
                 END IF;
-            end if;
+            END IF;
         END IF;
     END PROCESS;
-
-                
-
-
     i_regfile_half : regfile_half
-    GENERIC MAP( entry_point => entry_point )
+    GENERIC MAP(entry_point => entry_point)
     PORT MAP(
 
         clk => clk, rst => rst,
@@ -773,12 +768,8 @@ ELSE
         pc_locked => pc_locked
 
     );
-
-
-    rs1_data <= writeback_rs1(owner(to_integer(unsigned(rs1)))) when rs1 /= "00000" else (others => '0'); -- have to do it like this or else ghdl won't synth :(
-    rs2_data <= writeback_rs2(owner(to_integer(unsigned(rs2)))) when rs2 /= "00000" else (others => '0'); 
-
-
+    rs1_data <= writeback_rs1(owner(to_integer(unsigned(rs1)))) WHEN rs1 /= "00000" ELSE (OTHERS => '0'); -- have to do it like this or else ghdl won't synth :(
+    rs2_data <= writeback_rs2(owner(to_integer(unsigned(rs2)))) WHEN rs2 /= "00000" ELSE (OTHERS => '0');
 
     i_eu_mem : eu_mem
     PORT MAP(
@@ -787,15 +778,15 @@ ELSE
         we => eu_we(OPCODE_MEM_TYPE),
         rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata,
 
-        writeback_rd  => writeback_rd(OPCODE_MEM_TYPE),
+        writeback_rd => writeback_rd(OPCODE_MEM_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_MEM_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_MEM_TYPE),
 
         mem_wack => data_wack, mem_rdy => data_rdy, mem_rdata => data_rdata, mem_wdata => data_wdata, mem_addr => data_addr, mem_width => data_width,
         mem_re => data_re, mem_we => data_we,
-        rd   => rd_out(OPCODE_MEM_TYPE),
+        rd => rd_out(OPCODE_MEM_TYPE),
         busy => eu_busy(OPCODE_MEM_TYPE),
-        rdy  => eu_rdy(OPCODE_MEM_TYPE)
+        rdy => eu_rdy(OPCODE_MEM_TYPE)
     );
     i_eu_b : eu_b_type
     PORT MAP(
@@ -804,16 +795,16 @@ ELSE
         we => eu_we(OPCODE_B_TYPE),
         rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => pc,
 
-        writeback_rd  => writeback_rd(OPCODE_B_TYPE),
+        writeback_rd => writeback_rd(OPCODE_B_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_B_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_B_TYPE),
 
         update_pc => update_pc(OPCODE_B_TYPE),
         next_pc => next_pc(OPCODE_B_TYPE),
 
-        rd   => rd_out(OPCODE_B_TYPE),
+        rd => rd_out(OPCODE_B_TYPE),
         busy => eu_busy(OPCODE_B_TYPE),
-        rdy  => eu_rdy(OPCODE_B_TYPE)
+        rdy => eu_rdy(OPCODE_B_TYPE)
     );
 
     i_eu_i : eu_i_type
@@ -823,16 +814,16 @@ ELSE
         we => eu_we(OPCODE_I_TYPE),
         rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => pc,
 
-        writeback_rd  => writeback_rd(OPCODE_I_TYPE),
+        writeback_rd => writeback_rd(OPCODE_I_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_I_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_I_TYPE),
 
         update_pc => update_pc(OPCODE_I_TYPE),
         next_pc => next_pc(OPCODE_I_TYPE),
 
-        rd   => rd_out(OPCODE_I_TYPE),
+        rd => rd_out(OPCODE_I_TYPE),
         busy => eu_busy(OPCODE_I_TYPE),
-        rdy  => eu_rdy(OPCODE_I_TYPE)
+        rdy => eu_rdy(OPCODE_I_TYPE)
     );
 
     i_eu_j : eu_j_type
@@ -842,16 +833,16 @@ ELSE
         we => eu_we(OPCODE_J_TYPE),
         rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => pc,
 
-        writeback_rd  => writeback_rd(OPCODE_J_TYPE),
+        writeback_rd => writeback_rd(OPCODE_J_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_J_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_J_TYPE),
 
         update_pc => update_pc(OPCODE_J_TYPE),
         next_pc => next_pc(OPCODE_J_TYPE),
 
-        rd   => rd_out(OPCODE_J_TYPE),
+        rd => rd_out(OPCODE_J_TYPE),
         busy => eu_busy(OPCODE_J_TYPE),
-        rdy  => eu_rdy(OPCODE_J_TYPE)
+        rdy => eu_rdy(OPCODE_J_TYPE)
     );
 
     i_eu_r : eu_r_type
@@ -861,16 +852,16 @@ ELSE
         we => eu_we(OPCODE_R_TYPE),
         rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => pc,
 
-        writeback_rd  => writeback_rd(OPCODE_R_TYPE),
+        writeback_rd => writeback_rd(OPCODE_R_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_R_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_R_TYPE),
 
         update_pc => update_pc(OPCODE_R_TYPE),
         next_pc => next_pc(OPCODE_R_TYPE),
 
-        rd   => rd_out(OPCODE_R_TYPE),
+        rd => rd_out(OPCODE_R_TYPE),
         busy => eu_busy(OPCODE_R_TYPE),
-        rdy  => eu_rdy(OPCODE_R_TYPE)
+        rdy => eu_rdy(OPCODE_R_TYPE)
     );
 
     i_eu_u : eu_u_type
@@ -880,15 +871,15 @@ ELSE
         we => eu_we(OPCODE_U_TYPE),
         rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => pc,
 
-        writeback_rd  => writeback_rd(OPCODE_U_TYPE),
+        writeback_rd => writeback_rd(OPCODE_U_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_U_TYPE),
 
         update_pc => update_pc(OPCODE_U_TYPE),
         next_pc => next_pc(OPCODE_U_TYPE),
 
-        rd   => rd_out(OPCODE_U_TYPE),
+        rd => rd_out(OPCODE_U_TYPE),
         busy => eu_busy(OPCODE_U_TYPE),
-        rdy  => eu_rdy(OPCODE_U_TYPE)
+        rdy => eu_rdy(OPCODE_U_TYPE)
     );
 END behavioural;

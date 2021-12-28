@@ -383,19 +383,19 @@ BEGIN
     process(state, we, state, op, mem_rdy, mem_wack)
     begin
         n_state <= state;
-        busy <= '1';
+        busy <= '0';
+        rdy <= '1';
         mem_re <= '0';
         mem_we <= '0';
         writeback_we <= '0';
-        rdy <= '0';
         case state is
             when S_IDLE =>
-                rdy <= '1';
-                busy <= '0';
                 if we = '1' then
                     n_state <= S_BUSY;
                 end if;
             when S_BUSY =>
+                busy <= '1';
+                rdy <= '0';
                 if op = OPCODE_I_TYPE_LOAD then
                     mem_re <= '1';
                     if mem_rdy = '1' then
