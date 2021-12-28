@@ -353,6 +353,7 @@ BEGIN
             writeback_rs2 <= (others => '0');
         elsIF rising_edge(clk) THEN
 
+
             state <= n_state;
 
             --r_we         <= we;
@@ -368,13 +369,16 @@ BEGIN
                 r_rs1_data    <= rs1_data;
                 r_rs2_data    <= rs2_data;
                 r_instruction <= instruction;
+
+                mem_addr <= rs1_data + f_decode_imm(instruction);
+                mem_wdata <= rs2_data;
+                mem_width <= instruction(13 downto 12);
+
             END IF;
         END IF;
     END PROCESS;
 
-    mem_addr <= rs1_data + f_decode_imm(r_instruction);
-    mem_wdata <= rs2_data;
-    mem_width <= r_instruction(13 downto 12);
+
     -- not formally correct, still need to account for funct3(2), i.e.: r_instruction(14), and sign extension
     -- preferrably not even feeding execution unit if instruction is invalid
 

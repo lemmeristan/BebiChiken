@@ -297,22 +297,22 @@ ARCHITECTURE behavioural OF cpu IS
 
         IF opcode = "1100011" THEN -- Branch
             IF funct3 = "000" THEN
-                RETURN OPCODE_B_TYPE;
+                RETURN OPCODE_BRANCH_TYPE;
             END IF;
             IF funct3 = "001" THEN
-                RETURN OPCODE_B_TYPE;
+                RETURN OPCODE_BRANCH_TYPE;
             END IF;
             IF funct3 = "100" THEN
-                RETURN OPCODE_B_TYPE;
+                RETURN OPCODE_BRANCH_TYPE;
             END IF;
             IF funct3 = "101" THEN
-                RETURN OPCODE_B_TYPE;
+                RETURN OPCODE_BRANCH_TYPE;
             END IF;
             IF funct3 = "110" THEN
-                RETURN OPCODE_B_TYPE;
+                RETURN OPCODE_BRANCH_TYPE;
             END IF;
             IF funct3 = "111" THEN
-                RETURN OPCODE_B_TYPE;
+                RETURN OPCODE_BRANCH_TYPE;
             END IF;
             RETURN OPCODE_INVALID;
         END IF;
@@ -326,11 +326,11 @@ ARCHITECTURE behavioural OF cpu IS
         END IF;
 
         IF opcode = "1101111" THEN
-            RETURN OPCODE_J_TYPE; -- JAL
+            RETURN OPCODE_BRANCH_TYPE; -- JAL
         END IF;
 
         IF opcode = "1100111" THEN
-            RETURN OPCODE_J_TYPE; -- JALR
+            RETURN OPCODE_BRANCH_TYPE; -- JALR
         END IF;
 
         RETURN OPCODE_INVALID;
@@ -528,7 +528,7 @@ ARCHITECTURE behavioural OF cpu IS
         );
     END COMPONENT;
 
-    COMPONENT eu_b_type IS
+    COMPONENT eu_branch_type IS
         PORT (
             rst, clk : IN STD_LOGIC;
 
@@ -578,22 +578,7 @@ ARCHITECTURE behavioural OF cpu IS
 
         );
     END COMPONENT;
-    COMPONENT eu_j_type IS
-        PORT (
-            rst, clk : IN STD_LOGIC;
 
-            we : IN STD_LOGIC;
-            rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-            busy, rdy : OUT STD_LOGIC
-
-        );
-    END COMPONENT;
     COMPONENT eu_u_type IS
         PORT (
             rst, clk : IN STD_LOGIC;
@@ -620,7 +605,7 @@ ARCHITECTURE behavioural OF cpu IS
 
     --SIGNAL instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-    SIGNAL pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    --SIGNAL pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
     --SIGNAL imm_i, imm_s, imm_b, imm_u, imm_j, imm_jalr : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
     --ATTRIBUTE syn_encoding : STRING;
@@ -628,7 +613,7 @@ ARCHITECTURE behavioural OF cpu IS
 
     ATTRIBUTE syn_keep : BOOLEAN;
     SIGNAL update_pc : std_logic;
-    SIGNAL i_next_pc : opcode_group_word_t;
+    SIGNAL branch_next_pc : std_logic_vector(31 downto 0);
     SIGNAL writeback_rd, writeback_rs1, writeback_rs2 : opcode_group_word_t;
     SIGNAL eu_we, eu_busy : opcode_group_bit_t;
 
@@ -654,58 +639,72 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL eu_rdy : opcode_group_bit_t;
 
 
-    SIGNAL rs1_data, rs2_data, next_pc : STD_LOGIC_VECTOR(31 DOWNTO 0); -- n_pc
-    SIGNAL lock_pc : STD_LOGIC;
-    SIGNAL new_pc_lock_owner : opcode_group_t;
+    SIGNAL rs1_data, rs2_data, next_pc, regfile_pc : STD_LOGIC_VECTOR(31 DOWNTO 0); -- n_pc
+
+    signal pc_locked, pc_locked_r, pc_locked_r_r : std_logic;
+
 
 BEGIN
-    allready <= '1' WHEN (inst_rdy = '1') --AND (pc_locked = '0') AND (pc_locked_r = '0') AND (pc_locked_r_r = '0')
+    allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0') AND (pc_locked_r = '0') AND (pc_locked_r_r = '0')
         AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '1')))
         AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '1')))
         AND (eu_busy(f_decode_exec_unit(inst_rdata)) = '0')
-        AND (owner(32) = OPCODE_INVALID) -- PC is ready
         ELSE
         '0';
 
-    inst_addr <= pc;
+    inst_addr <= regfile_pc;
     inst_re <= '1';
     inst_width <= "10"; -- unused
-    i_next_pc(OPCODE_INVALID) <= pc + X"00000004"; -- when pc < X"00200034" else entry_point;
-    i_next_pc(OPCODE_MEM_TYPE) <= pc + X"00000004"; -- when pc < X"00200034" else entry_point;
+
+
+
     rd_out(OPCODE_INVALID) <= "00000";
     eu_rdy(OPCODE_INVALID) <= '1';
     eu_busy(OPCODE_INVALID) <= '0';
-    new_pc_lock_owner <= f_decode_exec_unit(inst_rdata);
 
-    next_pc <= i_next_pc(owner(32));
 
     regfile_rd <= rd_out(f_decode_exec_unit(inst_rdata));
 
     rd_data_in <= writeback_rd(f_decode_exec_unit(inst_rdata));
-    update_rd <= '1' WHEN eu_rdy(f_decode_exec_unit(inst_rdata)) = '1' AND owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) /= OPCODE_INVALID ELSE '0';
+    update_rd <= '1' WHEN eu_rdy(f_decode_exec_unit(inst_rdata)) = '1' AND owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) = f_decode_exec_unit(inst_rdata) ELSE '0';
     writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
 
-    PROCESS (inst_rdata, allready)
+    PROCESS (inst_rdata, allready, eu_rdy, branch_next_pc, owner, regfile_pc)
     BEGIN
         eu_we <= (OTHERS => '0');
+        eu_we(f_decode_exec_unit(inst_rdata)) <= allready;
+
+        next_pc <= regfile_pc;
         update_pc <= '0';
-        IF allready = '1' THEN
-            update_pc <= '1';
-            eu_we(f_decode_exec_unit(inst_rdata)) <= '1';
-        elsif eu_rdy(owner(32)) = '1' then
-            update_pc <= '1';
-        end if;
+        case owner(32) is
+            when OPCODE_BRANCH_TYPE =>
+                next_pc <= branch_next_pc;
+                update_pc <= eu_rdy(OPCODE_BRANCH_TYPE);
+            when OPCODE_INVALID =>
+                next_pc <= regfile_pc + X"00000004";
+                update_pc <= allready; -- and (not f_updates_pc(inst_rdata));
+            when others =>
+                next_pc <= entry_point;
+                update_pc <= '1';
+        end case;
     END PROCESS;
+
+
+
+
+    pc_locked <= '0' when owner(32) = OPCODE_INVALID else '1';
 
     PROCESS (rst, clk)
     BEGIN
         IF rst = '1' THEN
             owner <= (OTHERS => OPCODE_INVALID);
-            --pc_locked_r <= '0';
-            --pc_locked_r_r <= '0';
+
+            pc_locked_r <= '1';
+            pc_locked_r_r <= '1';
         ELSIF rising_edge(clk) THEN
-            --pc_locked_r <= pc_locked;
-            --pc_locked_r_r <= pc_locked_r;
+            pc_locked_r <= pc_locked;
+            pc_locked_r_r <= pc_locked_r;
+
             IF allready = '1' THEN
 
                 owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) <= OPCODE_INVALID;
@@ -718,9 +717,15 @@ BEGIN
                     owner(32) <= f_decode_exec_unit(inst_rdata);
                 END IF;
 
-            elsif eu_rdy(owner(32)) = '1' then
+            elsif update_pc = '1' then
                 owner(32) <= OPCODE_INVALID;
             end if;
+
+
+
+
+
+
 
 
         END IF;
@@ -731,7 +736,7 @@ BEGIN
 
         clk => clk, rst => rst,
         rs1 => rs1, rs2 => rs2, rd => regfile_rd,
-        rs1_data_out => writeback_rs1(OPCODE_INVALID), rs2_data_out => writeback_rs2(OPCODE_INVALID), pc => pc,
+        rs1_data_out => writeback_rs1(OPCODE_INVALID), rs2_data_out => writeback_rs2(OPCODE_INVALID), pc => regfile_pc,
         update_rd => update_rd, update_pc => update_pc,
         rd_data_in => rd_data_in, next_pc => next_pc
 
@@ -756,23 +761,23 @@ BEGIN
         busy => eu_busy(OPCODE_MEM_TYPE),
         rdy => eu_rdy(OPCODE_MEM_TYPE)
     );
-    i_eu_b : eu_b_type
+    i_eu_branch : eu_branch_type
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we(OPCODE_B_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => pc,
+        we => eu_we(OPCODE_BRANCH_TYPE),
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
 
-        writeback_rd => writeback_rd(OPCODE_B_TYPE),
-        writeback_rs1 => writeback_rs1(OPCODE_B_TYPE),
-        writeback_rs2 => writeback_rs2(OPCODE_B_TYPE),
+        writeback_rd => writeback_rd(OPCODE_BRANCH_TYPE),
+        writeback_rs1 => writeback_rs1(OPCODE_BRANCH_TYPE),
+        writeback_rs2 => writeback_rs2(OPCODE_BRANCH_TYPE),
 
-        --update_pc => update_pc(OPCODE_B_TYPE),
-        next_pc => i_next_pc(OPCODE_B_TYPE),
+        --update_pc => update_pc(OPCODE_BRANCH_TYPE),
+        next_pc => branch_next_pc,
 
-        rd => rd_out(OPCODE_B_TYPE),
-        busy => eu_busy(OPCODE_B_TYPE),
-        rdy => eu_rdy(OPCODE_B_TYPE)
+        rd => rd_out(OPCODE_BRANCH_TYPE),
+        busy => eu_busy(OPCODE_BRANCH_TYPE),
+        rdy => eu_rdy(OPCODE_BRANCH_TYPE)
     );
 
     i_eu_i : eu_i_type
@@ -780,37 +785,15 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_I_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => pc,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
 
         writeback_rd => writeback_rd(OPCODE_I_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_I_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_I_TYPE),
 
-        --update_pc => update_pc(OPCODE_I_TYPE),
-        next_pc => i_next_pc(OPCODE_I_TYPE),
-
         rd => rd_out(OPCODE_I_TYPE),
         busy => eu_busy(OPCODE_I_TYPE),
         rdy => eu_rdy(OPCODE_I_TYPE)
-    );
-
-    i_eu_j : eu_j_type
-    PORT MAP(
-        rst => rst, clk => clk,
-
-        we => eu_we(OPCODE_J_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => pc,
-
-        writeback_rd => writeback_rd(OPCODE_J_TYPE),
-        writeback_rs1 => writeback_rs1(OPCODE_J_TYPE),
-        writeback_rs2 => writeback_rs2(OPCODE_J_TYPE),
-
-        --update_pc => update_pc(OPCODE_J_TYPE),
-        next_pc => i_next_pc(OPCODE_J_TYPE),
-
-        rd => rd_out(OPCODE_J_TYPE),
-        busy => eu_busy(OPCODE_J_TYPE),
-        rdy => eu_rdy(OPCODE_J_TYPE)
     );
 
     i_eu_r : eu_r_type
@@ -818,14 +801,11 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_R_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => pc,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
 
         writeback_rd => writeback_rd(OPCODE_R_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_R_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_R_TYPE),
-
-        --update_pc => update_pc(OPCODE_R_TYPE),
-        next_pc => i_next_pc(OPCODE_R_TYPE),
 
         rd => rd_out(OPCODE_R_TYPE),
         busy => eu_busy(OPCODE_R_TYPE),
@@ -837,14 +817,11 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_U_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => pc,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
 
         writeback_rd => writeback_rd(OPCODE_U_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
         writeback_rs2 => writeback_rs2(OPCODE_U_TYPE),
-
-        --update_pc => update_pc(OPCODE_U_TYPE),
-        next_pc => i_next_pc(OPCODE_U_TYPE),
 
         rd => rd_out(OPCODE_U_TYPE),
         busy => eu_busy(OPCODE_U_TYPE),

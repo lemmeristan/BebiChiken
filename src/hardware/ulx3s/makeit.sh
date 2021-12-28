@@ -14,7 +14,7 @@ PERIPHERALS_VHDLS=("${UART_VHDLS[@]/#/peripherals/uart/} ${SDRAM_VHDLS[@]/#/peri
 
 
 VERILOGS="${PERIPHERALS_VERILOGS[@]}" # HDMI_test_hires.v HDMI_clock.v TMDS_encoder.v"
-VHDLS="datatypes.vhd top.vhd cpu/cpu.vhd cpu/regfile_half.vhd cpu/eu_mem.vhd mmu.vhd cpu/eu_b_type.vhd cpu/eu_i_type.vhd cpu/eu_j_type.vhd cpu/eu_r_type.vhd cpu/eu_u_type.vhd   ${PERIPHERALS_VHDLS[@]}" #  gpio.vhd timebase.vhd hdmi.vhd ram.vhd " # cpu/eu_b_type.vhd cpu/eu_i_type.vhd cpu/eu_j_type.vhd cpu/eu_r_type.vhd cpu/eu_u_type.vhd 
+VHDLS="datatypes.vhd top.vhd cpu/cpu.vhd cpu/regfile_half.vhd cpu/eu_mem.vhd mmu.vhd cpu/eu_i_type.vhd cpu/eu_branch_type.vhd cpu/eu_r_type.vhd cpu/eu_u_type.vhd   ${PERIPHERALS_VHDLS[@]}" #  gpio.vhd timebase.vhd hdmi.vhd ram.vhd " # cpu/eu_b_type.vhd cpu/eu_i_type.vhd cpu/eu_j_type.vhd cpu/eu_r_type.vhd cpu/eu_u_type.vhd 
 
 if [ $1 == "clean" ]; then
   rm -f *.bit *.json *.config *.svf *~

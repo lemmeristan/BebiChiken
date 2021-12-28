@@ -79,15 +79,7 @@ ARCHITECTURE behavioural OF top IS
     data_addr, data_wdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     data_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
     data_re, data_we : OUT STD_LOGIC;
-    data_rdy, data_wack : IN STD_LOGIC;
-
-    -- -- Register file
-    -- registerfile_rs1, registerfile_rs2, registerfile_rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-    -- registerfile_wdata_rd : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    -- registerfile_rdata_rs1, registerfile_rdata_rs2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    -- registerfile_we : OUT STD_LOGIC;
-
-    err : OUT STD_LOGIC
+    data_rdy, data_wack : IN STD_LOGIC
     );
   END COMPONENT;
 
