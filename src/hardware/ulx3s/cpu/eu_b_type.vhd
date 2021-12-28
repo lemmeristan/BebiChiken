@@ -15,7 +15,6 @@ ENTITY eu_b_type IS
         writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        update_pc : OUT STD_LOGIC;
 
         rd : out std_logic_vector(4 downto 0);
         busy, rdy : out std_logic
@@ -343,12 +342,10 @@ BEGIN
             rdy <= '0';
             next_pc <= (others => '0');
             rd <= (others => '0');
-            update_pc <= '0';
         elsIF rising_edge(clk) THEN
         rd <= r_instruction(11 DOWNTO 7);
 
             r_we         <= we;
-            update_pc <= r_we;
             if r_we = '1' then
                 next_pc <= i_next_pc;
                 rdy <= '1';

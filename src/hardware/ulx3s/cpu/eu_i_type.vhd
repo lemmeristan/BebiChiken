@@ -15,9 +15,7 @@ ENTITY eu_i_type IS
         writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        update_pc : OUT STD_LOGIC;
 
-        --uses_rs1, uses_rs2, updates_rd, updates_pc, 
         rd : out std_logic_vector(4 downto 0);
         busy, rdy : out std_logic
 
@@ -369,7 +367,6 @@ BEGIN
 
     PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)
     BEGIN
-        update_pc        <= '0';
         i_writeback_result <= (OTHERS => '0');
         i_next_pc <= r_pc + X"00000004";
 
