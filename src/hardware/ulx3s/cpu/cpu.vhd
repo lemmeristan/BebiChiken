@@ -640,6 +640,7 @@ ARCHITECTURE behavioural OF cpu IS
 
 
     SIGNAL rs1_data, rs2_data, next_pc, regfile_pc : STD_LOGIC_VECTOR(31 DOWNTO 0); -- n_pc
+    signal rs1_data_in, rs2_data_in : opcode_group_word_t;
 
     signal pc_locked, pc_locked_r, pc_locked_r_r : std_logic;
 
@@ -687,6 +688,16 @@ BEGIN
                 next_pc <= entry_point;
                 update_pc <= '1';
         end case;
+
+
+        rs1_data_in <= (others => (others => '0'));
+        rs1_data_in(f_decode_exec_unit(inst_rdata)) <= rs1_data;
+        rs2_data_in <= (others => (others => '0'));
+        rs2_data_in(f_decode_exec_unit(inst_rdata)) <= rs2_data;
+
+        
+
+
     END PROCESS;
 
 
@@ -749,7 +760,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_MEM_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata,
+        rs1_data => rs1_data_in(OPCODE_MEM_TYPE), rs2_data => rs2_data_in(OPCODE_MEM_TYPE), instruction => inst_rdata,
 
         writeback_rd => writeback_rd(OPCODE_MEM_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_MEM_TYPE),
@@ -766,7 +777,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_BRANCH_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
+        rs1_data => rs1_data_in(OPCODE_BRANCH_TYPE), rs2_data => rs2_data_in(OPCODE_BRANCH_TYPE), instruction => inst_rdata, pc => regfile_pc,
 
         writeback_rd => writeback_rd(OPCODE_BRANCH_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_BRANCH_TYPE),
@@ -785,7 +796,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_I_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
+        rs1_data => rs1_data_in(OPCODE_I_TYPE), rs2_data => rs2_data_in(OPCODE_I_TYPE), instruction => inst_rdata, pc => regfile_pc,
 
         writeback_rd => writeback_rd(OPCODE_I_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_I_TYPE),
@@ -801,7 +812,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_R_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
+        rs1_data => rs1_data_in(OPCODE_R_TYPE), rs2_data => rs2_data_in(OPCODE_R_TYPE), instruction => inst_rdata, pc => regfile_pc,
 
         writeback_rd => writeback_rd(OPCODE_R_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_R_TYPE),
@@ -817,7 +828,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_U_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
+        rs1_data => rs1_data_in(OPCODE_U_TYPE), rs2_data => rs2_data_in(OPCODE_U_TYPE), instruction => inst_rdata, pc => regfile_pc,
 
         writeback_rd => writeback_rd(OPCODE_U_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
