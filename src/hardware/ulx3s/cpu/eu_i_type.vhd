@@ -17,7 +17,7 @@ ENTITY eu_i_type IS
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         rd : out std_logic_vector(4 downto 0);
-        busy, rdy : out std_logic
+        busy, rdy, update_rd : out std_logic
 
     );
 END eu_i_type;
@@ -339,13 +339,16 @@ BEGIN
             r_rs2_data <= (others => '0');
             r_instruction <= (others => '0');
             r_pc <= (others => '0');
-            rdy <= '0';
+            rdy <= '1';
             next_pc <= (others => '0');
             rd <= (others => '0');
+            update_rd <= '0';
         elsIF rising_edge(clk) THEN
         rd <= r_instruction(11 DOWNTO 7);
 
             r_we         <= we;
+            update_rd <= f_updates_rd(r_instruction);
+
             if r_we = '1' then
                 next_pc <= i_next_pc;
                 rdy <= '1';

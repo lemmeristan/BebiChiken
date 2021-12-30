@@ -216,6 +216,8 @@ BEGIN
         n_dirty <= dirty;
         skiptostop <= '0';
 
+        n_current_port_selection <= current_port_selection;
+
         CASE state IS
                 -- execute the initialisation sequence
             WHEN INIT =>

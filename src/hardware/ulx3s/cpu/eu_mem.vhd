@@ -22,7 +22,7 @@ ENTITY eu_mem IS
 
         rd : out std_logic_vector(4 downto 0);
 
-        busy, rdy : out std_logic 
+        busy, rdy, update_rd : out std_logic 
 
     );
 END eu_mem;
@@ -351,6 +351,7 @@ BEGIN
             writeback_rd <= (others => '0');
             writeback_rs1 <= (others => '0');
             writeback_rs2 <= (others => '0');
+            update_rd <= '0';
         elsIF rising_edge(clk) THEN
 
 
@@ -364,6 +365,7 @@ BEGIN
                 writeback_rs1 <= mem_rdata;
                 writeback_rs2 <= mem_rdata;
             end if;
+            update_rd <= f_updates_rd(r_instruction);
 
             IF we = '1' THEN
                 r_rs1_data    <= rs1_data;

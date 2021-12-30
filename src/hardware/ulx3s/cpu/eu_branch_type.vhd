@@ -18,7 +18,7 @@ ENTITY eu_branch_type IS
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         rd : out std_logic_vector(4 downto 0);
-        busy, rdy : out std_logic
+        busy, rdy, update_rd : out std_logic
 
     );
 END eu_branch_type;
@@ -324,6 +324,7 @@ ARCHITECTURE behavioural OF eu_branch_type IS
     END;
     SIGNAL r_rs1_data, r_rs2_data, r_instruction, r_pc, i_writeback_result, i_next_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
     signal r_we : std_logic;
+    signal n_rd : std_logic_vector(4 downto 0);
 
 BEGIN
 
@@ -340,13 +341,15 @@ BEGIN
             r_rs2_data <= (others => '0');
             r_instruction <= (others => '0');
             r_pc <= (others => '0');
-            rdy <= '0';
+            rdy <= '1';
             next_pc <= (others => '0');
             rd <= (others => '0');
+            update_rd <= '0';
 
         elsIF rising_edge(clk) THEN
 
             r_we         <= we;
+            update_rd <= f_updates_rd(r_instruction);
 
 
             IF we = '1' THEN
@@ -358,7 +361,7 @@ BEGIN
             end if;
 
             if r_we = '1' then
-                rd <= r_instruction(11 DOWNTO 7);
+                rd <= n_rd;
                 next_pc <= i_next_pc;
                 rdy <= '1';
                 writeback_rd <= i_writeback_result;
@@ -374,6 +377,7 @@ BEGIN
     BEGIN
         i_writeback_result <= (OTHERS => '0');
         i_next_pc <= r_pc + X"00000004";
+        n_rd <= "00000";
 
 
         CASE f_decode_opcode(r_instruction) IS
@@ -381,10 +385,12 @@ BEGIN
             WHEN OPCODE_J_TYPE_JAL =>
                 i_writeback_result <= r_pc + X"00000004";
                 i_next_pc <= r_pc + f_decode_imm(r_instruction);
+                n_rd <= r_instruction(11 DOWNTO 7);
 
             WHEN OPCODE_J_TYPE_JALR =>
                 i_writeback_result <= r_pc + X"00000004";
                 i_next_pc <= (f_decode_imm(r_instruction) + r_rs1_data) AND X"FFFFFFFE";
+                n_rd <=                 r_instruction(11 DOWNTO 7);
 
             WHEN OPCODE_B_TYPE_BEQ =>
                 IF signed(r_rs1_data) = signed(r_rs2_data) THEN
