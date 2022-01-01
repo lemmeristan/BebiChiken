@@ -68,17 +68,20 @@ ARCHITECTURE Behavioral OF rom IS
     --     RETURN ROM;
     -- END FUNCTION;
     CONSTANT memory : memory_t := (
-        0 => X"c00027b7", -- start: lui	a5,0xc0002
-        1 => X"00800713", -- li	a4, 4
-        2 => X"00e7a023", -- sw	a4,0(a5) # c0002000
-        3 => X"c00027b7", -- lui	a5,0xc0002
-        4 => X"00478793", -- addi	a5,a5,4 --10
-        5 => X"0007a023", -- sw	zero,0(a5)
-        6 => X"c00027b7", -- lui	a5,0xc0002
-        7 => X"00478793", -- addi	a5,a5,4
-        8 => X"00800713", -- li	a4,4 --20
-        9 => X"00e7a023", -- sw	a4,0(a5) # c0002004
-        10 => X"fe5ff06f", -- j start
+        0 => X"c00017b7",          	--lui	a5,0xc0001
+        1 => X"06800713",          	--li	a4,104
+        2 => X"00e7a023",          	--sw	a4,0(a5) # c0001000
+        3 => X"06500713",          	--li	a4,101
+        4 => X"00e7a023",          	--sw	a4,0(a5)
+        5 => X"06c00713",          	--li	a4,108
+        6 => X"00e7a023",          	--sw	a4,0(a5)
+        7 => X"06c00713",          	--li	a4,108
+        8 => X"00e7a023",          	--sw	a4,0(a5)
+        9 => X"06f00713",          	--li	a4,111
+        10 => X"00e7a023",          	--sw	a4,0(a5)
+        11 => X"00a00713",          	--li	a4,10
+        12 => X"00e7a023",          	--sw	a4,0(a5)
+        13 => X"fcdff06f",          	--j	200000 <blah>
         OTHERS => X"00000013");-- InitRomFromFile(rom_file);
 
     SIGNAL addr_valid : STD_LOGIC;

@@ -82,7 +82,7 @@ BEGIN
         AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '1')))
         AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '1')))
         --AND (eu_we(f_decode_exec_unit(inst_rdata)) = '0')
-        AND (eu_rdy(f_decode_exec_unit(inst_rdata)) = '1')
+        AND (eu_busy(f_decode_exec_unit(inst_rdata)) = '0')
         ELSE
         '0';
 
@@ -156,7 +156,7 @@ BEGIN
 
             END IF;
 
-            IF owner(32) = OPCODE_BRANCH_TYPE AND eu_rdy(OPCODE_BRANCH_TYPE) = '1' THEN
+            IF update_pc = '1' then --owner(32) = OPCODE_BRANCH_TYPE AND eu_rdy(OPCODE_BRANCH_TYPE) = '1' THEN
                 owner(32) <= OPCODE_INVALID;
             END IF;
             IF (f_updates_pc(inst_rdata) = '1') THEN
@@ -206,7 +206,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_BRANCH_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_BRANCH_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_BRANCH_TYPE),
@@ -226,7 +226,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_I_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_I_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_I_TYPE),
@@ -243,7 +243,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_R_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_R_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_R_TYPE),
@@ -260,7 +260,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_U_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_U_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
