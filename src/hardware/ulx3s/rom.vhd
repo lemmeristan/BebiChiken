@@ -72,30 +72,43 @@ ARCHITECTURE Behavioral OF rom IS
         1 => X"00800713", -- li	a4, 4
         2 => X"00e7a023", -- sw	a4,0(a5) # c0002000
         3 => X"c00027b7", -- lui	a5,0xc0002
-        4 => X"00478793", -- addi	a5,a5,4
+        4 => X"00478793", -- addi	a5,a5,4 --10
         5 => X"0007a023", -- sw	zero,0(a5)
         6 => X"c00027b7", -- lui	a5,0xc0002
         7 => X"00478793", -- addi	a5,a5,4
-        8 => X"00800713", -- li	a4,4
+        8 => X"00800713", -- li	a4,4 --20
         9 => X"00e7a023", -- sw	a4,0(a5) # c0002004
         10 => X"fe5ff06f", -- j start
         OTHERS => X"00000013");-- InitRomFromFile(rom_file);
 
     SIGNAL addr_valid : STD_LOGIC;
     SIGNAL idx : INTEGER RANGE 0 TO 32767;
-    SIGNAL relativeaddress : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL relativeaddress, r_addr : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
     SIGNAL romsize_bit : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
 BEGIN
     romsize_bit <= STD_LOGIC_VECTOR(to_unsigned(rom_size, romsize_bit'length));
 
-    relativeaddress <= (addr - base_address) AND (romsize_bit - X"00000001");
+    relativeaddress <= (r_addr - base_address) AND (romsize_bit - X"00000001");
     idx <= to_integer(unsigned(relativeaddress))/4;
-    addr_valid <= '1' WHEN (addr >= base_address) AND (addr < (base_address + rom_size)) ELSE
+    addr_valid <= '1' WHEN (r_addr >= base_address) AND (r_addr < (base_address + rom_size)) ELSE
         '0';
 
-    data_out <= memory(idx) WHEN addr_valid = '1' AND re = '1' ELSE
-        (OTHERS => '0');
+--    data_out <= memory(idx) WHEN addr_valid = '1' AND re = '1' ELSE    (OTHERS => '0');
+
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            r_addr <= addr;
+        end if;
+
+        if falling_edge(clk) then
+            if addr_valid = '1' then
+                data_out <= memory(idx);
+            end if;
+        end if;
+
+    end process;
 
 END Behavioral;

@@ -329,49 +329,34 @@ ARCHITECTURE behavioural OF eu_branch_type IS
 BEGIN
 
 
+PROCESS (rst, clk)
+BEGIN
+    if rst = '1' then
+        r_we <= '0';
+        r_rs1_data <= (others => '0');
+        r_rs2_data <= (others => '0');
+        r_instruction <= (others => '0');
+        r_pc <= (others => '0');
+    elsIF rising_edge(clk) THEN
 
-    PROCESS (rst, clk)
-    BEGIN
-        if rst = '1' then
-            r_we <= '0';
-            writeback_rd <= (others => '0');
-            writeback_rs1 <= (others => '0');
-            writeback_rs2 <= (others => '0');
-            r_rs1_data <= (others => '0');
-            r_rs2_data <= (others => '0');
-            r_instruction <= (others => '0');
-            r_pc <= (others => '0');
-            rdy <= '1';
-            next_pc <= (others => '0');
-            rd <= (others => '0');
-            update_rd <= '0';
-
-        elsIF rising_edge(clk) THEN
-
-            r_we         <= we;
-            update_rd <= f_updates_rd(r_instruction);
-
-
-            IF we = '1' THEN
-                rdy <= '0';
-                r_rs1_data    <= rs1_data;
-                r_rs2_data    <= rs2_data;
-                r_instruction <= instruction;
-                r_pc          <= pc;
-            end if;
-
-            if r_we = '1' then
-                rd <= n_rd;
-                next_pc <= i_next_pc;
-                rdy <= '1';
-                writeback_rd <= i_writeback_result;
-                writeback_rs1 <= i_writeback_result;
-                writeback_rs2 <= i_writeback_result;
-            end if;
+        r_we         <= we;
+        IF we = '1' THEN
+            r_rs1_data    <= rs1_data;
+            r_rs2_data    <= rs2_data;
+            r_instruction <= instruction;
+            r_pc          <= pc;
         END IF;
-    END PROCESS;
+    END IF;
+END PROCESS;
 
-    busy <= r_we;
+    busy <= '0';
+    rdy <= '1';
+    next_pc <= i_next_pc;
+    writeback_rd <= i_writeback_result;
+    writeback_rs1 <= i_writeback_result;
+    writeback_rs2 <= i_writeback_result;
+    rd <= r_instruction(11 DOWNTO 7);
+    update_rd <= f_updates_rd(r_instruction);
 
     PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)
     BEGIN
