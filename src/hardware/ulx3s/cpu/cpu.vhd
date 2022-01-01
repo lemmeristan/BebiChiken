@@ -118,10 +118,10 @@ BEGIN
     rd_out(OPCODE_INVALID)  <= "00000";
     eu_rdy(OPCODE_INVALID)  <= '1';
     eu_busy(OPCODE_INVALID) <= '0';
-    regfile_rd              <= rd_out(f_decode_exec_unit(inst_rdata_r)); -- when turned into inst_rdata_r, it stops working entirely, not even slow
+    regfile_rd              <= rd_out(f_decode_exec_unit(inst_rdata)); -- when turned into inst_rdata_r, it stops working entirely, not even slow
 
-    rd_data_in                   <= writeback_rd(f_decode_exec_unit(inst_rdata_r));
-    updates_rd                   <= update_rd(f_decode_exec_unit(inst_rdata_r)); --'1' WHEN f_decode_exec_unit(inst_rdata) /= OPCODE_INVALID AND eu_rdy(f_decode_exec_unit(inst_rdata)) = '1' AND owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) = f_decode_exec_unit(inst_rdata) ELSE '0';
+    rd_data_in                   <= writeback_rd(f_decode_exec_unit(inst_rdata));
+    updates_rd                   <= update_rd(f_decode_exec_unit(inst_rdata)); --'1' WHEN f_decode_exec_unit(inst_rdata) /= OPCODE_INVALID AND eu_rdy(f_decode_exec_unit(inst_rdata)) = '1' AND owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) = f_decode_exec_unit(inst_rdata) ELSE '0';
     writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
 
     PROCESS (inst_rdata, inst_rdata_r, allready, eu_rdy, branch_next_pc, owner, regfile_pc)

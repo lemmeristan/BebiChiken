@@ -36,11 +36,28 @@ ARCHITECTURE behavioural OF regfile_half IS
 BEGIN
 
 --    rs1_data_out <= registers1(to_integer(unsigned(rs1))) WHEN rs1 /= "00000" ELSE
- --       (OTHERS => '0');
-   -- rs2_data_out <= registers2(to_integer(unsigned(rs2))) WHEN rs2 /= "00000" ELSE
-     --   (OTHERS => '0');
+--        (OTHERS => '0');
+--    rs2_data_out <= registers2(to_integer(unsigned(rs2))) WHEN rs2 /= "00000" ELSE
+--        (OTHERS => '0');
 
 
+       process(rst,clk)
+       begin
+        if rst = '1' then
+                        rs1_data_out <= (others => '0');
+            rs2_data_out <= (others => '0');
+            elsif falling_edge(clk) then
+                            rs1_data_out <= (others => '0');
+            if rs1 /= "00000" then
+                rs1_data_out <= registers1(to_integer(unsigned(rs1)));
+            end if;
+
+            rs2_data_out <= (others => '0');
+            if rs2 /= "00000" then
+                rs2_data_out <= registers2(to_integer(unsigned(rs2)));
+            end if;
+        end if;
+        end process;
 
     process(rst, clk)
     begin
@@ -48,8 +65,8 @@ BEGIN
             registers1 <= (others => (others => '0'));
             registers2 <= (others => (others => '0'));
             pc <= entry_point;
-            rs1_data_out <= (others => '0');
-            rs2_data_out <= (others => '0');
+            --rs1_data_out <= (others => '0');
+            --rs2_data_out <= (others => '0');
 
         elsif rising_edge(clk) then
             if update_rd = '1' then
@@ -61,15 +78,15 @@ BEGIN
                 pc <= next_pc;
             end if;
 
-            rs1_data_out <= (others => '0');
-            if rs1 /= "00000" then
-                rs1_data_out <= registers1(to_integer(unsigned(rs1)));
-            end if;
+            -- rs1_data_out <= (others => '0');
+            -- if rs1 /= "00000" then
+            --     rs1_data_out <= registers1(to_integer(unsigned(rs1)));
+            -- end if;
 
-            rs2_data_out <= (others => '0');
-            if rs2 /= "00000" then
-                rs2_data_out <= registers2(to_integer(unsigned(rs2)));
-            end if;
+            -- rs2_data_out <= (others => '0');
+            -- if rs2 /= "00000" then
+            --     rs2_data_out <= registers2(to_integer(unsigned(rs2)));
+            -- end if;
 
             
                 
