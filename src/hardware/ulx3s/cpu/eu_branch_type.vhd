@@ -344,6 +344,7 @@ BEGIN
         writeback_rd <= (others => '0');
         writeback_rs1 <= (others => '0');
         writeback_rs2 <= (others => '0');
+        rdy <= '0';
 
     elsIF rising_edge(clk) THEN
 

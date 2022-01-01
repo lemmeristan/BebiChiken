@@ -61,7 +61,7 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL regfile_rd                                                                                                      : STD_LOGIC_VECTOR(4 DOWNTO 0);
     SIGNAL rd_data_in                                                                                                      : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL eu_rdy                                                                                                          : opcode_group_bit_t;
-    SIGNAL rs1_data, rs2_data, next_pc, regfile_pc, regfile_pc_r, regfile_pc_r_r, inst_rdata_r, rs1_data_out, rs2_data_out : STD_LOGIC_VECTOR(31 DOWNTO 0); -- n_pc
+    SIGNAL rs1_data, rs1_data_r, rs2_data, rs2_data_r, next_pc, regfile_pc, regfile_pc_r, regfile_pc_r_r, inst_rdata_r, rs1_data_out, rs2_data_out : STD_LOGIC_VECTOR(31 DOWNTO 0); -- n_pc
     SIGNAL rs1_data_in, rs2_data_in, instruction_in, pc_in                                                                 : opcode_group_word_t;
 
     SIGNAL pc_locked : STD_LOGIC;
@@ -79,10 +79,10 @@ ARCHITECTURE behavioural OF cpu IS
 
 BEGIN
     allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0') --AND (pc_locked_r = '0') --AND (pc_locked_r_r = '0') --AND (pc_locked_r_r_r = '0') AND (pc_locked_r_r_r_r = '0') --AND (pc_locked_r_r_r_r_r = '0')
-        AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '1')))
-        AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '1')))
-        --AND (eu_we(f_decode_exec_unit(inst_rdata)) = '0')
-        AND (eu_busy(f_decode_exec_unit(inst_rdata)) = '0')
+        AND ((f_uses_rs1(inst_rdata_r) = '0') OR ((f_uses_rs1(inst_rdata_r) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '1')))
+        AND ((f_uses_rs2(inst_rdata_r) = '0') OR ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '1')))
+        --AND (eu_we(f_decode_exec_unit(inst_rdata_r)) = '0')
+        AND (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '0')
         ELSE
         '0';
 
@@ -93,13 +93,13 @@ BEGIN
     rd_out(OPCODE_INVALID)  <= "00000";
     eu_rdy(OPCODE_INVALID)  <= '1';
     eu_busy(OPCODE_INVALID) <= '0';
-    regfile_rd              <= rd_out(f_decode_exec_unit(inst_rdata)); -- when turned into inst_rdata_r, it stops working entirely, not even slow
+    regfile_rd              <= rd_out(f_decode_exec_unit(inst_rdata_r)); -- when turned into inst_rdata_r, it stops working entirely, not even slow
 
-    rd_data_in                   <= writeback_rd(f_decode_exec_unit(inst_rdata));
-    updates_rd                   <= update_rd(f_decode_exec_unit(inst_rdata)); --'1' WHEN f_decode_exec_unit(inst_rdata) /= OPCODE_INVALID AND eu_rdy(f_decode_exec_unit(inst_rdata)) = '1' AND owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) = f_decode_exec_unit(inst_rdata) ELSE '0';
+    rd_data_in                   <= writeback_rd(f_decode_exec_unit(inst_rdata_r));
+    updates_rd                   <= update_rd(f_decode_exec_unit(inst_rdata_r)); --'1' WHEN f_decode_exec_unit(inst_rdata) /= OPCODE_INVALID AND eu_rdy(f_decode_exec_unit(inst_rdata)) = '1' AND owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) = f_decode_exec_unit(inst_rdata) ELSE '0';
     writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
 
-    PROCESS (inst_rdata, allready, eu_rdy, branch_next_pc, owner, regfile_pc)
+    PROCESS (inst_rdata, inst_rdata_r, allready, eu_rdy, branch_next_pc, owner, regfile_pc)
     BEGIN
         next_pc   <= regfile_pc;
         update_pc <= '0';
@@ -114,16 +114,16 @@ BEGIN
                 --    update_pc <= '1';
                 --end if;
             WHEN OPCODE_INVALID =>
-                --if regfile_pc + X"00000004" < X"00200038" then
-                next_pc <= regfile_pc + X"00000004";
-                --end if;
-                update_pc <= allready AND (NOT f_updates_pc(inst_rdata)); -- and (not f_updates_pc(inst_rdata));
+                IF f_updates_pc(inst_rdata) = '0' THEN
+                    next_pc   <= regfile_pc + X"00000004";
+                    update_pc <= allready;
+                END IF;
             WHEN OTHERS =>
                 --next_pc <= entry_point;
                 --update_pc <= '1';
         END CASE;
-        eu_we                                 <= (OTHERS => '0');
-        eu_we(f_decode_exec_unit(inst_rdata)) <= allready;
+
+
     END PROCESS;
     pc_locked <= '0' WHEN owner(32) = OPCODE_INVALID ELSE
         '1';
@@ -132,13 +132,24 @@ BEGIN
     BEGIN
         IF rst = '1' THEN
             owner <= (OTHERS => OPCODE_INVALID);
-            --eu_we <= (others => '0');
+            eu_we <= (others => '0');
             regfile_pc_r   <= entry_point;
             regfile_pc_r_r <= entry_point;
             inst_rdata_r   <= (OTHERS => '0');
             inst_rdy_r     <= '0';
             update_pc_r    <= '0';
+            rs1_data_r <= (others => '0');
+            rs2_data_r <= (others => '0');
         ELSIF rising_edge(clk) THEN
+
+        eu_we <= (OTHERS => '0');
+
+        eu_we(f_decode_exec_unit(inst_rdata)) <= allready;
+
+        rs1_data_r <= rs1_data;
+        rs2_data_r <= rs2_data;
+
+
             update_pc_r <= update_pc;
 
             regfile_pc_r   <= regfile_pc;
@@ -156,7 +167,7 @@ BEGIN
 
             END IF;
 
-            IF update_pc = '1' then --owner(32) = OPCODE_BRANCH_TYPE AND eu_rdy(OPCODE_BRANCH_TYPE) = '1' THEN
+            IF update_pc = '1' THEN --owner(32) = OPCODE_BRANCH_TYPE AND eu_rdy(OPCODE_BRANCH_TYPE) = '1' THEN
                 owner(32) <= OPCODE_INVALID;
             END IF;
             IF (f_updates_pc(inst_rdata) = '1') THEN
@@ -188,7 +199,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_MEM_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata,
+        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r,
 
         writeback_rd  => writeback_rd(OPCODE_MEM_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_MEM_TYPE),
@@ -206,7 +217,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_BRANCH_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc_r,
+        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_BRANCH_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_BRANCH_TYPE),
@@ -226,7 +237,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_I_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc_r,
+        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_I_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_I_TYPE),
@@ -243,7 +254,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_R_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc_r,
+        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_R_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_R_TYPE),
@@ -260,7 +271,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_U_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata, pc => regfile_pc_r,
+        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_U_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
