@@ -29,6 +29,32 @@ ENTITY cpu IS
 END cpu;
 
 ARCHITECTURE behavioural OF cpu IS
+
+TYPE owner_t IS ARRAY(NATURAL RANGE <>) OF opcode_group_t;
+SIGNAL owner : owner_t(32 DOWNTO 0);
+
+    FUNCTION f_generate_we (
+        instruction     : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        inst_rdy        : IN STD_LOGIC;
+        owners          : IN owner_t(32 DOWNTO 0);
+        eu_rdy, eu_busy : IN opcode_group_bit_t )
+        RETURN STD_LOGIC IS
+        VARIABLE rs1, rs2 : INTEGER RANGE 0 TO 31;
+    BEGIN
+
+        rs2 := to_integer(unsigned(instruction(24 DOWNTO 20)));
+        rs1 := to_integer(unsigned(instruction(19 DOWNTO 15)));
+
+        IF (inst_rdy = '1') AND (owners(32) = OPCODE_INVALID)
+            AND ((f_uses_rs1(instruction) = '0') OR ((f_uses_rs1(instruction) = '1') AND (eu_rdy(owners(rs1)) = '1')))
+            AND ((f_uses_rs2(instruction) = '0') OR ((f_uses_rs2(instruction) = '1') AND (eu_rdy(owners(rs2)) = '1')))
+            AND (eu_busy(f_decode_exec_unit(instruction)) = '0')
+            THEN
+            RETURN '1';
+        END IF;
+
+        RETURN '0';
+    END;
     -- funct7 <= instruction(31 DOWNTO 25);
     -- rs2 <= instruction(24 DOWNTO 20);
     -- rs1 <= instruction(19 DOWNTO 15);
@@ -51,18 +77,17 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL eu_we, eu_busy                             : opcode_group_bit_t;
     SIGNAL allready                                   : STD_LOGIC;
 
-    TYPE owner_t IS ARRAY(NATURAL RANGE <>) OF opcode_group_t;
-    SIGNAL owner : owner_t(32 DOWNTO 0);
+
 
     SIGNAL rd_out : opcode_group_regidx_t;
 
     SIGNAL updates_rd : STD_LOGIC;
 
-    SIGNAL regfile_rd                                                                                                      : STD_LOGIC_VECTOR(4 DOWNTO 0);
-    SIGNAL rd_data_in                                                                                                      : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL eu_rdy                                                                                                          : opcode_group_bit_t;
+    SIGNAL regfile_rd                                                                                                                              : STD_LOGIC_VECTOR(4 DOWNTO 0);
+    SIGNAL rd_data_in                                                                                                                              : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL eu_rdy                                                                                                                                  : opcode_group_bit_t;
     SIGNAL rs1_data, rs1_data_r, rs2_data, rs2_data_r, next_pc, regfile_pc, regfile_pc_r, regfile_pc_r_r, inst_rdata_r, rs1_data_out, rs2_data_out : STD_LOGIC_VECTOR(31 DOWNTO 0); -- n_pc
-    SIGNAL rs1_data_in, rs2_data_in, instruction_in, pc_in                                                                 : opcode_group_word_t;
+    SIGNAL rs1_data_in, rs2_data_in, instruction_in, pc_in                                                                                         : opcode_group_word_t;
 
     SIGNAL pc_locked : STD_LOGIC;
 
@@ -79,10 +104,10 @@ ARCHITECTURE behavioural OF cpu IS
 
 BEGIN
     allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0') --AND (pc_locked_r = '0') --AND (pc_locked_r_r = '0') --AND (pc_locked_r_r_r = '0') AND (pc_locked_r_r_r_r = '0') --AND (pc_locked_r_r_r_r_r = '0')
-        AND ((f_uses_rs1(inst_rdata_r) = '0') OR ((f_uses_rs1(inst_rdata_r) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '1')))
-        AND ((f_uses_rs2(inst_rdata_r) = '0') OR ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '1')))
-        --AND (eu_we(f_decode_exec_unit(inst_rdata_r)) = '0')
-        AND (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '0')
+        AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '1')))
+        AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '1')))
+        --AND (eu_we(f_decode_exec_unit(inst_rdata)) = '0')
+        AND (eu_busy(f_decode_exec_unit(inst_rdata)) = '0')
         ELSE
         '0';
 
@@ -122,8 +147,6 @@ BEGIN
                 --next_pc <= entry_point;
                 --update_pc <= '1';
         END CASE;
-
-
     END PROCESS;
     pc_locked <= '0' WHEN owner(32) = OPCODE_INVALID ELSE
         '1';
@@ -131,25 +154,23 @@ BEGIN
     PROCESS (rst, clk)
     BEGIN
         IF rst = '1' THEN
-            owner <= (OTHERS => OPCODE_INVALID);
-            eu_we <= (others => '0');
+            owner          <= (OTHERS => OPCODE_INVALID);
+            eu_we          <= (OTHERS => '0');
             regfile_pc_r   <= entry_point;
             regfile_pc_r_r <= entry_point;
             inst_rdata_r   <= (OTHERS => '0');
             inst_rdy_r     <= '0';
             update_pc_r    <= '0';
-            rs1_data_r <= (others => '0');
-            rs2_data_r <= (others => '0');
+            rs1_data_r     <= (OTHERS => '0');
+            rs2_data_r     <= (OTHERS => '0');
         ELSIF rising_edge(clk) THEN
 
-        eu_we <= (OTHERS => '0');
+            eu_we <= (OTHERS => '0');
 
-        eu_we(f_decode_exec_unit(inst_rdata)) <= allready;
+            eu_we(f_decode_exec_unit(inst_rdata)) <= allready;
 
-        rs1_data_r <= rs1_data;
-        rs2_data_r <= rs2_data;
-
-
+            rs1_data_r  <= rs1_data;
+            rs2_data_r  <= rs2_data;
             update_pc_r <= update_pc;
 
             regfile_pc_r   <= regfile_pc;
