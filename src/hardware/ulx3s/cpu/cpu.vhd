@@ -30,14 +30,14 @@ END cpu;
 
 ARCHITECTURE behavioural OF cpu IS
 
-TYPE owner_t IS ARRAY(NATURAL RANGE <>) OF opcode_group_t;
-SIGNAL owner : owner_t(32 DOWNTO 0);
+    TYPE owner_t IS ARRAY(NATURAL RANGE <>) OF opcode_group_t;
+    SIGNAL owner : owner_t(32 DOWNTO 0);
 
     FUNCTION f_generate_we (
         instruction     : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
         inst_rdy        : IN STD_LOGIC;
         owners          : IN owner_t(32 DOWNTO 0);
-        eu_rdy, eu_busy : IN opcode_group_bit_t )
+        eu_rdy, eu_busy : IN opcode_group_bit_t)
         RETURN STD_LOGIC IS
         VARIABLE rs1, rs2 : INTEGER RANGE 0 TO 31;
     BEGIN
@@ -77,8 +77,6 @@ SIGNAL owner : owner_t(32 DOWNTO 0);
     SIGNAL eu_we, eu_busy                             : opcode_group_bit_t;
     SIGNAL allready                                   : STD_LOGIC;
 
-
-
     SIGNAL rd_out : opcode_group_regidx_t;
 
     SIGNAL updates_rd : STD_LOGIC;
@@ -100,7 +98,8 @@ SIGNAL owner : owner_t(32 DOWNTO 0);
     ALIAS rd     : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(11 DOWNTO 7);
     ALIAS opcode : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata(6 DOWNTO 0);
 
-    SIGNAL update_rd : opcode_group_bit_t;
+    SIGNAL update_rd   : opcode_group_bit_t;
+    SIGNAL initialized : STD_LOGIC_VECTOR(7 DOWNTO 0);
 
 BEGIN
     allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0') --AND (pc_locked_r = '0') --AND (pc_locked_r_r = '0') --AND (pc_locked_r_r_r = '0') AND (pc_locked_r_r_r_r = '0') --AND (pc_locked_r_r_r_r_r = '0')
@@ -108,6 +107,7 @@ BEGIN
         AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '1')))
         --AND (eu_we(f_decode_exec_unit(inst_rdata)) = '0')
         AND (eu_busy(f_decode_exec_unit(inst_rdata)) = '0')
+        --AND (initialized = X"FF")
         ELSE
         '0';
 
@@ -124,28 +124,22 @@ BEGIN
     updates_rd                   <= update_rd(f_decode_exec_unit(inst_rdata)); --'1' WHEN f_decode_exec_unit(inst_rdata) /= OPCODE_INVALID AND eu_rdy(f_decode_exec_unit(inst_rdata)) = '1' AND owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) = f_decode_exec_unit(inst_rdata) ELSE '0';
     writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
 
-    PROCESS (inst_rdata, inst_rdata_r, allready, eu_rdy, branch_next_pc, owner, regfile_pc)
+    PROCESS (inst_rdata, inst_rdata_r, allready, eu_rdy, branch_next_pc, owner, regfile_pc, initialized)
     BEGIN
         next_pc   <= regfile_pc;
         update_pc <= '0';
         CASE owner(32) IS
             WHEN OPCODE_BRANCH_TYPE =>
-                --if branch_next_pc >= X"00200000" then
                 next_pc   <= branch_next_pc;
                 update_pc <= eu_rdy(OPCODE_BRANCH_TYPE);
-
-                --else
-                --    next_pc <= regfile_pc;
-                --    update_pc <= '1';
-                --end if;
             WHEN OPCODE_INVALID =>
+            if initialized = X"FF" then
                 IF f_updates_pc(inst_rdata) = '0' THEN
                     next_pc   <= regfile_pc + X"00000004";
                     update_pc <= allready;
                 END IF;
+            end if;
             WHEN OTHERS =>
-                --next_pc <= entry_point;
-                --update_pc <= '1';
         END CASE;
     END PROCESS;
     pc_locked <= '0' WHEN owner(32) = OPCODE_INVALID ELSE
@@ -163,10 +157,11 @@ BEGIN
             update_pc_r    <= '0';
             rs1_data_r     <= (OTHERS => '0');
             rs2_data_r     <= (OTHERS => '0');
+            initialized    <= (OTHERS => '0');
         ELSIF rising_edge(clk) THEN
+            initialized <= initialized(6 DOWNTO 0) & inst_rdy;
 
-            eu_we <= (OTHERS => '0');
-
+            eu_we                                 <= (OTHERS => '0');
             eu_we(f_decode_exec_unit(inst_rdata)) <= allready;
 
             rs1_data_r  <= rs1_data;
@@ -188,7 +183,7 @@ BEGIN
 
             END IF;
 
-            IF update_pc = '1' THEN --owner(32) = OPCODE_BRANCH_TYPE AND eu_rdy(OPCODE_BRANCH_TYPE) = '1' THEN
+            IF update_pc = '1' AND owner(32) = OPCODE_BRANCH_TYPE AND eu_rdy(OPCODE_BRANCH_TYPE) = '1' THEN
                 owner(32) <= OPCODE_INVALID;
             END IF;
             IF (f_updates_pc(inst_rdata) = '1') THEN

@@ -340,7 +340,7 @@ BEGIN
         r_pc <= (others => '0');
         busy <= '0';
         update_rd <= '0';
-
+        rdy <= '0';
         next_pc <= (others => '0');
         writeback_rd <= (others => '0');
         writeback_rs1 <= (others => '0');
