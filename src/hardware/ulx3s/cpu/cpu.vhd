@@ -78,7 +78,7 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL update_rd : opcode_group_bit_t;
 
 BEGIN
-    allready <= '1' WHEN (inst_rdy = '1') --AND (pc_locked = '0') --AND (pc_locked_r = '0') --AND (pc_locked_r_r = '0') --AND (pc_locked_r_r_r = '0') AND (pc_locked_r_r_r_r = '0') --AND (pc_locked_r_r_r_r_r = '0')
+    allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0') --AND (pc_locked_r = '0') --AND (pc_locked_r_r = '0') --AND (pc_locked_r_r_r = '0') AND (pc_locked_r_r_r_r = '0') --AND (pc_locked_r_r_r_r_r = '0')
         AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs1)))) = '1')))
         AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_rdy(owner(to_integer(unsigned(rs2)))) = '1')))
         --AND (eu_we(f_decode_exec_unit(inst_rdata)) = '0')
