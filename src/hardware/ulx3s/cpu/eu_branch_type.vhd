@@ -348,8 +348,18 @@ BEGIN
     END IF;
 END PROCESS;
 
-rdy <= '1';
-busy <= '0';
+
+process(we, clk)
+begin
+    if we = '1' then
+        rdy <= '0';
+        busy <= '1';
+    elsif rising_edge(clk) then
+        rdy <= '1';
+        busy <= '0';
+    end if;
+end process;
+
 next_pc <= i_next_pc;
 writeback_rd <= i_writeback_result;
 writeback_rs1 <= i_writeback_result;
