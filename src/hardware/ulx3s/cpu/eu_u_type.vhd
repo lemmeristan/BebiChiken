@@ -329,34 +329,35 @@ BEGIN
 
 
 
-    PROCESS (rst, clk)
-    BEGIN
-        if rst = '1' then
-            r_we <= '0';
-            r_rs1_data <= (others => '0');
-            r_rs2_data <= (others => '0');
-            r_instruction <= (others => '0');
-            r_pc <= (others => '0');
-        elsIF rising_edge(clk) THEN
+PROCESS (rst, clk)
+BEGIN
+    if rst = '1' then
+        r_we <= '0';
+        r_rs1_data <= (others => '0');
+        r_rs2_data <= (others => '0');
+        r_instruction <= (others => '0');
+        r_pc <= (others => '0');
+    elsIF rising_edge(clk) THEN
 
-            r_we         <= we;
-            IF we = '1' THEN
-                r_rs1_data    <= rs1_data;
-                r_rs2_data    <= rs2_data;
-                r_instruction <= instruction;
-                r_pc          <= pc;
-            END IF;
+        r_we         <= we;
+        IF we = '1' THEN
+            r_rs1_data    <= rs1_data;
+            r_rs2_data    <= rs2_data;
+            r_instruction <= instruction;
+            r_pc          <= pc;
         END IF;
-    END PROCESS;
+    END IF;
+END PROCESS;
 
-    busy <= '0';
-    rdy <= '1';
-    next_pc <= i_next_pc;
-    writeback_rd <= i_writeback_result;
-    writeback_rs1 <= i_writeback_result;
-    writeback_rs2 <= i_writeback_result;
-    rd <= r_instruction(11 DOWNTO 7);
-    update_rd <= f_updates_rd(r_instruction);
+rdy <= '1';
+busy <= '0';
+next_pc <= i_next_pc;
+writeback_rd <= i_writeback_result;
+writeback_rs1 <= i_writeback_result;
+writeback_rs2 <= i_writeback_result;
+rd <= r_instruction(11 DOWNTO 7);
+update_rd <= f_updates_rd(r_instruction);
+
 
 
 
