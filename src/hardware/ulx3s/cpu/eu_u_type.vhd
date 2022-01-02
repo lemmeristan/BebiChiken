@@ -350,17 +350,19 @@ BEGIN
 END PROCESS;
 
 
-process(we, clk)
-begin
-    if we = '1' then
-        rdy <= '0';
-        busy <= '1';
-    elsif rising_edge(clk) then
-        rdy <= '1';
-        busy <= '0';
-    end if;
-end process;
+-- process(we, clk)
+-- begin
+--     if we = '1' then
+--         rdy <= '0';
+--         busy <= '1';
+--     elsif rising_edge(clk) then
+--         rdy <= '1';
+--         busy <= '0';
+--     end if;
+-- end process;
 
+rdy <= '1';
+busy <= '0';
 next_pc <= i_next_pc;
 writeback_rd <= i_writeback_result;
 writeback_rs1 <= i_writeback_result;
