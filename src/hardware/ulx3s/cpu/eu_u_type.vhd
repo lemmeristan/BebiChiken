@@ -332,14 +332,14 @@ BEGIN
 PROCESS (rst, clk)
 BEGIN
     if rst = '1' then
-        busy <= '0';
+        --busy <= '0';
         r_rs1_data <= (others => '0');
         r_rs2_data <= (others => '0');
         r_instruction <= (others => '0');
         r_pc <= (others => '0');
     elsIF rising_edge(clk) THEN
 
-        busy         <= we;
+        --busy         <= we;
         IF we = '1' THEN
             r_rs1_data    <= rs1_data;
             r_rs2_data    <= rs2_data;
@@ -349,7 +349,7 @@ BEGIN
     END IF;
 END PROCESS;
 
-
+busy <= '0';
 next_pc <= i_next_pc;
 writeback_rd <= i_writeback_result;
 writeback_rs1 <= i_writeback_result;

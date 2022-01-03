@@ -359,7 +359,7 @@ END PROCESS;
 --     end if;
 -- end process;
 
-busy <= '0';
+busy <= r_we;
 next_pc <= i_next_pc;
 writeback_rd <= i_writeback_result;
 writeback_rs1 <= i_writeback_result;
