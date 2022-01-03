@@ -18,7 +18,7 @@ ENTITY eu_u_type IS
 
         --uses_rs1, uses_rs2, updates_rd, updates_pc, 
         rd : out std_logic_vector(4 downto 0);
-        busy, rdy, update_rd : out std_logic
+        busy, update_rd : out std_logic
 
     );
 END eu_u_type;
@@ -332,14 +332,14 @@ BEGIN
 PROCESS (rst, clk)
 BEGIN
     if rst = '1' then
-        r_we <= '0';
+        busy <= '0';
         r_rs1_data <= (others => '0');
         r_rs2_data <= (others => '0');
         r_instruction <= (others => '0');
         r_pc <= (others => '0');
     elsIF rising_edge(clk) THEN
 
-        r_we         <= we;
+        busy         <= we;
         IF we = '1' THEN
             r_rs1_data    <= rs1_data;
             r_rs2_data    <= rs2_data;
@@ -350,19 +350,6 @@ BEGIN
 END PROCESS;
 
 
--- process(we, clk)
--- begin
---     if we = '1' then
---         rdy <= '0';
---         busy <= '1';
---     elsif rising_edge(clk) then
---         rdy <= '1';
---         busy <= '0';
---     end if;
--- end process;
-
-rdy <= '1';
-busy <= '0';
 next_pc <= i_next_pc;
 writeback_rd <= i_writeback_result;
 writeback_rs1 <= i_writeback_result;

@@ -18,7 +18,7 @@ ENTITY eu_branch_type IS
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         rd : out std_logic_vector(4 downto 0);
-        busy, rdy, update_rd : out std_logic
+        busy, update_rd, update_pc : out std_logic
 
     );
 END eu_branch_type;
@@ -325,6 +325,7 @@ ARCHITECTURE behavioural OF eu_branch_type IS
     SIGNAL r_rs1_data, r_rs2_data, r_instruction, r_pc, i_writeback_result, i_next_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
     signal r_we : std_logic;
     signal n_rd : std_logic_vector(4 downto 0);
+    signal initialized : std_logic;
 
 BEGIN
 
@@ -338,7 +339,7 @@ BEGIN
         r_pc <= (others => '0');
     elsIF rising_edge(clk) THEN
 
-        r_we         <= we;
+        r_we  <= we;
         IF we = '1' THEN
             r_rs1_data    <= rs1_data;
             r_rs2_data    <= rs2_data;
@@ -348,18 +349,7 @@ BEGIN
     END IF;
 END PROCESS;
 
-
-process(we, clk)
-begin
-    if we = '1' then
-        rdy <= '0';
-        busy <= '1';
-    elsif rising_edge(clk) then
-        rdy <= '1';
-        busy <= '0';
-    end if;
-end process;
-
+busy <= r_we;
 next_pc <= i_next_pc;
 writeback_rd <= i_writeback_result;
 writeback_rs1 <= i_writeback_result;
@@ -370,12 +360,12 @@ update_rd <= f_updates_rd(r_instruction);
 
 
 
-    PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)
+    PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction, r_we)
     BEGIN
         i_writeback_result <= (OTHERS => '0');
         i_next_pc <= r_pc + X"00000004";
         n_rd <= "00000";
-
+        update_pc <= r_we;
 
         CASE f_decode_opcode(r_instruction) IS
 
@@ -417,6 +407,8 @@ update_rd <= f_updates_rd(r_instruction);
 
 
             WHEN OTHERS =>
+            i_next_pc <= r_pc;
+            update_pc <= '0';
         END CASE;
     END PROCESS;
 

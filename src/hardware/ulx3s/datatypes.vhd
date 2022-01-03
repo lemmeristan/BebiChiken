@@ -105,7 +105,7 @@ COMPONENT eu_mem IS
 
       rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
 
-      busy, rdy, update_rd : OUT STD_LOGIC
+      busy, update_rd : OUT STD_LOGIC
   );
 END COMPONENT;
 
@@ -121,7 +121,7 @@ COMPONENT eu_branch_type IS
       next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
       rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-      busy, rdy, update_rd : OUT STD_LOGIC
+      busy, update_rd, update_pc : OUT STD_LOGIC
 
   );
 END COMPONENT;
@@ -138,7 +138,7 @@ COMPONENT eu_i_type IS
       next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
       rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-      busy, rdy, update_rd : OUT STD_LOGIC
+      busy, update_rd : OUT STD_LOGIC
 
   );
 END COMPONENT;
@@ -155,7 +155,7 @@ COMPONENT eu_r_type IS
       next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
       rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-      busy, rdy, update_rd : OUT STD_LOGIC
+      busy, update_rd : OUT STD_LOGIC
 
   );
 END COMPONENT;
@@ -172,7 +172,7 @@ COMPONENT eu_u_type IS
       next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
       rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-      busy, rdy, update_rd : OUT STD_LOGIC
+      busy, update_rd : OUT STD_LOGIC
 
   );
 END COMPONENT;

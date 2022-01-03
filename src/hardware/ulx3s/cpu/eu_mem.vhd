@@ -22,7 +22,7 @@ ENTITY eu_mem IS
 
         rd : out std_logic_vector(4 downto 0);
 
-        busy, rdy, update_rd : out std_logic 
+        busy, update_rd : out std_logic 
 
     );
 END eu_mem;
@@ -352,6 +352,9 @@ BEGIN
             writeback_rs1 <= (others => '0');
             writeback_rs2 <= (others => '0');
             update_rd <= '0';
+            mem_addr <= (others => '0');
+            mem_wdata <= (others => '0');
+            mem_width <= (others => '0');
         elsIF rising_edge(clk) THEN
 
 
@@ -390,7 +393,6 @@ BEGIN
     begin
         n_state <= state;
         busy <= '0';
-        rdy <= '1';
         mem_re <= '0';
         mem_we <= '0';
         writeback_we <= '0';
@@ -401,7 +403,6 @@ BEGIN
                 end if;
             when S_BUSY =>
                 busy <= '1';
-                rdy <= '0';
                 if op = OPCODE_I_TYPE_LOAD then
                     mem_re <= '1';
                     if mem_rdy = '1' then

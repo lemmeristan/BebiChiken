@@ -17,7 +17,7 @@ ENTITY eu_i_type IS
         next_pc   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         rd : out std_logic_vector(4 downto 0);
-        busy, rdy, update_rd : out std_logic
+        busy, update_rd : out std_logic
 
     );
 END eu_i_type;
@@ -348,17 +348,18 @@ BEGIN
 END PROCESS;
 
 
-process(we, clk)
-begin
-    if we = '1' then
-        rdy <= '0';
-        busy <= '1';
-    elsif rising_edge(clk) then
-        rdy <= '1';
-        busy <= '0';
-    end if;
-end process;
+-- process(we, clk)
+-- begin
+--     if we = '1' then
+--         rdy <= '0';
+--         busy <= '1';
+--     elsif rising_edge(clk) then
+--         rdy <= '1';
+--         busy <= '0';
+--     end if;
+-- end process;
 
+busy <= '0';
 next_pc <= i_next_pc;
 writeback_rd <= i_writeback_result;
 writeback_rs1 <= i_writeback_result;
