@@ -108,8 +108,10 @@ ARCHITECTURE behavioural OF cpu IS
     ALIAS rd_r : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata_r(11 DOWNTO 7);
     ALIAS opcode_r : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata_r(6 DOWNTO 0);
 
+    signal inst_valid : std_logic;
+
 BEGIN
-    allready <= '1' WHEN (inst_rdy = '1') AND (pc_locked = '0') --AND (pc_locked_r = '0') --AND (pc_locked_r_r = '0') --AND (pc_locked_r_r_r = '0') AND (pc_locked_r_r_r_r = '0') --AND (pc_locked_r_r_r_r_r = '0')
+    allready <= '1' WHEN (inst_rdy = '1') --AND (pc_locked = '0') --AND (pc_locked_r = '0') --AND (pc_locked_r_r = '0') --AND (pc_locked_r_r_r = '0') AND (pc_locked_r_r_r_r = '0') --AND (pc_locked_r_r_r_r_r = '0')
         AND ((f_uses_rs1(inst_rdata_r) = '0') OR ((f_uses_rs1(inst_rdata_r) = '1') AND (eu_busy(owner(to_integer(unsigned(rs1_r)))) = '0')))
         AND ((f_uses_rs2(inst_rdata_r) = '0') OR ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_busy(owner(to_integer(unsigned(rs2_r)))) = '0')))
         --AND (eu_we(f_decode_exec_unit(inst_rdata_r)) = '0')
@@ -141,7 +143,7 @@ BEGIN
                 update_pc <= update_pc_branch;
             WHEN OPCODE_INVALID =>
                 IF initialized = X"FF" THEN
-                    IF f_updates_pc(inst_rdata) = '0' THEN
+                    IF f_updates_pc(inst_rdata_r) = '0' THEN
                     next_pc <= regfile_pc + X"00000004";
                     update_pc <= allready;
                     END IF;

@@ -8,7 +8,7 @@ LIBRARY std;
 USE std.textio.ALL;
 ENTITY rom IS
     GENERIC (
-        base_address : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00400000";
+        base_address : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00020000";
         rom_size : INTEGER := 128; -- 131072; --STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00020000";
         rom_file : STRING := "ROM.txt"
     );
