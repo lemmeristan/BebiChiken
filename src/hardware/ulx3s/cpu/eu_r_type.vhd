@@ -324,23 +324,29 @@ ARCHITECTURE behavioural OF eu_r_type IS
 
     END;
     SIGNAL r_rs1_data, r_rs2_data, r_instruction, r_pc, i_writeback_result, i_next_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    signal r_we : std_logic;
+    signal r_we : std_logic_vector(1 downto 0);
 
 BEGIN
-
 
 
 PROCESS (rst, clk)
 BEGIN
     if rst = '1' then
-        busy <= '0';
+        r_we <= "00";
         r_rs1_data <= (others => '0');
         r_rs2_data <= (others => '0');
         r_instruction <= (others => '0');
         r_pc <= (others => '0');
     elsIF rising_edge(clk) THEN
 
-        busy         <= we;
+        next_pc <= i_next_pc;
+        writeback_rd <= i_writeback_result;
+        writeback_rs1 <= i_writeback_result;
+        writeback_rs2 <= i_writeback_result;
+        rd <= r_instruction(11 DOWNTO 7);
+        update_rd <= f_updates_rd(r_instruction);
+
+        r_we         <= r_we(0) & we;
         IF we = '1' THEN
             r_rs1_data    <= rs1_data;
             r_rs2_data    <= rs2_data;
@@ -350,12 +356,7 @@ BEGIN
     END IF;
 END PROCESS;
 
-next_pc <= i_next_pc;
-writeback_rd <= i_writeback_result;
-writeback_rs1 <= i_writeback_result;
-writeback_rs2 <= i_writeback_result;
-rd <= r_instruction(11 DOWNTO 7);
-update_rd <= f_updates_rd(r_instruction);
+busy <= '0' when r_we = "00" else '1';
 
     PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)
     BEGIN

@@ -203,6 +203,17 @@ FUNCTION f_decode_opcode (
         instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0))
         RETURN STD_LOGIC;
 
+        FUNCTION f_decode_imm (
+            instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0))
+            RETURN STD_LOGIC_VECTOR;
+
+            FUNCTION DoShift (
+                value            : STD_LOGIC_VECTOR(31 DOWNTO 0);
+                shamt            : STD_LOGIC_VECTOR(4 DOWNTO 0);
+                arithmetic_shift : BOOLEAN;
+                shleft           : BOOLEAN
+            ) RETURN STD_LOGIC_VECTOR;
+
 
   END PACKAGE bebichiken;
 
@@ -641,5 +652,152 @@ FUNCTION f_decode_opcode (
       RETURN ires;
 
   END;
+
+
+  FUNCTION f_decode_imm (
+    instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0))
+    RETURN STD_LOGIC_VECTOR IS
+    VARIABLE opcode : opcode_t;
+    VARIABLE imm    : STD_LOGIC_VECTOR(31 DOWNTO 0);
+BEGIN
+
+    opcode := f_decode_opcode(instruction);
+
+    IF (opcode = OPCODE_I_TYPE_ADDI) OR (opcode = OPCODE_I_TYPE_SLLI)
+        OR (opcode = OPCODE_I_TYPE_SLTI) OR (opcode = OPCODE_I_TYPE_SLTIU) OR (opcode = OPCODE_I_TYPE_XORI)
+        OR (opcode = OPCODE_I_TYPE_SRLI) OR (opcode = OPCODE_I_TYPE_SRAI) OR (opcode = OPCODE_I_TYPE_ORI)
+        OR (opcode = OPCODE_I_TYPE_ANDI) OR (opcode = OPCODE_I_TYPE_LOAD) THEN
+        imm(31 DOWNTO 11) := (OTHERS => instruction(31));
+        imm(10 DOWNTO 5)  := instruction(30 DOWNTO 25);
+        imm(4 DOWNTO 1)   := instruction(24 DOWNTO 21);
+        imm(0)            := instruction(20);
+    END IF;
+    IF opcode = OPCODE_S_TYPE THEN
+        imm(31 DOWNTO 11) := (OTHERS => instruction(31));
+        imm(10 DOWNTO 5)  := instruction(30 DOWNTO 25);
+        imm(4 DOWNTO 1)   := instruction(11 DOWNTO 8);
+        imm(0)            := instruction(7);
+    END IF;
+
+    IF (opcode = OPCODE_B_TYPE_BEQ) OR (opcode = OPCODE_B_TYPE_BNE) OR (opcode = OPCODE_B_TYPE_BLT) OR (opcode = OPCODE_B_TYPE_BGE) OR (opcode = OPCODE_B_TYPE_BLTU) OR (opcode = OPCODE_B_TYPE_BGEU) THEN
+        imm(31 DOWNTO 12) := (OTHERS => instruction(31));
+        imm(11)           := instruction(7);
+        imm(10 DOWNTO 5)  := instruction(30 DOWNTO 25);
+        imm(4 DOWNTO 1)   := instruction(11 DOWNTO 8);
+        imm(0)            := '0';
+    END IF;
+
+    IF (opcode = OPCODE_U_TYPE_LUI) OR (opcode = OPCODE_U_TYPE_AUIPC) THEN
+        imm(31)           := instruction(31);
+        imm(30 DOWNTO 20) := instruction(30 DOWNTO 20);
+        imm(19 DOWNTO 12) := instruction(19 DOWNTO 12);
+        imm(11 DOWNTO 0)  := (OTHERS => '0');
+    END IF;
+
+    IF opcode = OPCODE_J_TYPE_JAL THEN
+        imm(31 DOWNTO 20) := (OTHERS => instruction(31));
+        imm(19 DOWNTO 12) := instruction(19 DOWNTO 12);
+        imm(11)           := instruction(20);
+        imm(10 DOWNTO 5)  := instruction(30 DOWNTO 25);
+        imm(4 DOWNTO 1)   := instruction(24 DOWNTO 21);
+        imm(0)            := '0';
+    END IF;
+
+    IF opcode = OPCODE_J_TYPE_JALR THEN
+        imm              := (OTHERS => '0');
+        imm(11 DOWNTO 0) := instruction(31 DOWNTO 20);
+    END IF;
+    RETURN imm;
+
+END;
+
+    FUNCTION DoShift (
+        value            : STD_LOGIC_VECTOR(31 DOWNTO 0);
+        shamt            : STD_LOGIC_VECTOR(4 DOWNTO 0);
+        arithmetic_shift : BOOLEAN;
+        shleft           : BOOLEAN
+    ) RETURN STD_LOGIC_VECTOR IS
+        VARIABLE ires, temp : STD_LOGIC_VECTOR(31 DOWNTO 0);
+        VARIABLE appendbit  : STD_LOGIC;
+    BEGIN
+        IF arithmetic_shift = true THEN
+            appendbit := value(31);
+        ELSE
+            appendbit := '0';
+        END IF;
+
+        IF shamt = "11111" THEN
+            ires := (OTHERS => appendbit);
+            RETURN ires;
+        ELSIF shamt = "00000" THEN
+            RETURN value;
+        END IF;
+        -- IF shleft = true THEN
+        --     ires := (OTHERS => '0');
+        --     ires(31 DOWNTO shamt) := value(31 - shamt DOWNTO 0);
+        -- ELSE
+        --     ires := (OTHERS => appendbit);
+        --     ires(31 - shamt DOWNTO 0) := value(31 DOWNTO shamt);
+        -- END IF;
+
+        --return ires;
+        IF shleft = true THEN
+            ires := value;
+
+            IF (shamt AND "10000") /= "00000" THEN
+                ires := ires(15 DOWNTO 0) & X"0000";
+            END IF;
+
+            IF (shamt AND "01000") /= "00000" THEN
+                ires := ires(23 DOWNTO 0) & X"00";
+            END IF;
+
+            IF (shamt AND "00100") /= "00000" THEN
+                ires := ires(27 DOWNTO 0) & X"0";
+            END IF;
+
+            IF (shamt AND "00010") /= "00000" THEN
+                ires := ires(29 DOWNTO 0) & "00";
+            END IF;
+
+            IF (shamt AND "00001") /= "00000" THEN
+                ires := ires(30 DOWNTO 0) & '0';
+            END IF;
+
+        ELSE
+            ires := value;
+
+            temp := (OTHERS => appendbit);
+
+            IF (shamt AND "10000") /= "00000" THEN
+                ires := temp(15 DOWNTO 0) & ires(31 DOWNTO 16);
+            END IF;
+
+            IF (shamt AND "01000") /= "00000" THEN
+                ires := temp(7 DOWNTO 0) & ires(31 DOWNTO 8);
+            END IF;
+
+            IF (shamt AND "00100") /= "00000" THEN
+                ires := temp(3 DOWNTO 0) & ires(31 DOWNTO 4);
+            END IF;
+
+            IF (shamt AND "00010") /= "00000" THEN
+                ires := temp(1 DOWNTO 0) & ires(31 DOWNTO 2);
+            END IF;
+
+            IF (shamt AND "00001") /= "00000" THEN
+                ires := temp(0) & ires(31 DOWNTO 1);
+            END IF;
+        END IF;
+
+        -- IF shleft = true THEN
+        --     ires := (OTHERS => '0');
+        --     ires(31 DOWNTO shamt) := value(31 - shamt DOWNTO 0);
+        -- ELSE
+        --     ires := (OTHERS => appendbit);
+        --     ires(31 - shamt DOWNTO 0) := value(31 DOWNTO shamt);
+        -- END IF;
+        RETURN ires;
+    END FUNCTION;
 
   end bebichiken;
