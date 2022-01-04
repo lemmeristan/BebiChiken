@@ -74,7 +74,7 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL update_pc, update_pc_branch : STD_LOGIC;
     SIGNAL branch_next_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL writeback_rd, writeback_rs1, writeback_rs2 : opcode_group_word_t;
-    SIGNAL eu_we, eu_busy : opcode_group_bit_t;
+    SIGNAL eu_we, eu_we_r, eu_busy : opcode_group_bit_t;
     SIGNAL allready : STD_LOGIC;
 
     SIGNAL rd_out : opcode_group_regidx_t;
@@ -143,8 +143,8 @@ BEGIN
                 update_pc <= update_pc_branch;
             WHEN OPCODE_INVALID =>
                 IF initialized = X"FF" THEN
-                    IF f_updates_pc(inst_rdata) = '0' THEN
-                        next_pc <= regfile_pc + X"00000004";
+                    IF f_updates_pc(inst_rdata_r) = '0' THEN
+                        next_pc <= regfile_pc_r + X"00000004";
                         update_pc <= update_pc_main;
                     END IF;
                 END IF;
@@ -152,7 +152,9 @@ BEGIN
         END CASE;
 
         eu_we <= (OTHERS => '0');
-        eu_we(f_decode_exec_unit(inst_rdata_r)) <= start_decode; --not eu_busy(f_decode_exec_unit(inst_rdata_r));
+        if start_decode = '1' then
+        eu_we(f_decode_exec_unit(inst_rdata)) <= not eu_busy(f_decode_exec_unit(inst_rdata));
+        end if;
     END PROCESS;
 
     pc_locked <= '0' WHEN owner(32) = OPCODE_INVALID ELSE
@@ -181,11 +183,12 @@ BEGIN
                 update_pc_r <= update_pc;
 
                 regfile_pc_r <= regfile_pc;
-                regfile_pc_r_r <= regfile_pc_r;
 
                 inst_rdata_r <= inst_rdata;
                 inst_rdy_r <= inst_rdy;
             end if;
+
+            eu_we_r <= eu_we;
 
 
             IF eu_busy(f_decode_exec_unit(inst_rdata)) = '0' THEN
@@ -231,7 +234,7 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we(OPCODE_MEM_TYPE),
+        we => eu_we_r(OPCODE_MEM_TYPE),
         rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r,
 
         writeback_rd => writeback_rd(OPCODE_MEM_TYPE),
@@ -248,7 +251,7 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we(OPCODE_BRANCH_TYPE),
+        we => eu_we_r(OPCODE_BRANCH_TYPE),
         rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd => writeback_rd(OPCODE_BRANCH_TYPE),
@@ -268,7 +271,7 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we(OPCODE_I_TYPE),
+        we => eu_we_r(OPCODE_I_TYPE),
         rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd => writeback_rd(OPCODE_I_TYPE),
@@ -284,7 +287,7 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we(OPCODE_R_TYPE),
+        we => eu_we_r(OPCODE_R_TYPE),
         rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd => writeback_rd(OPCODE_R_TYPE),
@@ -300,7 +303,7 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we(OPCODE_U_TYPE),
+        we => eu_we_r(OPCODE_U_TYPE),
         rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd => writeback_rd(OPCODE_U_TYPE),
