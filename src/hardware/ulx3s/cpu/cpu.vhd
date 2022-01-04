@@ -122,6 +122,7 @@ BEGIN
 dispatcher_busy <= '1' WHEN
     ((f_uses_rs1(inst_rdata_r) = '1') AND (eu_busy(rs1_owner) = '1'))
 OR  ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_busy(rs2_owner) = '1'))
+OR (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '1')
 ELSE '0';
 
     issue <= '1' WHEN (inst_rdy = '1')
@@ -148,7 +149,7 @@ ELSE '0';
     rd_data_in <= writeback_rd(f_decode_exec_unit(inst_rdata));
     writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
 
-    PROCESS (inst_rdata, inst_rdata_r, update_pc_main, eu_rdy, branch_next_pc, owner, regfile_pc, initialized, update_pc_branch, dispatch_r, dispatch, dispatcher_busy)
+    PROCESS (inst_rdata, inst_rdata_r, update_pc_main, eu_rdy, branch_next_pc, owner, regfile_pc, initialized, update_pc_branch, dispatch_r, dispatch, dispatcher_busy, issue)
     BEGIN
         next_pc <= regfile_pc;
         update_pc <= '0';
@@ -167,7 +168,7 @@ ELSE '0';
         END CASE;
 
         eu_we <= (OTHERS => '0');
-        eu_we(f_decode_exec_unit(inst_rdata_r)) <= (not dispatcher_busy);
+        eu_we(f_decode_exec_unit(inst_rdata_r)) <= not dispatcher_busy;
         
     END PROCESS;
 
