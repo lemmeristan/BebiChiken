@@ -108,17 +108,33 @@ ARCHITECTURE behavioural OF cpu IS
     ALIAS rd_r : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata_r(11 DOWNTO 7);
     ALIAS opcode_r : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata_r(6 DOWNTO 0);
 
-    signal inst_valid, start_decode, start_decode_r, update_pc_main : std_logic;
+    signal inst_valid, dispatch, dispatch_r, update_pc_main : std_logic;
+
+    signal rs1_owner, rs2_owner : opcode_group_t;
+
+
+    -- dispatcher
+    signal dispatcher_busy, issue : std_logic;
+    signal eu_needs_writeback : std_logic;
 
 BEGIN
-    start_decode <= '1' WHEN (inst_rdy = '1')
-        AND ((f_uses_rs1(inst_rdata) = '0') OR ((f_uses_rs1(inst_rdata) = '1') AND (eu_busy(owner(to_integer(unsigned(rs1)))) = '0')))
-        AND ((f_uses_rs2(inst_rdata) = '0') OR ((f_uses_rs2(inst_rdata) = '1') AND (eu_busy(owner(to_integer(unsigned(rs2)))) = '0')))
-        AND (eu_busy(f_decode_exec_unit(inst_rdata)) = '0')
+
+dispatcher_busy <= '1' WHEN
+    ((f_uses_rs1(inst_rdata_r) = '1') AND (eu_busy(rs1_owner) = '1'))
+OR  ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_busy(rs2_owner) = '1'))
+ELSE '0';
+
+    issue <= '1' WHEN (inst_rdy = '1')
+        AND (dispatcher_busy = '0')
+        AND (initialized = X"FF")
+        AND (pc_locked = '0')
+        AND ((eu_needs_writeback = '0') or ((eu_needs_writeback = '1') and (eu_busy(f_decode_exec_unit(inst_rdata)) = '0'))) -- 
         ELSE
         '0';
 
-    update_pc_main <= not eu_busy(f_decode_exec_unit(inst_rdata_r)); --start_decode;
+    eu_needs_writeback <= '1' when (owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) = f_decode_exec_unit(inst_rdata)) AND (update_rd(f_decode_exec_unit(inst_rdata)) = '1') else '0';
+
+    update_pc_main <= issue;
 
     inst_addr <= regfile_pc;
     inst_re <= '1';
@@ -130,10 +146,9 @@ BEGIN
     regfile_rd <= rd_out(f_decode_exec_unit(inst_rdata)); -- when turned into inst_rdata_r, it stops working entirely, not even slow
 
     rd_data_in <= writeback_rd(f_decode_exec_unit(inst_rdata));
-    --updates_rd                   <= update_rd(f_decode_exec_unit(inst_rdata)); --'1' WHEN f_decode_exec_unit(inst_rdata) /= OPCODE_INVALID AND eu_rdy(f_decode_exec_unit(inst_rdata)) = '1' AND owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) = f_decode_exec_unit(inst_rdata) ELSE '0';
     writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
 
-    PROCESS (inst_rdata, inst_rdata_r, update_pc_main, eu_rdy, branch_next_pc, owner, regfile_pc, initialized, update_pc_branch, start_decode_r, start_decode)
+    PROCESS (inst_rdata, inst_rdata_r, update_pc_main, eu_rdy, branch_next_pc, owner, regfile_pc, initialized, update_pc_branch, dispatch_r, dispatch, dispatcher_busy)
     BEGIN
         next_pc <= regfile_pc;
         update_pc <= '0';
@@ -143,7 +158,7 @@ BEGIN
                 update_pc <= update_pc_branch;
             WHEN OPCODE_INVALID =>
                 IF initialized = X"FF" THEN
-                    IF f_updates_pc(inst_rdata_r) = '0' THEN
+                    IF f_updates_pc(inst_rdata) = '0' THEN
                         next_pc <= regfile_pc_r + X"00000004";
                         update_pc <= update_pc_main;
                     END IF;
@@ -152,9 +167,8 @@ BEGIN
         END CASE;
 
         eu_we <= (OTHERS => '0');
-        if start_decode = '1' then
-        eu_we(f_decode_exec_unit(inst_rdata)) <= not eu_busy(f_decode_exec_unit(inst_rdata));
-        end if;
+        eu_we(f_decode_exec_unit(inst_rdata_r)) <= (not dispatcher_busy);
+        
     END PROCESS;
 
     pc_locked <= '0' WHEN owner(32) = OPCODE_INVALID ELSE
@@ -166,33 +180,26 @@ BEGIN
             owner <= (OTHERS => OPCODE_INVALID);
             --eu_we          <= (OTHERS => '0');
             regfile_pc_r <= entry_point;
-            regfile_pc_r_r <= entry_point;
             inst_rdata_r <= (OTHERS => '0');
-            inst_rdy_r <= '0';
-            update_pc_r <= '0';
-            rs1_data_r <= (OTHERS => '0');
-            rs2_data_r <= (OTHERS => '0');
             initialized <= (OTHERS => '0');
+            rs1_owner <= OPCODE_INVALID;
+            rs2_owner <= OPCODE_INVALID;
         ELSIF rising_edge(clk) THEN
             initialized <= initialized(6 DOWNTO 0) & inst_rdy;
 
-            start_decode_r <= start_decode;
-            if start_decode = '1' then
-                rs1_data_r <= rs1_data;
-                rs2_data_r <= rs2_data;
-                update_pc_r <= update_pc;
-
+            dispatch_r <= dispatch;
+            if issue = '1' then
                 regfile_pc_r <= regfile_pc;
-
                 inst_rdata_r <= inst_rdata;
-                inst_rdy_r <= inst_rdy;
-            end if;
-
-            eu_we_r <= eu_we;
 
 
-            IF eu_busy(f_decode_exec_unit(inst_rdata)) = '0' THEN
-                IF (owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) = f_decode_exec_unit(inst_rdata)) AND (update_rd(f_decode_exec_unit(inst_rdata)) = '1') THEN
+                rs1_owner <= owner(to_integer(unsigned(rs1)));
+                rs2_owner <= owner(to_integer(unsigned(rs2)));
+
+
+
+
+                IF eu_needs_writeback = '1' THEN
                     owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata))))) <= OPCODE_INVALID;
                     updates_rd <= update_rd(f_decode_exec_unit(inst_rdata));
                 END IF;
@@ -200,7 +207,8 @@ BEGIN
                 IF (f_updates_rd(inst_rdata) = '1') THEN
                     owner(to_integer(unsigned(rd))) <= f_decode_exec_unit(inst_rdata);
                 END IF;
-            END IF;
+
+            end if;
 
             IF (owner(32) = OPCODE_INVALID) THEN
                 IF (f_updates_pc(inst_rdata) = '1') THEN
@@ -211,21 +219,22 @@ BEGIN
             END IF;
         END IF;
     END PROCESS;
+
+
+
     i_regfile_half : regfile_half
     GENERIC MAP(entry_point => entry_point)
     PORT MAP(
 
         clk => clk, rst => rst,
-        rs1 => rs1, rs2 => rs2, rd => regfile_rd,
+        rs1 => rs1_r, rs2 => rs2_r, rd => regfile_rd,
         rs1_data_out => rs1_data_out, rs2_data_out => rs2_data_out, pc => regfile_pc,
         update_rd => updates_rd, update_pc => update_pc,
         rd_data_in => rd_data_in, next_pc => next_pc
 
     );
-    rs1_data <= writeback_rs1(owner(to_integer(unsigned(rs1)))) WHEN rs1 /= "00000" ELSE
-        (OTHERS => '0'); -- have to do it like this or else ghdl won't synth :(
-    rs2_data <= writeback_rs2(owner(to_integer(unsigned(rs2)))) WHEN rs2 /= "00000" ELSE
-        (OTHERS => '0');
+    rs1_data <= writeback_rs1(rs1_owner) WHEN rs1_r /= "00000" ELSE (OTHERS => '0');
+    rs2_data <= writeback_rs2(rs2_owner) WHEN rs2_r /= "00000" ELSE (OTHERS => '0');
 
     writeback_rs1(OPCODE_INVALID) <= rs1_data_out;
     writeback_rs2(OPCODE_INVALID) <= rs2_data_out;
@@ -234,8 +243,8 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we_r(OPCODE_MEM_TYPE),
-        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r,
+        we => eu_we(OPCODE_MEM_TYPE),
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r,
 
         writeback_rd => writeback_rd(OPCODE_MEM_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_MEM_TYPE),
@@ -251,8 +260,8 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we_r(OPCODE_BRANCH_TYPE),
-        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
+        we => eu_we(OPCODE_BRANCH_TYPE),
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd => writeback_rd(OPCODE_BRANCH_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_BRANCH_TYPE),
@@ -271,8 +280,8 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we_r(OPCODE_I_TYPE),
-        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
+        we => eu_we(OPCODE_I_TYPE),
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd => writeback_rd(OPCODE_I_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_I_TYPE),
@@ -287,8 +296,8 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we_r(OPCODE_R_TYPE),
-        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
+        we => eu_we(OPCODE_R_TYPE),
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd => writeback_rd(OPCODE_R_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_R_TYPE),
@@ -303,8 +312,8 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we_r(OPCODE_U_TYPE),
-        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r, pc => regfile_pc_r,
+        we => eu_we(OPCODE_U_TYPE),
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd => writeback_rd(OPCODE_U_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
