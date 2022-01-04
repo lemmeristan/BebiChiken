@@ -59,7 +59,7 @@ BEGIN
     END IF;
 END PROCESS;
 
-busy <= '0' when r_we = "00" else '1';
+busy <= r_we(0); --'0' when r_we = "00" else '1';
 
 
 

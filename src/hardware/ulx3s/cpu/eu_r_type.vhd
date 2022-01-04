@@ -356,7 +356,7 @@ BEGIN
     END IF;
 END PROCESS;
 
-busy <= '0' when r_we = "00" else '1';
+busy <= r_we(0);
 
     PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)
     BEGIN
