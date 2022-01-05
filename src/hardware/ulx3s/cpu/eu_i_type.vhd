@@ -42,12 +42,7 @@ BEGIN
         r_pc <= (others => '0');
     elsIF rising_edge(clk) THEN
 
-        next_pc <= i_next_pc;
-        writeback_rd <= i_writeback_result;
-        writeback_rs1 <= i_writeback_result;
-        writeback_rs2 <= i_writeback_result;
-        rd <= r_instruction(11 DOWNTO 7);
-        update_rd <= f_updates_rd(r_instruction);
+
 
         r_we         <= r_we(0) & we;
         IF we = '1' THEN
@@ -61,7 +56,12 @@ END PROCESS;
 
 busy <= r_we(0); --'0' when r_we = "00" else '1';
 
-
+next_pc <= i_next_pc;
+writeback_rd <= i_writeback_result;
+writeback_rs1 <= i_writeback_result;
+writeback_rs2 <= i_writeback_result;
+rd <= r_instruction(11 DOWNTO 7);
+update_rd <= f_updates_rd(r_instruction);
 
 
     PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)

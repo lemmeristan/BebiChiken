@@ -114,7 +114,7 @@ ARCHITECTURE behavioural OF cpu IS
 
 
     -- dispatcher
-    signal dispatcher_busy, issue : std_logic;
+    signal dispatcher_busy, issue, issue_r, issue_r_r : std_logic;
     signal eu_needs_writeback : std_logic;
 
 BEGIN
@@ -149,7 +149,7 @@ ELSE '0';
     rd_data_in <= writeback_rd(f_decode_exec_unit(inst_rdata));
     writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
 
-    PROCESS (inst_rdata, inst_rdata_r, update_pc_main, eu_rdy, branch_next_pc, owner, regfile_pc, initialized, update_pc_branch, dispatch_r, dispatch, dispatcher_busy, issue)
+    PROCESS (inst_rdata, inst_rdata_r, update_pc_main, eu_rdy, branch_next_pc, owner, regfile_pc, initialized, update_pc_branch, dispatch_r, dispatch, dispatcher_busy, issue, issue_r_r)
     BEGIN
         next_pc <= regfile_pc;
         update_pc <= '0';
@@ -168,7 +168,7 @@ ELSE '0';
         END CASE;
 
         eu_we <= (OTHERS => '0');
-        eu_we(f_decode_exec_unit(inst_rdata_r)) <= not dispatcher_busy;
+        eu_we(f_decode_exec_unit(inst_rdata_r)) <= (not dispatcher_busy) and issue_r_r;
         
     END PROCESS;
 
@@ -185,10 +185,19 @@ ELSE '0';
             initialized <= (OTHERS => '0');
             rs1_owner <= OPCODE_INVALID;
             rs2_owner <= OPCODE_INVALID;
+            eu_we_r <= (others => '0');
+            issue_r <= '0';
+            issue_r_r <= '0';
         ELSIF rising_edge(clk) THEN
             initialized <= initialized(6 DOWNTO 0) & inst_rdy;
 
             dispatch_r <= dispatch;
+
+            eu_we_r <= eu_we;
+
+            issue_r <= issue;
+            issue_r_r <= issue_r;
+
             if issue = '1' then
                 regfile_pc_r <= regfile_pc;
                 inst_rdata_r <= inst_rdata;
