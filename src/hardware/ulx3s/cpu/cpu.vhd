@@ -71,7 +71,7 @@ ARCHITECTURE behavioural OF cpu IS
     --ATTRIBUTE syn_encoding OF state_t : TYPE IS "one-hot";
 
     ATTRIBUTE syn_keep : BOOLEAN;
-    SIGNAL update_pc, update_pc_branch : STD_LOGIC;
+    SIGNAL update_pc, update_pc_branch, update_pc_branch_r : STD_LOGIC;
     SIGNAL branch_next_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL writeback_rd, writeback_rs1, writeback_rs2 : opcode_group_word_t;
     SIGNAL eu_we, eu_we_r, eu_busy : opcode_group_bit_t;
@@ -123,6 +123,7 @@ dispatcher_busy <= '1' WHEN
     ((f_uses_rs1(inst_rdata_r) = '1') AND (eu_busy(rs1_owner) = '1'))
 OR  ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_busy(rs2_owner) = '1'))
 OR (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '1')
+--OR (owner(32) = OPCODE_BRANCH_TYPE)
 ELSE '0';
 
     issue <= '1' WHEN (inst_rdy = '1')
@@ -188,7 +189,11 @@ ELSE '0';
             eu_we_r <= (others => '0');
             issue_r <= '0';
             issue_r_r <= '0';
+            update_pc_branch_r <= '0';
         ELSIF rising_edge(clk) THEN
+
+        update_pc_branch_r <= update_pc_branch;
+
             initialized <= initialized(6 DOWNTO 0) & inst_rdy;
 
             dispatch_r <= dispatch;
@@ -228,7 +233,7 @@ ELSE '0';
 
             end if;
 
-            IF (owner(32) = OPCODE_INVALID) THEN
+            IF (owner(32) = OPCODE_INVALID) and (update_pc_branch_r = '0') and (update_pc_branch = '0') THEN
                 IF (f_updates_pc(inst_rdata) = '1') THEN
                     owner(32) <= f_decode_exec_unit(inst_rdata);
                 END IF;
