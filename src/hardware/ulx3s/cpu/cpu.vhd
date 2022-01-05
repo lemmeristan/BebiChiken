@@ -84,7 +84,7 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL regfile_rd : STD_LOGIC_VECTOR(4 DOWNTO 0);
     SIGNAL rd_data_in : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL eu_rdy : opcode_group_bit_t;
-    SIGNAL rs1_data, rs1_data_r, rs2_data, rs2_data_r, next_pc, regfile_pc, regfile_pc_r, regfile_pc_r_r, inst_rdata_r, rs1_data_out, rs2_data_out : STD_LOGIC_VECTOR(31 DOWNTO 0); -- n_pc
+    SIGNAL rs1_data, rs1_data_r, rs2_data, rs2_data_r, next_pc, regfile_pc, regfile_pc_r, regfile_pc_r_r, inst_rdata_r, inst_rdata_r_r, rs1_data_out, rs2_data_out : STD_LOGIC_VECTOR(31 DOWNTO 0); -- n_pc
     SIGNAL rs1_data_in, rs2_data_in, instruction_in, pc_in : opcode_group_word_t;
 
     SIGNAL pc_locked : STD_LOGIC;
@@ -193,7 +193,6 @@ ELSE '0';
 
             dispatch_r <= dispatch;
 
-            eu_we_r <= eu_we;
 
             issue_r <= issue;
             issue_r_r <= issue_r;
@@ -217,6 +216,15 @@ ELSE '0';
                 IF (f_updates_rd(inst_rdata) = '1') THEN
                     owner(to_integer(unsigned(rd))) <= f_decode_exec_unit(inst_rdata);
                 END IF;
+
+            end if;
+
+            if issue_r = '1' then
+                rs1_data_r <= rs1_data;
+                rs2_data_r <= rs2_data;
+                regfile_pc_r_r <= regfile_pc_r;
+                inst_rdata_r_r <= inst_rdata_r;
+                eu_we_r <= eu_we;
 
             end if;
 
@@ -254,7 +262,7 @@ ELSE '0';
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_MEM_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r,
+        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r_r,
 
         writeback_rd => writeback_rd(OPCODE_MEM_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_MEM_TYPE),
@@ -271,7 +279,7 @@ ELSE '0';
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_BRANCH_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
+        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r_r, pc => regfile_pc_r_r,
 
         writeback_rd => writeback_rd(OPCODE_BRANCH_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_BRANCH_TYPE),
@@ -291,7 +299,7 @@ ELSE '0';
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_I_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
+        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r_r, pc => regfile_pc_r_r,
 
         writeback_rd => writeback_rd(OPCODE_I_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_I_TYPE),
@@ -307,7 +315,7 @@ ELSE '0';
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_R_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
+        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r_r, pc => regfile_pc_r_r,
 
         writeback_rd => writeback_rd(OPCODE_R_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_R_TYPE),
@@ -323,7 +331,7 @@ ELSE '0';
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_U_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
+        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r_r, pc => regfile_pc_r_r,
 
         writeback_rd => writeback_rd(OPCODE_U_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
