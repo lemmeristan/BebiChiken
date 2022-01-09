@@ -93,7 +93,7 @@ ARCHITECTURE behavioural OF cpu IS
     ALIAS rd_r     : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata_r(11 DOWNTO 7);
     ALIAS opcode_r : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata_r(6 DOWNTO 0);
 
-    SIGNAL inst_valid, dispatch, dispatch_r, update_pc_main : STD_LOGIC;
+    SIGNAL inst_valid, dispatch, update_pc_main : STD_LOGIC;
 
     SIGNAL rs1_owner, rs2_owner : opcode_group_t;
     -- dispatcher
@@ -116,11 +116,12 @@ BEGIN
             WHEN FETCHER_STATE_S0 =>
                 next_pc <= regfile_pc + X"00000004";
                 IF (inst_rdy = '1') AND (dispatcher_busy = '0') AND (initialized = X"FF") THEN
+                    issue     <= '1';
+
                     IF f_updates_pc(inst_rdata) = '1' THEN
                         n_fetcher_state <= FETCHER_STATE_S1;
                     ELSE
                         update_pc <= '1';
-                        issue     <= '1';
                     END IF;
                 END IF;
             WHEN FETCHER_STATE_S1 =>
@@ -134,7 +135,7 @@ BEGIN
     -- Dispatcher statemachine:
     -- Registers data in flight to execution units, handles owners of registers
 
-    PROCESS (dispatcher_state, owner, inst_rdata_r, owner, eu_needs_writeback, eu_busy, rs1_r, rs2_r, issue )
+    PROCESS (dispatcher_state, owner, inst_rdata_r, owner, eu_needs_writeback, eu_busy, rs1_r, rs2_r, issue, rd_r)
     BEGIN
         n_dispatcher_state <= dispatcher_state;
         n_owner            <= owner;
@@ -203,7 +204,6 @@ BEGIN
 
             initialized <= initialized(6 DOWNTO 0) & inst_rdy;
 
-            dispatch_r <= dispatch;
             IF (issue = '1') THEN
 
                 regfile_pc_r <= regfile_pc;
@@ -223,9 +223,9 @@ BEGIN
         rd_data_in => rd_data_in, next_pc => next_pc
 
     );
-    rs1_data <= writeback_rs1(rs1_owner) WHEN rs1_r /= "00000" ELSE
+    rs1_data <= writeback_rs1(owner(to_integer(unsigned(rs1_r)))) WHEN rs1_r /= "00000" ELSE
         (OTHERS => '0');
-    rs2_data <= writeback_rs2(rs2_owner) WHEN rs2_r /= "00000" ELSE
+    rs2_data <= writeback_rs2(owner(to_integer(unsigned(rs2_r)))) WHEN rs2_r /= "00000" ELSE
         (OTHERS => '0');
 
     writeback_rs1(OPCODE_INVALID) <= rs1_data_out;
@@ -236,7 +236,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_MEM_TYPE),
-        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r_r,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r,
 
         writeback_rd  => writeback_rd(OPCODE_MEM_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_MEM_TYPE),
@@ -253,7 +253,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_BRANCH_TYPE),
-        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r_r, pc => regfile_pc_r_r,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_BRANCH_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_BRANCH_TYPE),
@@ -273,7 +273,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_I_TYPE),
-        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r_r, pc => regfile_pc_r_r,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_I_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_I_TYPE),
@@ -289,7 +289,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_R_TYPE),
-        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r_r, pc => regfile_pc_r_r,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_R_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_R_TYPE),
@@ -305,7 +305,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_U_TYPE),
-        rs1_data => rs1_data_r, rs2_data => rs2_data_r, instruction => inst_rdata_r_r, pc => regfile_pc_r_r,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r_r,
 
         writeback_rd  => writeback_rd(OPCODE_U_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
