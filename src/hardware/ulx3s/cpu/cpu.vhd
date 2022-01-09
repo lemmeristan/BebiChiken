@@ -152,7 +152,7 @@ dispatcher_busy <= '1' WHEN
     ((f_uses_rs1(inst_rdata_r) = '1') AND (eu_busy(rs1_owner) = '1'))
 OR  ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_busy(rs2_owner) = '1'))
 OR (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '1')
-or (token_r /= token_r_r)
+--or (token_r /= token_r_r)
 --OR (owner(32) = OPCODE_BRANCH_TYPE)
 ELSE '0';
 
@@ -161,6 +161,7 @@ ELSE '0';
         AND (initialized = X"FF")
         AND (pc_locked = '0')
         AND ((eu_needs_writeback = '0') or ((eu_needs_writeback = '1') and (eu_busy(f_decode_exec_unit(inst_rdata)) = '0'))) -- 
+        AND (token_r = token_r_r)
         ELSE
         '0';
 
