@@ -70,11 +70,11 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL rd_data_in                                                                                                                                              : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL eu_rdy                                                                                                                                                  : opcode_group_bit_t;
     SIGNAL rs1_data, rs1_data_r, rs2_data, rs2_data_r, next_pc, regfile_pc, regfile_pc_r, regfile_pc_r_r, inst_rdata_r, inst_rdata_r_r, rs1_data_out, rs2_data_out : STD_LOGIC_VECTOR(31 DOWNTO 0); -- n_pc
-    SIGNAL rs1_data_in, rs2_data_in, instruction_in, pc_in                                                                                                         : opcode_group_word_t;
+    --SIGNAL rs1_data_in, rs2_data_in, instruction_in, pc_in                                                                                                         : opcode_group_word_t;
 
-    SIGNAL pc_locked : STD_LOGIC;
+    --SIGNAL pc_locked : STD_LOGIC;
 
-    SIGNAL inst_rdy_r, update_pc_r : STD_LOGIC;
+    --SIGNAL inst_rdy_r, update_pc_r : STD_LOGIC;
 
     ALIAS funct7 : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata(31 DOWNTO 25);
     ALIAS rs2    : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(24 DOWNTO 20);
@@ -100,21 +100,21 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL dispatcher_busy, issue, issue_r, issue_r_r : STD_LOGIC;
     SIGNAL eu_needs_writeback                         : STD_LOGIC;
 
-    SIGNAL token, token_r, token_r_r : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    --SIGNAL token, token_r, token_r_r : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
 BEGIN
 
     -- Fetcher statemachine:
     -- Fetches instruction and issues it to dispatcher
 
-    PROCESS (fetcher_state, regfile_pc, dispatcher_busy, inst_rdata, branch_next_pc, update_pc_branch, issue, initialized, inst_rdy)
+    PROCESS (fetcher_state, regfile_pc_r, dispatcher_busy, inst_rdata, branch_next_pc, update_pc_branch, issue, initialized, inst_rdy)
     BEGIN
         n_fetcher_state <= fetcher_state;
         next_pc         <= regfile_pc;
         update_pc       <= '0';
         CASE fetcher_state IS
             WHEN FETCHER_STATE_S0 =>
-                next_pc <= regfile_pc + X"00000004";
+                next_pc <= regfile_pc_r + X"00000004";
                 IF (inst_rdy = '1') AND (dispatcher_busy = '0') AND (initialized = X"FF") THEN
                     issue     <= '1';
 
@@ -305,7 +305,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_U_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r_r,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
 
         writeback_rd  => writeback_rd(OPCODE_U_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
