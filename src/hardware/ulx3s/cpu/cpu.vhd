@@ -33,6 +33,9 @@ ARCHITECTURE behavioural OF cpu IS
     TYPE owner_t IS ARRAY(NATURAL RANGE <>) OF opcode_group_t;
     SIGNAL owner : owner_t(32 DOWNTO 0);
 
+    TYPE fetcher_state_t IS (FETCHER_STATE_S0, FETCHER_STATE_S1);
+    signal fetcher_state, n_fetcher_state : fetcher_state_t;
+
     FUNCTION f_allready (
         instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
         inst_rdy : IN STD_LOGIC;
@@ -117,12 +120,39 @@ ARCHITECTURE behavioural OF cpu IS
     signal dispatcher_busy, issue, issue_r, issue_r_r : std_logic;
     signal eu_needs_writeback : std_logic;
 
+    signal token, token_r, token_r_r : std_logic_vector(31 downto 0);
+
 BEGIN
+
+    process(fetcher_state, regfile_pc, dispatcher_busy, inst_rdata, branch_next_pc, update_pc_branch, issue)
+    begin
+        n_fetcher_state <= fetcher_state;
+        next_pc <= regfile_pc;
+        update_pc <= '0';
+        case fetcher_state is
+            when FETCHER_STATE_S0 =>
+                next_pc <= regfile_pc + X"00000004";
+                if dispatcher_busy = '0' then
+                    if f_updates_pc(inst_rdata) = '1' then
+                        n_fetcher_state <= FETCHER_STATE_S1;
+                    else
+                        update_pc <= issue;
+                    end if;
+                end if;
+            when FETCHER_STATE_S1 =>
+                next_pc <= branch_next_pc;
+                update_pc <= update_pc_branch;
+                if update_pc_branch = '1' then
+                    n_fetcher_state <= FETCHER_STATE_S0;
+                end if;
+        end case;
+    end process;
 
 dispatcher_busy <= '1' WHEN
     ((f_uses_rs1(inst_rdata_r) = '1') AND (eu_busy(rs1_owner) = '1'))
 OR  ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_busy(rs2_owner) = '1'))
 OR (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '1')
+or (token_r /= token_r_r)
 --OR (owner(32) = OPCODE_BRANCH_TYPE)
 ELSE '0';
 
@@ -150,26 +180,26 @@ ELSE '0';
     rd_data_in <= writeback_rd(f_decode_exec_unit(inst_rdata));
     writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
 
-    PROCESS (inst_rdata, inst_rdata_r, update_pc_main, eu_rdy, branch_next_pc, owner, regfile_pc, initialized, update_pc_branch, dispatch_r, dispatch, dispatcher_busy, issue, issue_r_r)
+    PROCESS (inst_rdata, inst_rdata_r, update_pc_main, eu_rdy, branch_next_pc, owner, regfile_pc, initialized, update_pc_branch, dispatch_r, dispatch, dispatcher_busy, issue, issue_r_r, token_r, token_r_r)
     BEGIN
-        next_pc <= regfile_pc;
-        update_pc <= '0';
-        CASE owner(32) IS
-            WHEN OPCODE_BRANCH_TYPE =>
-                next_pc <= branch_next_pc;
-                update_pc <= update_pc_branch;
-            WHEN OPCODE_INVALID =>
-                IF initialized = X"FF" THEN
-                    IF f_updates_pc(inst_rdata) = '0' THEN
-                        next_pc <= regfile_pc_r + X"00000004";
-                        update_pc <= update_pc_main;
-                    END IF;
-                END IF;
-            WHEN OTHERS =>
-        END CASE;
+    --     next_pc <= regfile_pc;
+    --     update_pc <= '0';
+    --     CASE owner(32) IS
+    --         WHEN OPCODE_BRANCH_TYPE =>
+    --             next_pc <= branch_next_pc;
+    --             update_pc <= update_pc_branch;
+    --         WHEN OPCODE_INVALID =>
+    --             IF initialized = X"FF" THEN
+    --                 IF f_updates_pc(inst_rdata) = '0' THEN
+    --                     next_pc <= regfile_pc_r + X"00000004";
+    --                     update_pc <= update_pc_main;
+    --                 END IF;
+    --             END IF;
+    --         WHEN OTHERS =>
+    --     END CASE;
 
         eu_we <= (OTHERS => '0');
-        eu_we(f_decode_exec_unit(inst_rdata_r)) <= (not dispatcher_busy) and issue_r_r;
+            eu_we(f_decode_exec_unit(inst_rdata_r)) <= (not dispatcher_busy);
         
     END PROCESS;
 
@@ -190,7 +220,17 @@ ELSE '0';
             issue_r <= '0';
             issue_r_r <= '0';
             update_pc_branch_r <= '0';
+            fetcher_state <= FETCHER_STATE_S0;
+
+            token <= (others => '0');
+            token_r <= (others => '1');
+            token_r_r <= (others => '1');
         ELSIF rising_edge(clk) THEN
+
+
+
+
+        fetcher_state <= n_fetcher_state;
 
         update_pc_branch_r <= update_pc_branch;
 
@@ -202,7 +242,15 @@ ELSE '0';
             issue_r <= issue;
             issue_r_r <= issue_r;
 
-            if issue = '1' then
+            if eu_busy(f_decode_exec_unit(inst_rdata_r)) = '0' then
+                token_r_r <= token_r;
+            end if;
+
+            if (issue = '1') then
+
+                --token <= token + X"00000001";
+                token_r <= token_r + X"00000001";
+
                 regfile_pc_r <= regfile_pc;
                 inst_rdata_r <= inst_rdata;
 
