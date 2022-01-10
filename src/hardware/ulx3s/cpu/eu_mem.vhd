@@ -333,7 +333,7 @@ ARCHITECTURE behavioural OF eu_mem IS
     signal state, n_state : state_t;
 
     signal op : opcode_t;
-    signal writeback_we : std_logic;
+    signal writeback_we, r_update_rd : std_logic;
 
 BEGIN
 
@@ -368,7 +368,8 @@ BEGIN
                 writeback_rs1 <= mem_rdata;
                 writeback_rs2 <= mem_rdata;
             end if;
-            update_rd <= f_updates_rd(r_instruction);
+            r_update_rd <= f_updates_rd(r_instruction);
+            update_rd <= r_update_rd;
 
             IF we = '1' THEN
                 r_rs1_data    <= rs1_data;

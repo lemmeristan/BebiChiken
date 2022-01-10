@@ -104,6 +104,8 @@ ARCHITECTURE behavioural OF cpu IS
 
     SIGNAL decoded, decoded_r : opcode_group_t;
 
+    signal imm_decoded : std_logic_vector(31 downto 0);
+
 BEGIN
 
     decoded   <= f_decode_exec_unit(inst_rdata);
@@ -111,15 +113,17 @@ BEGIN
     -- Fetcher statemachine:
     -- Fetches instruction and issues it to dispatcher
 
+
+
     PROCESS (fetcher_state, regfile_pc_r, regfile_pc, dispatcher_busy, inst_rdata, inst_rdata_r, branch_next_pc, update_pc_branch, initialized, inst_rdy)
     BEGIN
         n_fetcher_state <= fetcher_state;
         next_pc         <= regfile_pc;
         update_pc       <= '0';
-        --issue <= '0'; -- when uncommented, it gives a bad result ... ?????????
+        issue <= '0'; -- when uncommented, it gives a bad result ... ?????????
         CASE fetcher_state IS
             WHEN FETCHER_STATE_S0 =>
-                issue <= '0';
+                --issue <= '0';
                 IF (inst_rdy = '1') AND (dispatcher_busy = '0') AND (initialized = X"FF") THEN
                     issue   <= '1';
                     next_pc <= regfile_pc + X"00000004";
@@ -142,7 +146,7 @@ BEGIN
     -- Dispatcher statemachine:
     -- Registers data in flight to execution units, handles owners of registers
 
-    PROCESS (dispatcher_state, owner, inst_rdata_r, eu_needs_writeback, eu_busy, rs1_r, rs2_r, issue, rd_r, update_pc)
+    PROCESS (dispatcher_state, owner, inst_rdata_r, eu_needs_writeback, eu_busy, rs1_r, rs2_r, issue, rd_r, update_pc, update_rd)
     BEGIN
         n_dispatcher_state <= dispatcher_state;
         n_owner            <= owner;
@@ -179,12 +183,12 @@ BEGIN
                 END IF;
         END CASE;
     END PROCESS;
-    eu_needs_writeback <= '1' WHEN (owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata_r))))) = f_decode_exec_unit(inst_rdata_r)) AND (update_rd(f_decode_exec_unit(inst_rdata_r)) = '1') ELSE
+    eu_needs_writeback <= '1' WHEN (owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata_r))))) = f_decode_exec_unit(inst_rdata_r)) ELSE -- AND (update_rd(f_decode_exec_unit(inst_rdata_r)) = '1') ELSE
         '0';
 
     update_pc_main <= issue;
 
-    inst_addr  <= regfile_pc;
+    inst_addr  <= next_pc; --regfile_pc;
     inst_re    <= '1';
     inst_width <= "10"; -- unused
 
@@ -210,8 +214,10 @@ BEGIN
             rs1_data_r       <= (OTHERS => '0');
             rs2_data_r       <= (OTHERS => '0');
             issue_r          <= '0';
+            imm_decoded <= (others => '0');
 
         ELSIF rising_edge(clk) THEN
+            imm_decoded <= f_decode_imm(inst_rdata);
             issue_r          <= issue;
             owner            <= n_owner;
             fetcher_state    <= n_fetcher_state;
@@ -294,7 +300,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_I_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r, imm => imm_decoded,
 
         writeback_rd  => writeback_rd(OPCODE_I_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_I_TYPE),
@@ -326,7 +332,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_U_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r,
+        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r, imm => imm_decoded,
 
         writeback_rd  => writeback_rd(OPCODE_U_TYPE),
         writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),

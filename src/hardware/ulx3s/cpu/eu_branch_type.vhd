@@ -69,7 +69,7 @@ busy <= '0' when r_we = "00" else '1';
         i_next_pc <= r_pc + X"00000004";
 
         i_update_pc <= '0';
-        if r_we(0) = '0' and we = '1' then
+        if r_we(0) = '0' and r_we(1) = '0' then
             i_update_pc <= '1';
         end if;
 

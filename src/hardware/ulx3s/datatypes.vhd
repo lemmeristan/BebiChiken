@@ -131,7 +131,7 @@ COMPONENT eu_i_type IS
       rst, clk : IN STD_LOGIC;
 
       we : IN STD_LOGIC;
-      rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+      rs1_data, rs2_data, instruction, pc, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
       writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
@@ -165,7 +165,7 @@ COMPONENT eu_u_type IS
       rst, clk : IN STD_LOGIC;
 
       we : IN STD_LOGIC;
-      rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+      rs1_data, rs2_data, instruction, pc, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
       writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 

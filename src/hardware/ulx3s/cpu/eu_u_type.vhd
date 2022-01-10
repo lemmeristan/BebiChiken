@@ -10,7 +10,7 @@ ENTITY eu_u_type IS
         rst, clk : IN STD_LOGIC;
 
         we                                  : IN STD_LOGIC;
-        rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rs1_data, rs2_data, instruction, pc, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
@@ -63,16 +63,16 @@ update_rd <= f_updates_rd(r_instruction);
 
 
 
-    PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction)
+    PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction, imm)
     BEGIN
         i_writeback_result <= (OTHERS => '0');
         i_next_pc <= r_pc + X"00000004";
 
         CASE f_decode_opcode(r_instruction) IS
             WHEN OPCODE_U_TYPE_LUI =>
-                i_writeback_result <= f_decode_imm(r_instruction);
+                i_writeback_result <= imm;--f_decode_imm(r_instruction);
             WHEN OPCODE_U_TYPE_AUIPC =>
-                i_writeback_result <= r_pc + f_decode_imm(r_instruction);
+                i_writeback_result <= r_pc + imm; --f_decode_imm(r_instruction);
             WHEN OTHERS =>
         END CASE;
     END PROCESS;
