@@ -102,21 +102,27 @@ ARCHITECTURE behavioural OF cpu IS
 
     --SIGNAL token, token_r, token_r_r : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
+    SIGNAL decoded, decoded_r : opcode_group_t;
+
 BEGIN
 
+    decoded   <= f_decode_exec_unit(inst_rdata);
+    decoded_r <= f_decode_exec_unit(inst_rdata_r);
     -- Fetcher statemachine:
     -- Fetches instruction and issues it to dispatcher
 
-    PROCESS (fetcher_state, regfile_pc_r, dispatcher_busy, inst_rdata, branch_next_pc, update_pc_branch, issue, initialized, inst_rdy)
+    PROCESS (fetcher_state, regfile_pc_r, regfile_pc, dispatcher_busy, inst_rdata, inst_rdata_r, branch_next_pc, update_pc_branch, initialized, inst_rdy)
     BEGIN
         n_fetcher_state <= fetcher_state;
         next_pc         <= regfile_pc;
         update_pc       <= '0';
+        --issue <= '0'; -- when uncommented, it gives a bad result ... ?????????
         CASE fetcher_state IS
             WHEN FETCHER_STATE_S0 =>
-                next_pc <= regfile_pc_r + X"00000004";
+                issue <= '0';
                 IF (inst_rdy = '1') AND (dispatcher_busy = '0') AND (initialized = X"FF") THEN
-                    issue     <= '1';
+                    issue   <= '1';
+                    next_pc <= regfile_pc + X"00000004";
 
                     IF f_updates_pc(inst_rdata) = '1' THEN
                         n_fetcher_state <= FETCHER_STATE_S1;
@@ -125,6 +131,7 @@ BEGIN
                     END IF;
                 END IF;
             WHEN FETCHER_STATE_S1 =>
+                --issue <= '0';
                 next_pc   <= branch_next_pc;
                 update_pc <= update_pc_branch;
                 IF update_pc_branch = '1' THEN
@@ -135,11 +142,11 @@ BEGIN
     -- Dispatcher statemachine:
     -- Registers data in flight to execution units, handles owners of registers
 
-    PROCESS (dispatcher_state, owner, inst_rdata_r, owner, eu_needs_writeback, eu_busy, rs1_r, rs2_r, issue, rd_r)
+    PROCESS (dispatcher_state, owner, inst_rdata_r, eu_needs_writeback, eu_busy, rs1_r, rs2_r, issue, rd_r, update_pc)
     BEGIN
         n_dispatcher_state <= dispatcher_state;
         n_owner            <= owner;
-        dispatcher_busy    <= '0';
+        dispatcher_busy    <= '1';
         eu_we              <= (OTHERS => '0');
         updates_rd         <= '0';
         CASE dispatcher_state IS
@@ -149,8 +156,9 @@ BEGIN
                     OR ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_busy(owner(to_integer(unsigned(rs2_r)))) = '1'))
                     OR (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '1') THEN
                     n_dispatcher_state <= DISPATCHER_STATE_S1;
-                    dispatcher_busy <= '1';
+
                 ELSE
+                    dispatcher_busy                         <= '0';
                     eu_we(f_decode_exec_unit(inst_rdata_r)) <= issue;
                     IF eu_needs_writeback = '1' THEN
                         n_owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata_r))))) <= OPCODE_INVALID;
@@ -164,7 +172,6 @@ BEGIN
                 END IF;
             WHEN DISPATCHER_STATE_S1 =>
                 -- busy state; return to S0 when all inputs are ready
-                dispatcher_busy <= '1';
                 IF ((f_uses_rs1(inst_rdata_r) = '0') OR ((f_uses_rs1(inst_rdata_r) = '1') AND (eu_busy(owner(to_integer(unsigned(rs1_r)))) = '0')))
                     AND ((f_uses_rs2(inst_rdata_r) = '0') OR ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_busy(owner(to_integer(unsigned(rs2_r)))) = '0')))
                     AND (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '0') THEN
@@ -191,23 +198,37 @@ BEGIN
     PROCESS (rst, clk)
     BEGIN
         IF rst = '1' THEN
-            owner <= (OTHERS => OPCODE_INVALID);
-            regfile_pc_r     <= entry_point;
+            owner            <= (OTHERS => OPCODE_INVALID);
+            regfile_pc_r     <= entry_point - X"00000004";
             inst_rdata_r     <= (OTHERS => '0');
             initialized      <= (OTHERS => '0');
             fetcher_state    <= FETCHER_STATE_S0;
             dispatcher_state <= DISPATCHER_STATE_S0;
+            regfile_pc_r_r   <= (OTHERS => '0');
+            inst_rdata_r_r   <= (OTHERS => '0');
+            eu_we_r          <= (OTHERS => '0');
+            rs1_data_r       <= (OTHERS => '0');
+            rs2_data_r       <= (OTHERS => '0');
+            issue_r          <= '0';
+
         ELSIF rising_edge(clk) THEN
-            owner <= n_owner;
+            issue_r          <= issue;
+            owner            <= n_owner;
             fetcher_state    <= n_fetcher_state;
             dispatcher_state <= n_dispatcher_state;
 
+            regfile_pc_r_r <= regfile_pc_r;
+            inst_rdata_r_r <= inst_rdata_r;
+            eu_we_r        <= eu_we;
+            rs1_data_r     <= rs1_data;
+            rs2_data_r     <= rs2_data;
+
             initialized <= initialized(6 DOWNTO 0) & inst_rdy;
 
-            IF (issue = '1') THEN
+            regfile_pc_r <= regfile_pc;
+            inst_rdata_r <= inst_rdata;
 
-                regfile_pc_r <= regfile_pc;
-                inst_rdata_r <= inst_rdata;
+            IF (dispatcher_busy = '0') THEN
             END IF;
         END IF;
     END PROCESS;

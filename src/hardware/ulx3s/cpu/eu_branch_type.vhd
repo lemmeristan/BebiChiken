@@ -63,13 +63,13 @@ busy <= '0' when r_we = "00" else '1';
 
 
 
-    PROCESS (r_rs1_data, r_rs2_data, r_pc, r_instruction, r_we)
+    PROCESS (r_rs1_data, r_rs2_data, we, r_pc, r_instruction, r_we)
     BEGIN
         i_writeback_result <= (OTHERS => '0');
         i_next_pc <= r_pc + X"00000004";
 
         i_update_pc <= '0';
-        if r_we = "00" then
+        if r_we(0) = '0' and we = '1' then
             i_update_pc <= '1';
         end if;
 
