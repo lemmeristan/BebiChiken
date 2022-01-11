@@ -14,12 +14,12 @@ ENTITY regfile_wide IS
         rst, clk : IN STD_LOGIC;
         rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
         lock_rd, lock_pc : in std_logic;
-        new_rd_lock_owner, new_pc_lock_owner : in opcode_t;
-        update_pc : in opcode_bit_t;
+        new_rd_lock_owner, new_pc_lock_owner : in opcode_group_t;
+        update_pc : in opcode_group_bit_t;
 
-        writeback_we : in opcode_bit_t;
-        writeback_data : in opcode_word_t;
-        writeback_pc : in opcode_word_t;
+        writeback_we : in opcode_group_bit_t;
+        writeback_data : in opcode_group_word_t;
+        writeback_pc : in opcode_group_word_t;
 
         rs1_data_out, rs2_data_out, pc : out std_logic_vector(31 downto 0);
         rs1_locked, rs2_locked, pc_locked : out std_logic
