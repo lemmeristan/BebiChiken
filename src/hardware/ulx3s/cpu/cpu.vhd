@@ -64,7 +64,7 @@ ARCHITECTURE behavioural OF cpu IS
 
     SIGNAL rd_out : opcode_group_regidx_t;
 
-    SIGNAL updates_rd : STD_LOGIC;
+    SIGNAL update_rd : STD_LOGIC;
 
     SIGNAL regfile_rd                                                                                                                                              : STD_LOGIC_VECTOR(4 DOWNTO 0);
     SIGNAL rd_data_in                                                                                                                                              : STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -83,7 +83,7 @@ ARCHITECTURE behavioural OF cpu IS
     ALIAS rd     : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(11 DOWNTO 7);
     ALIAS opcode : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata(6 DOWNTO 0);
 
-    SIGNAL update_rd   : opcode_group_bit_t;
+    SIGNAL updates_rd  : opcode_group_bit_t;
     SIGNAL initialized : STD_LOGIC_VECTOR(7 DOWNTO 0);
 
     ALIAS funct7_r : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata_r(31 DOWNTO 25);
@@ -104,7 +104,7 @@ ARCHITECTURE behavioural OF cpu IS
 
     SIGNAL decoded, decoded_r : opcode_group_t;
 
-    signal imm_decoded : std_logic_vector(31 downto 0);
+    SIGNAL imm_decoded : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
 BEGIN
 
@@ -113,14 +113,12 @@ BEGIN
     -- Fetcher statemachine:
     -- Fetches instruction and issues it to dispatcher
 
-
-
     PROCESS (fetcher_state, regfile_pc_r, regfile_pc, dispatcher_busy, inst_rdata, inst_rdata_r, branch_next_pc, update_pc_branch, initialized, inst_rdy)
     BEGIN
         n_fetcher_state <= fetcher_state;
         next_pc         <= regfile_pc;
         update_pc       <= '0';
-        issue <= '0'; -- when uncommented, it gives a bad result ... ?????????
+        --issue <= '0'; -- when uncommented, it gives a bad result ... ?????????
         CASE fetcher_state IS
             WHEN FETCHER_STATE_S0 =>
                 --issue <= '0';
@@ -146,32 +144,59 @@ BEGIN
     -- Dispatcher statemachine:
     -- Registers data in flight to execution units, handles owners of registers
 
-    PROCESS (dispatcher_state, owner, inst_rdata_r, eu_needs_writeback, eu_busy, rs1_r, rs2_r, issue, rd_r, update_pc, update_rd)
+    eu_busy(OPCODE_U_TYPE) <= '0';
+
+    PROCESS (dispatcher_state, owner, inst_rdata_r, eu_needs_writeback, eu_busy, rs1_r, rs2_r, issue, rd_r, update_pc, update_rd, regfile_pc_r, imm_decoded, writeback_rd)
     BEGIN
         n_dispatcher_state <= dispatcher_state;
         n_owner            <= owner;
         dispatcher_busy    <= '1';
         eu_we              <= (OTHERS => '0');
-        updates_rd         <= '0';
+        update_rd          <= '0';
+
+        rd_data_in <= writeback_rd(f_decode_exec_unit(inst_rdata_r));
+        regfile_rd              <= rd_out(f_decode_exec_unit(inst_rdata_r));
+
         CASE dispatcher_state IS
             WHEN DISPATCHER_STATE_S0 =>
                 -- if everything is running smoothly, eu_we = issue, otherwise go to S1
                 IF ((f_uses_rs1(inst_rdata_r) = '1') AND (eu_busy(owner(to_integer(unsigned(rs1_r)))) = '1'))
                     OR ((f_uses_rs2(inst_rdata_r) = '1') AND (eu_busy(owner(to_integer(unsigned(rs2_r)))) = '1'))
                     OR (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '1') THEN
-                    n_dispatcher_state <= DISPATCHER_STATE_S1;
+                    --n_dispatcher_state <= DISPATCHER_STATE_S1;
 
                 ELSE
-                    dispatcher_busy                         <= '0';
-                    eu_we(f_decode_exec_unit(inst_rdata_r)) <= issue;
-                    IF eu_needs_writeback = '1' THEN
-                        n_owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata_r))))) <= OPCODE_INVALID;
-                        updates_rd                                                              <= update_rd(f_decode_exec_unit(inst_rdata_r));
-                    END IF;
+                    dispatcher_busy <= '0';
 
-                    IF (f_updates_rd(inst_rdata_r) = '1') THEN
-                        n_owner(to_integer(unsigned(rd_r))) <= f_decode_exec_unit(inst_rdata_r);
-                    END IF;
+                    CASE f_decode_opcode(inst_rdata_r) IS
+                        WHEN OPCODE_U_TYPE_LUI =>
+                            rd_data_in <= imm_decoded;
+                            update_rd  <= issue;
+                            n_owner(to_integer(unsigned(rd_r))) <= OPCODE_INVALID;
+                            regfile_rd <= rd_r;
+                        WHEN OPCODE_U_TYPE_AUIPC =>
+                            rd_data_in <= regfile_pc_r + imm_decoded;
+                            update_rd  <= issue;
+                            n_owner(to_integer(unsigned(rd_r))) <= OPCODE_INVALID;
+                            regfile_rd <= rd_r;
+                        WHEN OTHERS =>
+                            IF (f_decode_exec_unit(inst_rdata_r) = OPCODE_I_TYPE) AND (f_uses_rs1(inst_rdata_r) = '0') THEN
+                                rd_data_in                          <= f_calculate_i_type_zero(inst_rdata_r);
+                                n_owner(to_integer(unsigned(rd_r))) <= OPCODE_INVALID;
+                                update_rd                           <= issue;
+                                regfile_rd <= rd_r;
+                            ELSE
+                                eu_we(f_decode_exec_unit(inst_rdata_r)) <= issue;
+                                IF eu_needs_writeback = '1' THEN
+                                    n_owner(to_integer(unsigned(rd_out(f_decode_exec_unit(inst_rdata_r))))) <= OPCODE_INVALID;
+                                    update_rd                                                               <= updates_rd(f_decode_exec_unit(inst_rdata_r));
+                                END IF;
+
+                                IF (f_updates_rd(inst_rdata_r) = '1') THEN
+                                    n_owner(to_integer(unsigned(rd_r))) <= f_decode_exec_unit(inst_rdata_r);
+                                END IF;
+                            END IF;
+                    END CASE;
 
                 END IF;
             WHEN DISPATCHER_STATE_S1 =>
@@ -195,9 +220,7 @@ BEGIN
     rd_out(OPCODE_INVALID)  <= "00000";
     eu_rdy(OPCODE_INVALID)  <= '1';
     eu_busy(OPCODE_INVALID) <= '0';
-    regfile_rd              <= rd_out(f_decode_exec_unit(inst_rdata_r));
 
-    rd_data_in                   <= writeback_rd(f_decode_exec_unit(inst_rdata_r));
     writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
     PROCESS (rst, clk)
     BEGIN
@@ -214,10 +237,10 @@ BEGIN
             rs1_data_r       <= (OTHERS => '0');
             rs2_data_r       <= (OTHERS => '0');
             issue_r          <= '0';
-            imm_decoded <= (others => '0');
+            imm_decoded      <= (OTHERS => '0');
 
         ELSIF rising_edge(clk) THEN
-            imm_decoded <= f_decode_imm(inst_rdata);
+            imm_decoded      <= f_decode_imm(inst_rdata);
             issue_r          <= issue;
             owner            <= n_owner;
             fetcher_state    <= n_fetcher_state;
@@ -246,7 +269,7 @@ BEGIN
         clk => clk, rst => rst,
         rs1 => rs1_r, rs2 => rs2_r, rd => regfile_rd,
         rs1_data_out => rs1_data_out, rs2_data_out => rs2_data_out, pc => regfile_pc,
-        update_rd => updates_rd, update_pc => update_pc,
+        update_rd => update_rd, update_pc => update_pc,
         rd_data_in => rd_data_in, next_pc => next_pc
 
     );
@@ -273,7 +296,7 @@ BEGIN
         mem_re => data_re, mem_we => data_we,
         rd        => rd_out(OPCODE_MEM_TYPE),
         busy      => eu_busy(OPCODE_MEM_TYPE),
-        update_rd => update_rd(OPCODE_MEM_TYPE)
+        update_rd => updates_rd(OPCODE_MEM_TYPE)
     );
     i_eu_branch : eu_branch_type
     PORT MAP(
@@ -291,7 +314,7 @@ BEGIN
 
         rd        => rd_out(OPCODE_BRANCH_TYPE),
         busy      => eu_busy(OPCODE_BRANCH_TYPE),
-        update_rd => update_rd(OPCODE_BRANCH_TYPE),
+        update_rd => updates_rd(OPCODE_BRANCH_TYPE),
         update_pc => update_pc_branch
     );
 
@@ -308,7 +331,7 @@ BEGIN
 
         rd        => rd_out(OPCODE_I_TYPE),
         busy      => eu_busy(OPCODE_I_TYPE),
-        update_rd => update_rd(OPCODE_I_TYPE)
+        update_rd => updates_rd(OPCODE_I_TYPE)
     );
 
     i_eu_r : eu_r_type
@@ -324,22 +347,22 @@ BEGIN
 
         rd        => rd_out(OPCODE_R_TYPE),
         busy      => eu_busy(OPCODE_R_TYPE),
-        update_rd => update_rd(OPCODE_R_TYPE)
+        update_rd => updates_rd(OPCODE_R_TYPE)
     );
 
-    i_eu_u : eu_u_type
-    PORT MAP(
-        rst => rst, clk => clk,
+    -- i_eu_u : eu_u_type
+    -- PORT MAP(
+    --     rst => rst, clk => clk,
 
-        we => eu_we(OPCODE_U_TYPE),
-        rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r, imm => imm_decoded,
+    --     we => eu_we(OPCODE_U_TYPE),
+    --     rs1_data => rs1_data, rs2_data => rs2_data, instruction => inst_rdata_r, pc => regfile_pc_r, imm => imm_decoded,
 
-        writeback_rd  => writeback_rd(OPCODE_U_TYPE),
-        writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
-        writeback_rs2 => writeback_rs2(OPCODE_U_TYPE),
+    --     writeback_rd  => writeback_rd(OPCODE_U_TYPE),
+    --     writeback_rs1 => writeback_rs1(OPCODE_U_TYPE),
+    --     writeback_rs2 => writeback_rs2(OPCODE_U_TYPE),
 
-        rd        => rd_out(OPCODE_U_TYPE),
-        busy      => eu_busy(OPCODE_U_TYPE),
-        update_rd => update_rd(OPCODE_U_TYPE)
-    );
+    --     rd        => rd_out(OPCODE_U_TYPE),
+    --     busy      => eu_busy(OPCODE_U_TYPE),
+    --     update_rd => updates_rd(OPCODE_U_TYPE)
+    -- );
 END behavioural;
