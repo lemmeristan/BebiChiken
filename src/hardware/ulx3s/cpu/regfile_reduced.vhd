@@ -44,9 +44,9 @@ ARCHITECTURE behavioural OF regfile_reduced IS
 
     -- Registers
     ATTRIBUTE syn_ramstyle                     : STRING;
-    ATTRIBUTE syn_ramstyle OF registers, owner : SIGNAL IS "rw_check";
+    ATTRIBUTE syn_ramstyle OF registers, owner, tokens : SIGNAL IS "rw_check";
 
-    SIGNAL rs1_data_out_of_op, rs2_data_out_of_op, r_pc, rs1_token_of_op, rs2_token_of_op : opcode_group_word_t;
+    SIGNAL rs1_data_out_of_op, rs2_data_out_of_op, r_pc, rs1_token_of_op, rs2_token_of_op, wb_pc_token : opcode_group_word_t;
 
     SIGNAL owner_for_rs1, owner_for_rs2 : opcode_group_t;
     TYPE rd_owner_t IS ARRAY(opcode_group_t) OF opcode_group_t;
@@ -59,8 +59,7 @@ BEGIN
     i_rd  <= to_integer(unsigned(rd));
     pc    <= r_pc(pc_owner);
 
-    pc_locked <= '0' WHEN pc_owner = OPCODE_INVALID ELSE
-        '1';
+    pc_locked <= '0' WHEN wb_pc_token(pc_owner) = token_of_pc else '1'; --pc_owner = OPCODE_INVALID ELSE '1';
     rs1_locked <= '0' WHEN rs1_token_of_op(owner_for_rs1) = token_of_register(i_rs1) ELSE
         '1';
     rs2_locked <= '0' WHEN rs2_token_of_op(owner_for_rs2) = token_of_register(i_rs2) ELSE
@@ -72,7 +71,7 @@ BEGIN
     owner_for_rs1 <= owner(i_rs1);
     owner_for_rs2 <= owner(i_rs2);
 
-    PROCESS (owner, writeback_rd)
+    PROCESS (owner, writeback_rd, i_rs1, i_rs2)
     BEGIN
         FOR x IN opcode_group_t LOOP
             rd_owner_of_op(x)     <= owner(to_integer(unsigned(writeback_rd(x))));
@@ -104,18 +103,11 @@ BEGIN
                 IF writeback_we(x) = '1' THEN
                     registers(x)(to_integer(unsigned(writeback_rd(x)))) <= writeback_data(x);
                     tokens(x)(to_integer(unsigned(writeback_rd(x))))    <= writeback_token(x);
-
-                    --if rd_owner_of_op(x) = x then
-                    --    owner(to_integer(unsigned(writeback_rd(x)))) <= OPCODE_INVALID;
-                    --end if;
                 END IF;
 
                 IF writeback_update_pc(x) = '1' THEN
-
                     r_pc(x) <= writeback_next_pc(x);
-                    IF pc_owner = x THEN
-                        pc_owner <= OPCODE_INVALID;
-                    END IF;
+                    wb_pc_token(x) <= writeback_token(x);
                 END IF;
             END LOOP;
         END IF;
