@@ -59,10 +59,10 @@ BEGIN
     i_rd  <= to_integer(unsigned(rd));
     pc    <= r_pc(pc_owner);
 
-    pc_locked <= '0' WHEN wb_pc_token(pc_owner) = token_of_pc else '1'; --pc_owner = OPCODE_INVALID ELSE '1';
-    rs1_locked <= '0' WHEN rs1_token_of_op(owner_for_rs1) = token_of_register(i_rs1) ELSE
+    pc_locked <= '0' WHEN (wb_pc_token(pc_owner) = token_of_pc) or (pc_owner = OPCODE_INVALID) else '1'; --pc_owner = OPCODE_INVALID ELSE '1';
+    rs1_locked <= '0' WHEN (rs1_token_of_op(owner_for_rs1) = token_of_register(i_rs1)) or (owner_for_rs1 = OPCODE_INVALID) ELSE
         '1';
-    rs2_locked <= '0' WHEN rs2_token_of_op(owner_for_rs2) = token_of_register(i_rs2) ELSE
+    rs2_locked <= '0' WHEN (rs2_token_of_op(owner_for_rs2) = token_of_register(i_rs2)) or (owner_for_rs2 = OPCODE_INVALID) ELSE
         '1';
     rs1_data_out <= rs1_data_out_of_op(owner_for_rs1) WHEN rs1 /= "00000" ELSE
         (OTHERS => '0');
