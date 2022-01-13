@@ -114,23 +114,25 @@ BEGIN
     PROCESS (fetcher_state, token, regfile_pc, dispatcher_busy, inst_rdata, pc_locked, initialized, inst_rdy)
     BEGIN
         n_fetcher_state <= fetcher_state;
-        next_pc         <= regfile_pc;
-        update_pc       <= '0';
+        writeback_next_pc(OPCODE_INVALID)         <= regfile_pc;
+        writeback_update_pc(OPCODE_INVALID)       <= '0';
         --issue <= '0'; -- when uncommented, it gives a bad result ... ?????????
         n_token <= token;
+        lock_pc <= '0';
         CASE fetcher_state IS
             WHEN FETCHER_STATE_S0 =>
                 --issue <= '0';
                 IF (inst_rdy = '1') AND (dispatcher_busy = '0') AND (initialized = X"FF") AND (pc_locked = '0') THEN
                     issue   <= '1';
-                    next_pc <= regfile_pc + X"00000004";
-                    n_token <= token + 1;
+                    writeback_next_pc(OPCODE_INVALID) <= regfile_pc + X"00000004";
+                    n_token <= token + X"00000001";
 
-                    IF f_updates_pc(inst_rdata) = '1' THEN
-                        n_fetcher_state <= FETCHER_STATE_S1;
-                    ELSE
-                        update_pc <= '1';
-                    END IF;
+                    --IF f_updates_pc(inst_rdata) = '1' THEN
+                    --    n_fetcher_state <= FETCHER_STATE_S1;
+                    --ELSE
+                        writeback_update_pc(OPCODE_INVALID) <= '1';
+                        lock_pc <= f_updates_pc(inst_rdata);
+                    --END IF;
                 END IF;
             WHEN OTHERS =>
                 n_fetcher_state <= FETCHER_STATE_S0;
@@ -143,7 +145,7 @@ BEGIN
 
     writeback_token(OPCODE_INVALID) <= token_r;
 
-    PROCESS (dispatcher_state, inst_rdata_r, rs1_locked, rs2_locked, eu_busy, rs1_r, rs2_r, issue, rd_r, regfile_pc_r, imm_decoded, writeback_rd)
+    PROCESS (dispatcher_state, inst_rdata_r, rs1_locked, token_r, rs2_locked, eu_busy, rs1_r, rs2_r, issue, rd_r, regfile_pc_r, imm_decoded, writeback_rd)
     BEGIN
         n_dispatcher_state <= dispatcher_state;
         dispatcher_busy    <= '1';
@@ -152,9 +154,10 @@ BEGIN
         rd_data_in                   <= (OTHERS => '0'); --writeback_rd(f_decode_exec_unit(inst_rdata_r));
         writeback_rd(OPCODE_INVALID) <= (OTHERS => '0');
         writeback_we(OPCODE_INVALID) <= '0';
-        lock_pc <= '0';
+        --lock_pc <= '0';
         lock_rd <= '0';
-
+        new_pc_lock_owner <= f_decode_exec_unit(inst_rdata_r);
+        writeback_token(OPCODE_INVALID) <= token_r;
         CASE dispatcher_state IS
             WHEN DISPATCHER_STATE_S0 =>
                 -- if everything is running smoothly, eu_we = issue, otherwise go to S1
@@ -168,20 +171,24 @@ BEGIN
 
                     CASE f_decode_opcode(inst_rdata_r) IS
                         WHEN OPCODE_U_TYPE_LUI =>
-                            rd_data_in                   <= imm_decoded;
+                            writeback_data(OPCODE_INVALID)                   <= imm_decoded;
                             writeback_rd(OPCODE_INVALID) <= rd_r;
                             writeback_we(OPCODE_INVALID) <= '1';
+                            writeback_token(OPCODE_INVALID) <= token_r;
+                            lock_rd <= '1';
                         WHEN OPCODE_U_TYPE_AUIPC =>
-                            rd_data_in                   <= regfile_pc_r + imm_decoded;
+                            writeback_data(OPCODE_INVALID)                   <= regfile_pc_r + imm_decoded;
                             writeback_rd(OPCODE_INVALID) <= rd_r;
                             writeback_we(OPCODE_INVALID) <= '1';
+                            writeback_token(OPCODE_INVALID) <= token_r;
+                            lock_rd <= '1';
                         WHEN OTHERS =>
                             IF (f_decode_exec_unit(inst_rdata_r) = OPCODE_I_TYPE) AND (f_uses_rs1(inst_rdata_r) = '0') THEN
-                                rd_data_in                   <= f_calculate_i_type_zero(inst_rdata_r);
+                                writeback_data(OPCODE_INVALID)                   <= f_calculate_i_type_zero(inst_rdata_r);
                                 writeback_rd(OPCODE_INVALID) <= rd_r;
                                 writeback_we(OPCODE_INVALID) <= '1';
                             ELSE
-                                lock_pc <= f_updates_pc(inst_rdata_r);
+                                --lock_pc <= f_updates_pc(inst_rdata_r);
                                 lock_rd <= f_updates_rd(inst_rdata_r);
 
                                 eu_we(f_decode_exec_unit(inst_rdata_r)) <= issue;
@@ -203,6 +210,10 @@ BEGIN
     rd_out(OPCODE_INVALID)  <= "00000";
     eu_rdy(OPCODE_INVALID)  <= '1';
     eu_busy(OPCODE_INVALID) <= '0';
+    eu_busy(OPCODE_U_TYPE) <= '0';
+
+    writeback_token(OPCODE_INVALID) <= token_r;
+    
 
     --writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
     PROCESS (rst, clk)
@@ -220,7 +231,7 @@ BEGIN
             rs2_data_r       <= (OTHERS => '0');
             issue_r          <= '0';
             imm_decoded      <= (OTHERS => '0');
-
+            token <= (others => '0');
         ELSIF rising_edge(clk) THEN
             imm_decoded      <= f_decode_imm(inst_rdata);
             issue_r          <= issue;
@@ -234,12 +245,13 @@ BEGIN
             rs2_data_r     <= rs2_data;
 
             initialized <= initialized(6 DOWNTO 0) & inst_rdy;
+            token <= n_token;
 
+
+            IF (issue = '1') THEN
+            token_r <= token;
             regfile_pc_r <= regfile_pc;
             inst_rdata_r <= inst_rdata;
-            token_r <= token;
-
-            IF (dispatcher_busy = '0') THEN
             END IF;
         END IF;
     END PROCESS;
@@ -252,7 +264,7 @@ BEGIN
     PORT MAP(
 
         clk => clk, rst => rst,
-        rs1 => rs1_r, rs2 => rs2_r, rd => regfile_rd,
+        rs1 => rs1_r, rs2 => rs2_r, rd => rd_r,
 
         lock_rd => lock_rd, lock_pc => lock_pc,
         new_rd_lock_owner => new_rd_lock_owner, new_pc_lock_owner => new_pc_lock_owner,
