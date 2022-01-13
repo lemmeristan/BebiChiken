@@ -66,6 +66,30 @@ PACKAGE bebichiken IS
         );
     END COMPONENT;
 
+
+    COMPONENT regfile_reduced IS
+    GENERIC (
+        entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0)
+    );
+    PORT (
+        rst, clk                             : IN STD_LOGIC;
+        rs1, rs2, rd                         : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+        lock_rd, lock_pc                     : IN STD_LOGIC;
+        new_rd_lock_owner, new_pc_lock_owner : IN opcode_group_t;
+        token_for_rd, token_for_pc           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+
+        writeback_we, writeback_update_pc  : IN opcode_group_bit_t;
+        writeback_data                     : IN opcode_group_word_t;
+        writeback_next_pc, writeback_token : IN opcode_group_word_t;
+        writeback_rd                       : IN opcode_group_regidx_t;
+
+        rs1_data_out, rs2_data_out, pc    : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rs1_locked, rs2_locked, pc_locked : OUT STD_LOGIC
+
+    );
+END COMPONENT;
+
+
     COMPONENT execunit IS
         GENERIC (operation : opcode_t);
 
@@ -89,20 +113,20 @@ PACKAGE bebichiken IS
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                              : IN STD_LOGIC;
-            rs1_data, rs2_data, instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            mem_we, mem_re      : OUT STD_LOGIC;
-            mem_wack, mem_rdy   : IN STD_LOGIC;
-            mem_wdata, mem_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            mem_rdata           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-            mem_width           : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-
-            rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-
-            busy, update_rd : OUT STD_LOGIC
+            we                                  : IN STD_LOGIC;
+            rs1_data, rs2_data, instruction, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    
+            writeback_data, writeback_token : out std_logic_vector(31 downto 0);
+            writeback_we  : out std_logic;
+            writeback_rd                       : out std_logic_vector(4 downto 0);
+    
+            mem_we, mem_re : out std_logic;
+            mem_wack, mem_rdy : in std_logic;
+            mem_wdata, mem_addr : out std_logic_vector(31 downto 0);
+            mem_rdata : in std_logic_vector(31 downto 0);
+            mem_width : out std_logic_vector(1 downto 0);
+    
+            busy : out std_logic 
         );
     END COMPONENT;
 
@@ -111,14 +135,13 @@ PACKAGE bebichiken IS
             rst, clk : IN STD_LOGIC;
 
             we                                  : IN STD_LOGIC;
-            rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            rd                         : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-            busy, update_rd, update_pc : OUT STD_LOGIC
+            rs1_data, rs2_data, instruction, pc, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    
+            writeback_next_pc, writeback_data, writeback_token : out std_logic_vector(31 downto 0);
+            writeback_we, writeback_update_pc  : out std_logic;
+            writeback_rd                       : out std_logic_vector(4 downto 0);
+    
+            busy : out std_logic
 
         );
     END COMPONENT;
@@ -127,15 +150,14 @@ PACKAGE bebichiken IS
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                       : IN STD_LOGIC;
-            rs1_data, rs2_data, instruction, pc, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            rd              : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-            busy, update_rd : OUT STD_LOGIC
+            we                                              : IN STD_LOGIC;
+            rs1_data, rs2_data, instruction, pc, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    
+            writeback_next_pc, writeback_data, writeback_token : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            writeback_we, writeback_update_pc                  : OUT STD_LOGIC;
+            writeback_rd                                       : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+    
+            busy : OUT STD_LOGIC
 
         );
     END COMPONENT;
@@ -144,15 +166,14 @@ PACKAGE bebichiken IS
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                  : IN STD_LOGIC;
-            rs1_data, rs2_data, instruction, pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            writeback_rd, writeback_rs1, writeback_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            next_pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-            rd              : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-            busy, update_rd : OUT STD_LOGIC
+            we                                              : IN STD_LOGIC;
+            rs1_data, rs2_data, instruction, pc, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    
+            writeback_next_pc, writeback_data, writeback_token : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            writeback_we, writeback_update_pc                  : OUT STD_LOGIC;
+            writeback_rd                                       : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+    
+            busy : OUT STD_LOGIC
 
         );
     END COMPONENT;
