@@ -150,14 +150,14 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                              : IN STD_LOGIC;
-            rs1_data, rs2_data, instruction, pc, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            we                                  : IN STD_LOGIC;
+            rs1_data, instruction, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
     
-            writeback_next_pc, writeback_data, writeback_token : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            writeback_we, writeback_update_pc                  : OUT STD_LOGIC;
-            writeback_rd                                       : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+            writeback_data, writeback_token : out std_logic_vector(31 downto 0);
+            writeback_we  : out std_logic;
+            writeback_rd                       : out std_logic_vector(4 downto 0);
     
-            busy : OUT STD_LOGIC
+            busy : out std_logic
 
         );
     END COMPONENT;
@@ -166,12 +166,12 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                              : IN STD_LOGIC;
-            rs1_data, rs2_data, instruction, pc, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            we                                     : IN STD_LOGIC;
+            rs1_data, rs2_data, instruction, token : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
     
-            writeback_next_pc, writeback_data, writeback_token : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            writeback_we, writeback_update_pc                  : OUT STD_LOGIC;
-            writeback_rd                                       : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+            writeback_data, writeback_token : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            writeback_we                    : OUT STD_LOGIC;
+            writeback_rd                    : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
     
             busy : OUT STD_LOGIC
 
