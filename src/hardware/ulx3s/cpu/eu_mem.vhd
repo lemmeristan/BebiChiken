@@ -73,9 +73,9 @@ BEGIN
     writeback_rd <= r_instruction(11 DOWNTO 7);
 
 
-    mem_addr <= rs1_data + r_imm;
-    mem_wdata <= rs2_data;
-    mem_width <= instruction(13 downto 12);
+    mem_addr <= r_rs1_data + r_imm;
+    mem_wdata <= r_rs2_data;
+    mem_width <= r_instruction(13 downto 12);
     writeback_data <= mem_rdata;
 
     process(state, we, state, op, mem_rdy, mem_wack)

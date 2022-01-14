@@ -76,7 +76,7 @@ PACKAGE bebichiken IS
         rs1, rs2, rd                         : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
         lock_rd, lock_pc                     : IN STD_LOGIC;
         new_rd_lock_owner, new_pc_lock_owner : IN opcode_group_t;
-        token_for_rd, token_for_pc           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        lock_token           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         writeback_we, writeback_update_pc  : IN opcode_group_bit_t;
         writeback_data                     : IN opcode_group_word_t;

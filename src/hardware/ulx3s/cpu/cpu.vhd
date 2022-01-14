@@ -67,7 +67,7 @@ ARCHITECTURE behavioural OF cpu IS
 
     SIGNAL regfile_rd                                                                                                                                                                       : STD_LOGIC_VECTOR(4 DOWNTO 0);
     SIGNAL rd_data_in                                                                                                                                                                       : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL eu_rdy, writeback_update_pc                                                                                                                                                      : opcode_group_bit_t;
+    SIGNAL writeback_update_pc                                                                                                                                                      : opcode_group_bit_t;
     SIGNAL rs1_data, rs1_data_r, rs2_data, rs2_data_r, next_pc, regfile_pc, regfile_pc_r, regfile_pc_r_r, inst_rdata_r, inst_rdata_r_r, rs1_data_out, rs2_data_out, token_r, token, n_token : STD_LOGIC_VECTOR(31 DOWNTO 0); -- n_pc
     --SIGNAL rs1_data_in, rs2_data_in, instruction_in, pc_in                                                                                                         : opcode_group_word_t;
 
@@ -92,17 +92,14 @@ ARCHITECTURE behavioural OF cpu IS
     ALIAS rd_r     : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata_r(11 DOWNTO 7);
     ALIAS opcode_r : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata_r(6 DOWNTO 0);
 
-    SIGNAL inst_valid, dispatch, update_pc_main : STD_LOGIC;
-
-    SIGNAL rs1_owner, rs2_owner : opcode_group_t;
     -- dispatcher
     SIGNAL dispatcher_busy, issue, issue_r, issue_r_r               : STD_LOGIC;
 
     SIGNAL decoded, decoded_r, new_rd_lock_owner, new_pc_lock_owner : opcode_group_t;
 
-    SIGNAL imm_decoded, token_for_rd, token_for_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL imm_decoded : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-    SIGNAL lock_rd, lock_pc, rs1_locked, rs2_locked, pc_locked : STD_LOGIC;
+    SIGNAL lock_rd, lock_pc, rs1_locked, rs2_locked, pc_locked, pc_locked_r : STD_LOGIC;
 
 BEGIN
 
@@ -111,7 +108,7 @@ BEGIN
     -- Fetcher statemachine:
     -- Fetches instruction and issues it to dispatcher
 
-    PROCESS (fetcher_state, token, regfile_pc, dispatcher_busy, inst_rdata, pc_locked, initialized, inst_rdy)
+    PROCESS (fetcher_state, token, regfile_pc, dispatcher_busy, inst_rdata, pc_locked, initialized, inst_rdy, pc_locked_r)
     BEGIN
         n_fetcher_state <= fetcher_state;
         writeback_next_pc(OPCODE_INVALID)         <= regfile_pc;
@@ -121,7 +118,7 @@ BEGIN
         CASE fetcher_state IS
             WHEN FETCHER_STATE_S0 =>
                 --issue <= '0';
-                IF (inst_rdy = '1') AND (dispatcher_busy = '0') AND (initialized = X"FF") AND (pc_locked = '0') THEN
+                IF (inst_rdy = '1') AND (dispatcher_busy = '0') AND (initialized = X"FF") AND (pc_locked = '0') AND (pc_locked_r = '0') THEN
                     issue   <= '1';
                     writeback_next_pc(OPCODE_INVALID) <= regfile_pc + X"00000004";
                     n_token <= token + X"00000001";
@@ -161,14 +158,13 @@ BEGIN
         CASE dispatcher_state IS
             WHEN DISPATCHER_STATE_S0 =>
                 -- if everything is running smoothly, eu_we = issue, otherwise go to S1
-                IF ((f_uses_rs1(inst_rdata_r) = '1') AND (rs1_locked = '0'))
-                    OR ((f_uses_rs2(inst_rdata_r) = '1') AND (rs2_locked = '0'))
+                IF ((f_uses_rs1(inst_rdata_r) = '1') AND (rs1_locked = '1'))
+                    OR ((f_uses_rs2(inst_rdata_r) = '1') AND (rs2_locked = '1'))
                     OR (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '1') THEN
                     --n_dispatcher_state <= DISPATCHER_STATE_S1;
 
                 ELSE
                     dispatcher_busy <= '0';
-                    lock_pc <= f_updates_pc(inst_rdata_r);
 
                     CASE f_decode_opcode(inst_rdata_r) IS
                         WHEN OPCODE_U_TYPE_LUI =>
@@ -195,8 +191,9 @@ BEGIN
                                 lock_rd <= '0';
 
                             ELSE
-                                --lock_pc <= f_updates_pc(inst_rdata_r);
                                 lock_rd <= f_updates_rd(inst_rdata_r);
+                                new_pc_lock_owner <= f_decode_exec_unit(inst_rdata_r);
+                                lock_pc <= f_updates_pc(inst_rdata_r);
 
                                 eu_we(f_decode_exec_unit(inst_rdata_r)) <= issue;
                             END IF;
@@ -208,18 +205,14 @@ BEGIN
         END CASE;
     END PROCESS;
 
-    update_pc_main <= issue;
 
     inst_addr  <= regfile_pc;
     inst_re    <= '1';
     inst_width <= "10"; -- unused
 
     rd_out(OPCODE_INVALID)  <= "00000";
-    eu_rdy(OPCODE_INVALID)  <= '1';
     eu_busy(OPCODE_INVALID) <= '0';
     eu_busy(OPCODE_U_TYPE) <= '0';
-
-    writeback_token(OPCODE_INVALID) <= token_r;
     
 
     --writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
@@ -239,7 +232,9 @@ BEGIN
             issue_r          <= '0';
             imm_decoded      <= (OTHERS => '0');
             token <= (others => '0');
+            pc_locked_r <= '1';
         ELSIF rising_edge(clk) THEN
+        pc_locked_r <= pc_locked;
             imm_decoded      <= f_decode_imm(inst_rdata);
             issue_r          <= issue;
             fetcher_state    <= n_fetcher_state;
@@ -256,15 +251,13 @@ BEGIN
 
 
             IF (issue = '1') THEN
-            token_r <= n_token;
+            token_r <= token;
             regfile_pc_r <= regfile_pc;
             inst_rdata_r <= inst_rdata;
             END IF;
         END IF;
     END PROCESS;
 
-    token_for_pc <= token_r;
-    token_for_rd <= token_r;
 
     i_regfile_reduced : regfile_reduced
     GENERIC MAP(entry_point => entry_point)
@@ -275,7 +268,7 @@ BEGIN
 
         lock_rd => lock_rd, lock_pc => lock_pc,
         new_rd_lock_owner => new_rd_lock_owner, new_pc_lock_owner => new_pc_lock_owner,
-        token_for_rd => token_for_rd, token_for_pc => token_for_pc,
+        lock_token => token_r,
 
         writeback_we => writeback_we, writeback_update_pc => writeback_update_pc,
         writeback_data => writeback_data,
@@ -317,6 +310,7 @@ BEGIN
         writeback_data    => writeback_data(OPCODE_BRANCH_TYPE),
         writeback_token   => writeback_token(OPCODE_BRANCH_TYPE),
         writeback_rd      => writeback_rd(OPCODE_BRANCH_TYPE),
+        writeback_update_pc => writeback_update_pc(OPCODE_BRANCH_TYPE),
         busy              => eu_busy(OPCODE_BRANCH_TYPE)
     );
 

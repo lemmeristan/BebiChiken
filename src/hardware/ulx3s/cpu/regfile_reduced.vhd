@@ -15,7 +15,7 @@ ENTITY regfile_reduced IS
         rs1, rs2, rd                         : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
         lock_rd, lock_pc                     : IN STD_LOGIC;
         new_rd_lock_owner, new_pc_lock_owner : IN opcode_group_t;
-        token_for_rd, token_for_pc           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        lock_token           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         writeback_we, writeback_update_pc  : IN opcode_group_bit_t;
         writeback_data                     : IN opcode_group_word_t;
@@ -71,7 +71,7 @@ BEGIN
     owner_for_rs1 <= owner(i_rs1);
     owner_for_rs2 <= owner(i_rs2);
 
-    PROCESS (owner, writeback_rd, i_rs1, i_rs2)
+    PROCESS (owner, writeback_rd, i_rs1, i_rs2, wb_rd_token, registers)
     BEGIN
         FOR x IN opcode_group_t LOOP
             rd_owner_of_op(x)     <= owner(to_integer(unsigned(writeback_rd(x))));
@@ -94,11 +94,11 @@ BEGIN
 
             IF (lock_rd = '1') then
                 owner(i_rd)             <= new_rd_lock_owner;
-                token_of_register(i_rd) <= token_for_rd;
+                token_of_register(i_rd) <= lock_token;
             END IF;
             IF (lock_pc = '1') then
                 pc_owner    <= new_pc_lock_owner;
-                token_of_pc <= token_for_pc;
+                token_of_pc <= lock_token;
             END IF;
             FOR x IN opcode_group_t LOOP
                 IF writeback_we(x) = '1' THEN
@@ -109,6 +109,10 @@ BEGIN
                 IF writeback_update_pc(x) = '1' THEN
                     r_pc(x) <= writeback_next_pc(x);
                     wb_pc_token(x) <= writeback_token(x);
+                    if x = OPCODE_BRANCH_TYPE then -- find another way, this is dirty
+                        pc_owner <= OPCODE_INVALID;
+                        r_pc(OPCODE_INVALID) <= writeback_next_pc(x);
+                    end if;
                 END IF;
             END LOOP;
         END IF;
