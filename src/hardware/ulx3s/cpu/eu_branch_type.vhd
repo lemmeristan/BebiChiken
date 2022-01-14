@@ -40,6 +40,7 @@ BEGIN
         r_token <= (others => '0');
         r_imm <= (others => '0');
     elsIF rising_edge(clk) THEN
+    writeback_next_pc <= i_next_pc;
 
         r_we         <= r_we(0) & we;
         IF we = '1' THEN
@@ -59,7 +60,6 @@ writeback_we <= r_we(1) when f_updates_rd(r_instruction) = '1' else '0';
 writeback_update_pc <= r_we(1) when f_updates_pc(r_instruction) = '1' else '0';
 writeback_token <= r_token;
 writeback_data <= i_writeback_result;
-writeback_next_pc <= i_next_pc;
 writeback_rd <= r_instruction(11 DOWNTO 7);
 
     PROCESS (r_rs1_data, r_rs2_data, r_pc, r_imm, r_instruction)

@@ -38,6 +38,7 @@ BEGIN
         r_token <= (others => '0');
         r_imm <= (others => '0');
     elsIF rising_edge(clk) THEN
+    writeback_data <= i_writeback_result;
 
         r_we         <= r_we(0) & we;
         IF we = '1' THEN
@@ -53,7 +54,6 @@ busy <= '0' when r_we = "00" else '1';
 
 writeback_we <= r_we(1) when f_updates_rd(r_instruction) = '1' else '0';
 writeback_token <= r_token;
-writeback_data <= i_writeback_result;
 writeback_rd <= r_instruction(11 DOWNTO 7);
 
     PROCESS (r_rs1_data, r_imm, r_instruction)

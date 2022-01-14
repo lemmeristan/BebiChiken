@@ -99,7 +99,7 @@ ARCHITECTURE behavioural OF cpu IS
 
     SIGNAL lock_rd, lock_pc, rs1_locked, rs2_locked, pc_locked, pc_locked_r, updates_pc : STD_LOGIC;
 
-    signal pc, n_pc, pc_r, n_pc_r_r, n_inst_rdata_r, pc_r_r : std_logic_vector(31 downto 0);
+    signal pc, n_pc, n_inst_rdata_r , pc_r: std_logic_vector(31 downto 0);
     signal pc_owner, n_pc_owner : opcode_group_t;
 
 BEGIN
@@ -111,7 +111,7 @@ updates_pc <= f_updates_pc(inst_rdata);
     -- Fetcher statemachine:
     -- Fetches instruction and issues it to dispatcher
 
-    PROCESS (fetcher_state, token, dispatcher_busy, inst_rdata, initialized, inst_rdy, pc, pc_owner, writeback_update_pc, writeback_next_pc, pc_r, inst_rdata_r)
+    PROCESS (fetcher_state, token, dispatcher_busy, inst_rdata, initialized, inst_rdy, pc, pc_owner, writeback_update_pc, writeback_next_pc, inst_rdata_r)
     BEGIN
         n_fetcher_state                     <= fetcher_state;
         n_token                             <= token;
@@ -148,7 +148,7 @@ updates_pc <= f_updates_pc(inst_rdata);
     eu_busy(OPCODE_U_TYPE) <= '0';
 
 
-    PROCESS (dispatcher_state, inst_rdata_r, rs1_locked, token_r, rs2_locked, eu_busy, rs1_r, rs2_r, issue, rd_r, pc_r, imm_decoded, writeback_rd, pc_owner, pc, initialized)
+    PROCESS (dispatcher_state, inst_rdata_r, rs1_locked, token_r, rs2_locked, eu_busy, rs1_r, rs2_r, rd_r, pc, imm_decoded, writeback_rd, pc_owner, pc, initialized, issue)
     BEGIN
         n_dispatcher_state <= dispatcher_state;
         dispatcher_busy    <= '1';
@@ -161,6 +161,8 @@ updates_pc <= f_updates_pc(inst_rdata);
         new_rd_lock_owner <= OPCODE_INVALID;
 
         writeback_token(OPCODE_INVALID) <= token_r;
+
+        writeback_data(OPCODE_INVALID) <= (others => '0');
 
         CASE dispatcher_state IS
             WHEN DISPATCHER_STATE_S0 =>
@@ -181,7 +183,7 @@ updates_pc <= f_updates_pc(inst_rdata);
                                 writeback_data(OPCODE_INVALID) <= imm_decoded;
                                 writeback_we(OPCODE_INVALID)   <= '1';
                             WHEN OPCODE_U_TYPE_AUIPC =>
-                                writeback_data(OPCODE_INVALID) <= pc_r + imm_decoded;
+                                writeback_data(OPCODE_INVALID) <= pc + imm_decoded;
                                 writeback_we(OPCODE_INVALID)   <= '1';
                             WHEN OTHERS =>
                                 IF (f_decode_exec_unit(inst_rdata_r) = OPCODE_I_TYPE) AND (f_uses_rs1(inst_rdata_r) = '0') THEN
@@ -201,7 +203,7 @@ updates_pc <= f_updates_pc(inst_rdata);
                 n_dispatcher_state <= DISPATCHER_STATE_S0;
         END CASE;
     END PROCESS;
-    inst_addr  <= pc;
+    inst_addr  <= n_pc;
     inst_re    <= '1';
     inst_width <= "10"; -- unused
 
@@ -224,10 +226,10 @@ updates_pc <= f_updates_pc(inst_rdata);
 
             pc_owner <= OPCODE_INVALID;
             pc <= entry_point;
-            pc_r <= entry_point;
-            pc_r_r <= entry_point;
 
             inst_rdata_r_valid <= '0';
+
+            pc_r <= entry_point;
         ELSIF rising_edge(clk) THEN
 
             pc_owner <= n_pc_owner;
@@ -244,17 +246,12 @@ updates_pc <= f_updates_pc(inst_rdata);
             token       <= n_token;
             inst_rdata_r <= inst_rdata;
             token_r      <= token;
-            
+            pc <= n_pc;
 
-            IF (issue = '1') and (pc_owner = OPCODE_INVALID) THEN
+pc_r <= pc;
+            IF (issue = '1') THEN
                 inst_rdata_r_valid <= '1';
-                pc <= n_pc;
-                pc_r_r <= pc_r;
-                pc_r <= pc;
-            elsif (writeback_update_pc(pc_owner) = '1') then
-                pc <= writeback_next_pc(pc_owner);
-                pc_r_r <= writeback_next_pc(pc_owner);
-                pc_r <= writeback_next_pc(pc_owner);
+                
             END IF;
         END IF;
     END PROCESS;
@@ -301,7 +298,7 @@ updates_pc <= f_updates_pc(inst_rdata);
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_BRANCH_TYPE),
-        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, pc => pc_r_r, token => token_r, imm => imm_decoded,
+        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, pc => pc_r, token => token_r, imm => imm_decoded,
 
         writeback_we        => writeback_we(OPCODE_BRANCH_TYPE),
         writeback_next_pc   => writeback_next_pc(OPCODE_BRANCH_TYPE),
