@@ -74,17 +74,17 @@ PACKAGE bebichiken IS
     PORT (
         rst, clk                             : IN STD_LOGIC;
         rs1, rs2, rd                         : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-        lock_rd, lock_pc                     : IN STD_LOGIC;
-        new_rd_lock_owner, new_pc_lock_owner : IN opcode_group_t;
+        lock_rd                     : IN STD_LOGIC;
+        new_rd_lock_owner : IN opcode_group_t;
         lock_token           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-        writeback_we, writeback_update_pc  : IN opcode_group_bit_t;
+        writeback_we  : IN opcode_group_bit_t;
         writeback_data                     : IN opcode_group_word_t;
-        writeback_next_pc, writeback_token : IN opcode_group_word_t;
+        writeback_token : IN opcode_group_word_t;
         writeback_rd                       : IN opcode_group_regidx_t;
 
-        rs1_data_out, rs2_data_out, pc    : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        rs1_locked, rs2_locked, pc_locked : OUT STD_LOGIC
+        rs1_data_out, rs2_data_out    : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rs1_locked, rs2_locked : OUT STD_LOGIC
 
     );
 END COMPONENT;
