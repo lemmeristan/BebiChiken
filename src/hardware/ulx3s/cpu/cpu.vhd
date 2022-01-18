@@ -58,7 +58,7 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL update_pc, update_pc_branch, update_pc_branch_r    : STD_LOGIC;
     SIGNAL branch_next_pc                                     : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL writeback_data, writeback_token, writeback_next_pc : opcode_group_word_t;
-    SIGNAL eu_we, eu_we_r, eu_busy, writeback_we              : opcode_group_bit_t;
+    SIGNAL eu_we, eu_we_r, eu_we_r_r, eu_busy, writeback_we              : opcode_group_bit_t;
     SIGNAL allready                                           : STD_LOGIC;
 
     SIGNAL writeback_rd, rd_out : opcode_group_regidx_t;
@@ -240,11 +240,12 @@ BEGIN
 
             pc_owner <= n_pc_owner;
 
-            imm_decoded      <= f_decode_imm(inst_rdata_r);
+            imm_decoded      <= f_decode_imm(inst_rdata);
             fetcher_state    <= n_fetcher_state;
             dispatcher_state <= n_dispatcher_state;
 
             eu_we_r    <= eu_we;
+            eu_we_r_r <= eu_we_r;
             rs1_data_r <= rs1_data;
             rs2_data_r <= rs2_data;
 
@@ -285,8 +286,8 @@ BEGIN
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we(OPCODE_MEM_TYPE),
-        rs1_data => rs1_data_out_r_r, rs2_data => rs2_data_out_r_r, instruction => inst_rdata_r, token => token_r, imm => imm_decoded,
+        we => eu_we_r_r(OPCODE_MEM_TYPE),
+        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, token => token_r, imm => imm_decoded,
 
         writeback_we    => writeback_we(OPCODE_MEM_TYPE),
         writeback_data  => writeback_data(OPCODE_MEM_TYPE),
@@ -301,7 +302,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_BRANCH_TYPE),
-        rs1_data => rs1_data_out_r_r, rs2_data => rs2_data_out_r_r, instruction => inst_rdata_r, pc => pc_r, token => token_r, imm => imm_decoded,
+        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, pc => pc_r, token => token_r, imm => imm_decoded,
 
         writeback_we        => writeback_we(OPCODE_BRANCH_TYPE),
         writeback_next_pc   => writeback_next_pc(OPCODE_BRANCH_TYPE),
@@ -317,7 +318,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_I_TYPE),
-        rs1_data => rs1_data_out_r_r, instruction => inst_rdata_r, token => token_r, imm => imm_decoded,
+        rs1_data => rs1_data_out, instruction => inst_rdata_r, token => token_r, imm => imm_decoded,
 
         writeback_we    => writeback_we(OPCODE_I_TYPE),
         writeback_data  => writeback_data(OPCODE_I_TYPE),
@@ -332,7 +333,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_R_TYPE),
-        rs1_data => rs1_data_out_r_r, rs2_data => rs2_data_out_r_r, instruction => inst_rdata_r, token => token_r,
+        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, token => token_r,
 
         writeback_we    => writeback_we(OPCODE_R_TYPE),
         writeback_data  => writeback_data(OPCODE_R_TYPE),

@@ -152,8 +152,8 @@ BEGIN
 
     END GENERATE gen_dpram;
 
-    rs1_locked    <= '1' WHEN (rs1_token_of_op(owner(to_integer(unsigned(rs1)))) /= token_of_register_rs1(owner(to_integer(unsigned(rs1))))) ELSE '0';
-    rs2_locked    <= '1' WHEN (rs2_token_of_op(owner(to_integer(unsigned(rs2)))) /= token_of_register_rs2(owner(to_integer(unsigned(rs2))))) ELSE '0';
+    rs1_locked    <= '0' WHEN (rs1_token_of_op(owner(to_integer(unsigned(rs1)))) = token_of_register_rs1(owner(to_integer(unsigned(rs1))))) OR (owner(to_integer(unsigned(rs1))) = OPCODE_INVALID) ELSE '1';
+    rs2_locked    <= '0' WHEN (rs2_token_of_op(owner(to_integer(unsigned(rs2)))) = token_of_register_rs2(owner(to_integer(unsigned(rs2))))) OR (owner(to_integer(unsigned(rs2))) = OPCODE_INVALID) ELSE '1';
 
     rs1_data_out <= rs1_data_out_of_op(owner(to_integer(unsigned(rs1))));-- WHEN rs1 /= "00000" ELSE (OTHERS => '0');
     rs2_data_out <= rs2_data_out_of_op(owner(to_integer(unsigned(rs2))));-- WHEN rs2 /= "00000" ELSE (OTHERS => '0');
