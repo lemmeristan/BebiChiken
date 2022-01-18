@@ -105,7 +105,7 @@ ARCHITECTURE behavioural OF cpu IS
     SIGNAL wstate, n_wstate : whole_state_t;
 
 BEGIN
-    PROCESS (wstate, initialized, inst_rdata_r, inst_rdata, rs1_locked, rs2_locked, eu_busy, imm_decoded, pc, token)
+    PROCESS (wstate, initialized, inst_rdata_r, inst_rdata, rs1_locked, rs2_locked, eu_busy, imm_decoded, pc, token, pc_owner, writeback_update_pc, writeback_next_pc)
     BEGIN
         n_wstate                       <= wstate;
         n_inst_rdata_r                 <= inst_rdata_r;
@@ -123,14 +123,16 @@ BEGIN
         writeback_data(OPCODE_INVALID) <= (OTHERS => '0');
         n_pc                           <= pc;
         n_token                        <= token;
+        n_pc_owner                     <= pc_owner;
 
         CASE wstate IS
             WHEN ws0 =>
                 IF (initialized = X"FF") THEN
                     n_wstate <= ws1;
+                    n_inst_rdata_r <= inst_rdata;
+
                 END IF;
             WHEN ws1 =>
-                n_inst_rdata_r <= inst_rdata;
                 n_wstate       <= ws2;
             WHEN ws2 =>
                 IF ((f_uses_rs1(inst_rdata_r) = '1') AND (rs1_locked = '1'))
@@ -158,8 +160,20 @@ BEGIN
                                 eu_we(f_decode_exec_unit(inst_rdata_r)) <= '1';
                             END IF;
                     END CASE;
-                    n_token  <= token + X"00000001";
-                    n_pc     <= pc + X"00000004";
+                    n_token <= token + X"00000001";
+                    IF f_updates_pc(inst_rdata_r) = '1' THEN
+                        n_wstate   <= ws3;
+                        n_pc_owner <= f_decode_exec_unit(inst_rdata);
+                    ELSE
+                        n_pc     <= pc + X"00000004";
+                        n_wstate <= ws0;
+                    END IF;
+                END IF;
+
+            WHEN ws3 =>
+                IF (writeback_update_pc(pc_owner) = '1') THEN
+                    n_pc            <= writeback_next_pc(pc_owner);
+                    n_pc_owner      <= OPCODE_INVALID;
                     n_wstate <= ws0;
                 END IF;
 
@@ -357,7 +371,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_MEM_TYPE),
-        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata, token => token, imm => imm_decoded,
+        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, token => token, imm => imm_decoded,
 
         writeback_we    => writeback_we(OPCODE_MEM_TYPE),
         writeback_data  => writeback_data(OPCODE_MEM_TYPE),
@@ -372,7 +386,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_BRANCH_TYPE),
-        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata, pc => pc_r, token => token, imm => imm_decoded,
+        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, pc => pc_r, token => token, imm => imm_decoded,
 
         writeback_we        => writeback_we(OPCODE_BRANCH_TYPE),
         writeback_next_pc   => writeback_next_pc(OPCODE_BRANCH_TYPE),
@@ -388,7 +402,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_I_TYPE),
-        rs1_data => rs1_data_out, instruction => inst_rdata, token => token, imm => imm_decoded,
+        rs1_data => rs1_data_out, instruction => inst_rdata_r, token => token, imm => imm_decoded,
 
         writeback_we    => writeback_we(OPCODE_I_TYPE),
         writeback_data  => writeback_data(OPCODE_I_TYPE),
@@ -403,7 +417,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_R_TYPE),
-        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata, token => token,
+        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, token => token,
 
         writeback_we    => writeback_we(OPCODE_R_TYPE),
         writeback_data  => writeback_data(OPCODE_R_TYPE),
