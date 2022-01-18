@@ -45,13 +45,33 @@ PACKAGE bebichiken IS
         OPCODE_U_TYPE,
         OPCODE_INVALID);
     TYPE opcode_group_word_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
+    TYPE opcode_group_wb_word_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(32 DOWNTO 0);
+
     TYPE opcode_group_regidx_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(4 DOWNTO 0);
     TYPE opcode_group_width_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(1 DOWNTO 0);
     TYPE opcode_group_bit_t IS ARRAY(opcode_group_t) OF STD_LOGIC;
+    TYPE opcode_group_bit_as_vector_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(0 downto 0);
+
 
     TYPE lock_owner_t IS ARRAY(NATURAL RANGE <>) OF opcode_group_t;
 
     -- components
+
+    COMPONENT dpram_regfile_xilinx
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    clkb : IN STD_LOGIC;
+    web : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addrb : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+    dinb : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    doutb : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+  );
+END COMPONENT;
+
     COMPONENT regfile_half IS
         GENERIC (
             entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0)
@@ -85,6 +105,30 @@ PACKAGE bebichiken IS
 
         rs1_data_out, rs2_data_out    : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         rs1_locked, rs2_locked : OUT STD_LOGIC
+
+    );
+END COMPONENT;
+
+
+COMPONENT regfile_dpram IS
+    GENERIC (
+        entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00000000";
+        vendor: std_logic := '0'
+    );
+    PORT (
+        rst, clk          : IN STD_LOGIC;
+        rs1, rs2, rd      : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+        lock_rd           : IN STD_LOGIC;
+        new_rd_lock_owner : IN opcode_group_t;
+        lock_token        : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+
+        writeback_we    : IN opcode_group_bit_t;
+        writeback_data  : IN opcode_group_word_t;
+        writeback_token : IN opcode_group_word_t;
+        writeback_rd    : IN opcode_group_regidx_t;
+
+        rs1_data_out, rs2_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rs1_locked, rs2_locked     : OUT STD_LOGIC
 
     );
 END COMPONENT;

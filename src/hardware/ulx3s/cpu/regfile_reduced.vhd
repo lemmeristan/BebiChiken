@@ -35,7 +35,7 @@ ARCHITECTURE behavioural OF regfile_reduced IS
 
     SIGNAL pc_owner : opcode_group_t;
     TYPE registers_of_eu_t IS ARRAY(opcode_group_t) OF registers_t;
-    SIGNAL registers, wb_rd_token : registers_of_eu_t; -- := (OTHERS => (OTHERS => '0'));
+    SIGNAL registers1, registers2, wb_rd_token : registers_of_eu_t; -- := (OTHERS => (OTHERS => '0'));
     SIGNAL token_of_register      : registers_t;
 
     SIGNAL token_of_pc : STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -44,7 +44,7 @@ ARCHITECTURE behavioural OF regfile_reduced IS
 
     -- Registers
     ATTRIBUTE syn_ramstyle                                  : STRING;
-    ATTRIBUTE syn_ramstyle OF registers, owner, wb_rd_token : SIGNAL IS "rw_check";
+    ATTRIBUTE syn_ramstyle OF registers1, registers2, owner, wb_rd_token : SIGNAL IS "rw_check";
 
     SIGNAL rs1_data_out_of_op, rs2_data_out_of_op, r_pc, rs1_token_of_op, rs2_token_of_op, wb_pc_token : opcode_group_word_t;
 
@@ -69,12 +69,12 @@ BEGIN
     owner_for_rs1 <= owner(i_rs1);
     owner_for_rs2 <= owner(i_rs2);
 
-    PROCESS (owner, writeback_rd, i_rs1, i_rs2, wb_rd_token, registers)
+    PROCESS (owner, writeback_rd, i_rs1, i_rs2, wb_rd_token, registers1, registers2)
     BEGIN
         FOR x IN opcode_group_t LOOP
             rd_owner_of_op(x)     <= owner(to_integer(unsigned(writeback_rd(x))));
-            rs1_data_out_of_op(x) <= registers(x)(i_rs1);
-            rs2_data_out_of_op(x) <= registers(x)(i_rs2);
+            rs1_data_out_of_op(x) <= registers1(x)(i_rs1);
+            rs2_data_out_of_op(x) <= registers2(x)(i_rs2);
 
             rs1_token_of_op(x) <= wb_rd_token(x)(i_rs1);
             rs2_token_of_op(x) <= wb_rd_token(x)(i_rs2);
@@ -105,7 +105,9 @@ BEGIN
             -- END IF;
             FOR x IN opcode_group_t LOOP
                 IF writeback_we(x) = '1' THEN
-                    registers(x)(to_integer(unsigned(writeback_rd(x))))   <= writeback_data(x);
+                    registers1(x)(to_integer(unsigned(writeback_rd(x))))   <= writeback_data(x);
+                    registers2(x)(to_integer(unsigned(writeback_rd(x))))   <= writeback_data(x);
+
                     wb_rd_token(x)(to_integer(unsigned(writeback_rd(x)))) <= writeback_token(x);
                 END IF;
 
