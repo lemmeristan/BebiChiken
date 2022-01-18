@@ -104,6 +104,8 @@ ARCHITECTURE behavioural OF cpu IS
     TYPE whole_state_t IS (ws0, ws1, ws2, ws3, ws4, ws5, ws6, ws7);
     SIGNAL wstate, n_wstate : whole_state_t;
 
+    signal inc_token : std_logic;
+
 BEGIN
     PROCESS (wstate, initialized, inst_rdata_r, inst_rdata, rs1_locked, rs2_locked, eu_busy, imm_decoded, pc, token, pc_owner, writeback_update_pc, writeback_next_pc)
     BEGIN
@@ -124,22 +126,26 @@ BEGIN
         n_pc                           <= pc;
         n_token                        <= token;
         n_pc_owner                     <= pc_owner;
+        inc_token <= '0';
 
         CASE wstate IS
-            WHEN ws0 =>
+            WHEN ws0 => -- set instruction register
                 IF (initialized = X"FF") THEN
-                    n_wstate <= ws1;
+                    n_wstate       <= ws1;
                     n_inst_rdata_r <= inst_rdata;
 
                 END IF;
-            WHEN ws1 =>
-                n_wstate       <= ws2;
-            WHEN ws2 =>
+            WHEN ws1 => -- read rs1 / rs2
+
+                n_wstate <= ws2;
+            WHEN ws2 => -- execute / dispatch
+
                 IF ((f_uses_rs1(inst_rdata_r) = '1') AND (rs1_locked = '1'))
                     OR ((f_uses_rs2(inst_rdata_r) = '1') AND (rs2_locked = '1'))
                     OR (eu_busy(f_decode_exec_unit(inst_rdata_r)) = '1') THEN
                     -- do nothing
                 ELSE
+
                     lock_rd <= '1';
 
                     CASE f_decode_opcode(inst_rdata_r) IS
@@ -163,7 +169,7 @@ BEGIN
                     n_token <= token + X"00000001";
                     IF f_updates_pc(inst_rdata_r) = '1' THEN
                         n_wstate   <= ws3;
-                        n_pc_owner <= f_decode_exec_unit(inst_rdata);
+                        n_pc_owner <= f_decode_exec_unit(inst_rdata_r);
                     ELSE
                         n_pc     <= pc + X"00000004";
                         n_wstate <= ws0;
@@ -172,16 +178,15 @@ BEGIN
 
             WHEN ws3 =>
                 IF (writeback_update_pc(pc_owner) = '1') THEN
-                    n_pc            <= writeback_next_pc(pc_owner);
-                    n_pc_owner      <= OPCODE_INVALID;
-                    n_wstate <= ws0;
+                    n_pc       <= writeback_next_pc(pc_owner);
+                    n_pc_owner <= OPCODE_INVALID;
+                    n_wstate   <= ws0;
                 END IF;
 
             WHEN OTHERS =>
                 n_wstate <= ws0;
         END CASE;
     END PROCESS;
-    eu_busy(OPCODE_U_TYPE) <= '0';
 
     updates_pc <= f_updates_pc(inst_rdata);
 
@@ -196,96 +201,6 @@ BEGIN
     eu_busy(OPCODE_INVALID) <= '0';
     eu_busy(OPCODE_U_TYPE)  <= '0';
 
-    -- Fetcher statemachine:
-    -- Fetches instruction and issues it to dispatcher
-
-    -- PROCESS (fetcher_state, token, dispatcher_busy, inst_rdata, initialized, inst_rdy, pc, pc_owner, writeback_update_pc, writeback_next_pc, inst_rdata_r)
-    -- BEGIN
-    --     n_fetcher_state <= fetcher_state;
-    --     n_token         <= token;
-    --     n_pc_owner      <= pc_owner;
-    --     n_pc            <= pc;
-    --     issue           <= '0';
-    --     CASE fetcher_state IS
-    --         WHEN FETCHER_STATE_S0 =>
-    --             IF ((dispatcher_busy = '0') OR (inst_rdata_r_valid = '0')) AND (initialized = X"FF") THEN
-    --                 issue   <= '1';
-    --                 n_token <= token + X"00000001";
-    --                 IF f_updates_pc(inst_rdata) = '1' THEN
-    --                     n_pc_owner      <= f_decode_exec_unit(inst_rdata);
-    --                     n_fetcher_state <= FETCHER_STATE_S1;
-    --                 ELSE
-    --                     n_pc <= pc + X"00000004";
-    --                 END IF;
-    --             END IF;
-    --         WHEN OTHERS =>
-    --             IF (writeback_update_pc(pc_owner) = '1') THEN
-    --                 n_pc            <= writeback_next_pc(pc_owner);
-    --                 n_pc_owner      <= OPCODE_INVALID;
-    --                 n_fetcher_state <= FETCHER_STATE_S0;
-    --             END IF;
-    --     END CASE;
-    -- END PROCESS;
-    -- Dispatcher statemachine:
-    -- Registers data in flight to execution units, handles owners of registers
-
-    -- PROCESS (dispatcher_state, inst_rdata, rs1_locked, token_r, token, rs2_locked, eu_busy, rs1_r, rs2_r, rd_r, rd, pc, imm_decoded, writeback_rd, pc, initialized, issue)
-    -- BEGIN
-    --     n_dispatcher_state <= dispatcher_state;
-    --     dispatcher_busy    <= '1';
-    --     eu_we              <= (OTHERS => '0');
-
-    --     rd_data_in                   <= (OTHERS => '0'); --writeback_rd(f_decode_exec_unit(inst_rdata_r));
-    --     writeback_rd(OPCODE_INVALID) <= rd;
-    --     writeback_we(OPCODE_INVALID) <= '0';
-    --     lock_rd                      <= '1';
-    --     new_rd_lock_owner            <= OPCODE_INVALID;
-
-    --     writeback_token(OPCODE_INVALID) <= token;
-
-    --     writeback_data(OPCODE_INVALID) <= (OTHERS => '0');
-
-    --     CASE dispatcher_state IS
-    --         WHEN DISPATCHER_STATE_S0 =>
-    --             -- if everything is running smoothly, eu_we = issue, otherwise go to S1
-    --             IF ((f_uses_rs1(inst_rdata) = '1') AND (rs1_locked = '1'))
-    --                 OR ((f_uses_rs2(inst_rdata) = '1') AND (rs2_locked = '1'))
-    --                 OR (eu_busy(f_decode_exec_unit(inst_rdata)) = '1')
-    --                 OR (initialized /= X"FF")
-    --                 THEN
-    --                 --n_dispatcher_state <= DISPATCHER_STATE_S1;
-
-    --             ELSE
-    --                 dispatcher_busy <= '0';
-
-    --                 --IF issue = '1' THEN
-    --                 CASE f_decode_opcode(inst_rdata) IS
-    --                     WHEN OPCODE_U_TYPE_LUI =>
-    --                         writeback_data(OPCODE_INVALID) <= imm_decoded;
-    --                         writeback_we(OPCODE_INVALID)   <= '1';
-    --                     WHEN OPCODE_U_TYPE_AUIPC =>
-    --                         writeback_data(OPCODE_INVALID) <= pc + imm_decoded;
-    --                         writeback_we(OPCODE_INVALID)   <= '1';
-    --                     WHEN OTHERS =>
-    --                         IF (f_decode_exec_unit(inst_rdata) = OPCODE_I_TYPE) AND (f_uses_rs1(inst_rdata) = '0') THEN
-    --                             writeback_data(OPCODE_INVALID) <= f_calculate_i_type_zero(inst_rdata);
-    --                             writeback_we(OPCODE_INVALID)   <= '1';
-    --                         ELSE
-    --                             IF f_updates_rd(inst_rdata) = '1' THEN
-    --                                 new_rd_lock_owner <= f_decode_exec_unit(inst_rdata);
-    --                             END IF;
-    --                             eu_we(f_decode_exec_unit(inst_rdata)) <= '1';
-    --                         END IF;
-    --                 END CASE;
-    --                 --END IF;
-
-    --             END IF;
-    --         WHEN OTHERS =>
-    --             n_dispatcher_state <= DISPATCHER_STATE_S0;
-    --     END CASE;
-    -- END PROCESS;
-
-    --writeback_rd(OPCODE_INVALID) <= X"DEADBEEF";
     PROCESS (rst, clk)
     BEGIN
         IF rst = '1' THEN
@@ -347,7 +262,7 @@ BEGIN
         END IF;
     END PROCESS;
     i_regfile_dpram : regfile_dpram
-    GENERIC MAP(entry_point => entry_point)
+    GENERIC MAP(entry_point => entry_point, vendor => '1')
     PORT MAP(
 
         clk => clk, rst => rst,
@@ -386,7 +301,7 @@ BEGIN
         rst => rst, clk => clk,
 
         we => eu_we(OPCODE_BRANCH_TYPE),
-        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, pc => pc_r, token => token, imm => imm_decoded,
+        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, pc => pc, token => token, imm => imm_decoded,
 
         writeback_we        => writeback_we(OPCODE_BRANCH_TYPE),
         writeback_next_pc   => writeback_next_pc(OPCODE_BRANCH_TYPE),

@@ -60,7 +60,7 @@ BEGIN
     writeback_data  <= i_writeback_result;
     writeback_rd    <= r_instruction(11 DOWNTO 7);
 
-    PROCESS (r_rs1_data, r_rs2_data, r_instruction)
+    PROCESS (r_rs1_data, r_rs2_data)
     BEGIN
         i_writeback_result_intermediate <= (OTHERS => (OTHERS => '0'));
 

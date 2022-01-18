@@ -9,7 +9,7 @@ USE work.bebichiken.ALL;
 ENTITY regfile_dpram IS
     GENERIC (
         entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00000000";
-        vendor      : STD_LOGIC                     := '0'
+        vendor      : STD_LOGIC                     := '1'
     );
     PORT (
         rst, clk          : IN STD_LOGIC;
@@ -35,34 +35,108 @@ ARCHITECTURE behavioural OF regfile_dpram IS
     TYPE registers_t IS ARRAY (31 DOWNTO 0) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
 
     TYPE registers_of_eu_t IS ARRAY(opcode_group_t) OF registers_t;
-    SIGNAL token_of_register : registers_t;
 
     -- Registers
-    ATTRIBUTE syn_ramstyle                       : STRING;
+    ATTRIBUTE syn_ramstyle          : STRING;
     ATTRIBUTE syn_ramstyle OF owner : SIGNAL IS "rw_check";
 
-    SIGNAL rs1_data_out_of_op, rs2_data_out_of_op, rs1_token_of_op, rs2_token_of_op, rs1_data_out_of_op_r, rs2_data_out_of_op_r, token_of_register_rs1, token_of_register_rs2 : opcode_group_word_t;
+    SIGNAL rs1_data_out_of_op, rs2_data_out_of_op, rs1_token_of_op, rs2_token_of_op, token_of_register_rs1, token_of_register_rs2 : opcode_group_word_t;
 
-    signal rs1_r, rs2_r : std_logic_vector(4 downto 0);
 
-    signal i_rs1_data_out : std_logic_vector(31 downto 0);
 
 BEGIN
 
+
     gen_dpram : FOR op IN opcode_group_t GENERATE
 
-        -- lattice : IF vendor = '1' GENERATE
-        --     inst_dpram : dpram1
-        --     PORT MAP(
-        --         DataInA => DPRAM_DIN_SDRAM(i), DataInB => DPRAM_DIN_CPU(i),
-        --         AddressA => DPRAM_ADDR_SDRAM(i), AddressB => mem_addr(i)(12 DOWNTO 2),
-        --         ClockA => clk, ClockB => mem_clk(i),
-        --         ClockEnA => '1', ClockEnB => '1',
-        --         WrA => DPRAM_WE_SDRAM(i), WrB => DPRAM_WE_CPU(i),
-        --         ResetA => '0', ResetB => '0',
-        --         QA => DPRAM_DOUT_SDRAM(i), QB => DPRAM_DOUT_CPU(i)
-        --     );
-        -- END GENERATE lattice;
+        lattice : IF vendor = '1' GENERATE
+            inst_dpram_rs1 : dpram_regfile_lattice
+            PORT MAP(
+                ClockA   => clk,
+                WrA => '0',
+                AddressA  => rs1,
+                DataInA   => X"00000000",
+                QA  => rs1_data_out_of_op(op),
+                ClockB   => clk,
+                WrB => writeback_we(op),
+                AddressB  => writeback_rd(op),
+                DataInB   => writeback_data(op),
+                QB  => OPEN, ResetA => '0', ResetB => '0', ClockEnA => '1', ClockEnB => '1'
+            );
+
+            inst_dpram_rs2 : dpram_regfile_lattice
+            PORT MAP(
+                ClockA   => clk,
+                WrA => '0',
+                AddressA  => rs2,
+                DataInA   => X"00000000",
+                QA  => rs2_data_out_of_op(op),
+                ClockB   => clk,
+                WrB => writeback_we(op),
+                AddressB  => writeback_rd(op),
+                DataInB   => writeback_data(op),
+                QB  => OPEN, ResetA => '0', ResetB => '0', ClockEnA => '1', ClockEnB => '1'
+            );
+
+            inst_dpram_token_rs1_is : dpram_regfile_lattice
+            PORT MAP(
+                ClockA   => clk,
+                WrA => '0',
+                AddressA  => rs1,
+                DataInA   => rs1_token_of_op(op),
+                QA  => rs1_token_of_op(op),
+                ClockB   => clk,
+                WrB => writeback_we(op),
+                AddressB  => writeback_rd(op),
+                DataInB   => writeback_token(op),
+                QB  => OPEN, ResetA => '0', ResetB => '0', ClockEnA => '1', ClockEnB => '1'
+            );
+
+            inst_dpram_token_rs2_is : dpram_regfile_lattice
+            PORT MAP(
+                ClockA   => clk,
+                WrA => '0',
+                AddressA  => rs2,
+                DataInA   => rs2_token_of_op(op),
+                QA  => rs2_token_of_op(op),
+                ClockB   => clk,
+                WrB => writeback_we(op),
+                AddressB  => writeback_rd(op),
+                DataInB   => writeback_token(op),
+                QB  => OPEN, ResetA => '0', ResetB => '0', ClockEnA => '1', ClockEnB => '1'
+            );
+
+            inst_dpram_token_rs1_expect : dpram_regfile_lattice
+            PORT MAP(
+                ClockA   => clk,
+                WrA => '0',
+                AddressA  => rs1,
+                DataInA   => token_of_register_rs1(op),
+                QA  => token_of_register_rs1(op),
+                ClockB   => clk,
+                WrB => lock_rd,
+                AddressB  => rd,
+                DataInB   => lock_token,
+                QB  => OPEN, ResetA => '0', ResetB => '0', ClockEnA => '1', ClockEnB => '1'
+            );
+
+            inst_dpram_token_rs2_expect : dpram_regfile_lattice
+            PORT MAP(
+                ClockA   => clk,
+                WrA => '0',
+                AddressA  => rs2,
+                DataInA   => token_of_register_rs2(op),
+                QA  => token_of_register_rs2(op),
+                ClockB   => clk,
+                WrB => lock_rd,
+                AddressB  => rd,
+                DataInB   => lock_token,
+                QB  => OPEN, ResetA => '0', ResetB => '0', ClockEnA => '1', ClockEnB => '1'
+            );
+
+        END GENERATE lattice;
+
+
         xilinx : IF vendor = '0' GENERATE
             inst_dpram_rs1 : dpram_regfile_xilinx
             PORT MAP(
@@ -152,8 +226,10 @@ BEGIN
 
     END GENERATE gen_dpram;
 
-    rs1_locked    <= '0' WHEN (rs1_token_of_op(owner(to_integer(unsigned(rs1)))) = token_of_register_rs1(owner(to_integer(unsigned(rs1))))) else '1'; -- OR (owner(to_integer(unsigned(rs1))) = OPCODE_INVALID) ELSE '1';
-    rs2_locked    <= '0' WHEN (rs2_token_of_op(owner(to_integer(unsigned(rs2)))) = token_of_register_rs2(owner(to_integer(unsigned(rs2))))) else '1'; --OR (owner(to_integer(unsigned(rs2))) = OPCODE_INVALID) ELSE '1';
+    rs1_locked <= '0' WHEN (rs1_token_of_op(owner(to_integer(unsigned(rs1)))) = token_of_register_rs1(owner(to_integer(unsigned(rs1))))) ELSE
+        '1'; -- OR (owner(to_integer(unsigned(rs1))) = OPCODE_INVALID) ELSE '1';
+    rs2_locked <= '0' WHEN (rs2_token_of_op(owner(to_integer(unsigned(rs2)))) = token_of_register_rs2(owner(to_integer(unsigned(rs2))))) ELSE
+        '1'; --OR (owner(to_integer(unsigned(rs2))) = OPCODE_INVALID) ELSE '1';
 
     rs1_data_out <= rs1_data_out_of_op(owner(to_integer(unsigned(rs1))));-- WHEN rs1 /= "00000" ELSE (OTHERS => '0');
     rs2_data_out <= rs2_data_out_of_op(owner(to_integer(unsigned(rs2))));-- WHEN rs2 /= "00000" ELSE (OTHERS => '0');
@@ -161,34 +237,12 @@ BEGIN
     PROCESS (rst, clk)
     BEGIN
         IF rst = '1' THEN
-            owner   <= (OTHERS => OPCODE_INVALID);
-            token_of_register <= (others => (others => '1'));
-            -- rs1_data_out <= (OTHERS => '0');
-            -- rs2_data_out <= (OTHERS => '0');
-            rs1_r <= (others => '0');
-            rs2_r <= (others => '0');
-            rs1_data_out_of_op_r <= (others => (others => '0'));
-            rs2_data_out_of_op_r <= (others => (others => '0'));
+            owner             <= (OTHERS => OPCODE_INVALID);
         ELSIF rising_edge(clk) THEN
-
-        rs1_r <= rs1;
-        rs2_r <= rs2;
-
-        rs1_data_out_of_op_r <= rs1_data_out_of_op;
-        rs2_data_out_of_op_r <= rs2_data_out_of_op;
 
             IF (lock_rd = '1') THEN
                 owner(to_integer(unsigned(rd)))             <= new_rd_lock_owner;
-                token_of_register(to_integer(unsigned(rd))) <= lock_token;
             END IF;
-            -- rs1_locked <= '1';
-            -- IF (rs1_token_of_op(owner_for_rs1) = token_of_register(to_integer(unsigned(rs1)))) then --OR (owner_for_rs1 = OPCODE_INVALID) THEN
-            --     rs1_locked <= '0';
-            -- END IF;
-            -- rs2_locked <= '1';
-            -- IF (rs2_token_of_op(owner_for_rs2) = token_of_register(to_integer(unsigned(rs2)))) then --OR (owner_for_rs2 = OPCODE_INVALID) THEN
-            --     rs2_locked <= '0';
-            -- END IF;
 
         END IF;
     END PROCESS;

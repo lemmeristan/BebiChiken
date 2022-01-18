@@ -72,6 +72,25 @@ PACKAGE bebichiken IS
   );
 END COMPONENT;
 
+
+COMPONENT dpram_regfile_lattice PORT (
+    DataInA: IN STD_LOGIC_VECTOR(31 downto 0);
+    DataInB: IN STD_LOGIC_VECTOR(31 downto 0);
+    AddressA: IN STD_LOGIC_VECTOR(4 downto 0);
+    AddressB: IN STD_LOGIC_VECTOR(4 downto 0);
+    ClockA: IN STD_LOGIC;
+    ClockB: IN STD_LOGIC;
+    ClockEnA: IN STD_LOGIC;
+    ClockEnB: IN STD_LOGIC;
+    WrA: IN STD_LOGIC;
+    WrB: IN STD_LOGIC;
+    ResetA: IN STD_LOGIC;
+    ResetB: IN STD_LOGIC;
+    QA: OUT STD_LOGIC_VECTOR(31 downto 0);
+    QB: OUT STD_LOGIC_VECTOR(31 downto 0)
+);
+end component;
+
     COMPONENT regfile_half IS
         GENERIC (
             entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0)
