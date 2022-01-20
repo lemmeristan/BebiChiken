@@ -42,7 +42,7 @@ PACKAGE bebichiken IS
         OPCODE_I_TYPE,
         OPCODE_MEM_TYPE,
         OPCODE_BRANCH_TYPE,
-        OPCODE_U_TYPE,
+        --OPCODE_U_TYPE,
         OPCODE_INVALID);
     TYPE opcode_group_word_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
     TYPE opcode_group_wb_word_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(32 DOWNTO 0);
@@ -639,13 +639,13 @@ PACKAGE BODY bebichiken IS
             RETURN OPCODE_INVALID;
         END IF;
 
-        IF opcode = "0110111" THEN
-            RETURN OPCODE_U_TYPE; -- LUI
-        END IF;
+        -- IF opcode = "0110111" THEN
+        --     RETURN OPCODE_U_TYPE; -- LUI
+        -- END IF;
 
-        IF opcode = "0010111" THEN
-            RETURN OPCODE_U_TYPE; -- AUIPC
-        END IF;
+        -- IF opcode = "0010111" THEN
+        --     RETURN OPCODE_U_TYPE; -- AUIPC
+        -- END IF;
 
         IF opcode = "1101111" THEN
             RETURN OPCODE_BRANCH_TYPE; -- JAL

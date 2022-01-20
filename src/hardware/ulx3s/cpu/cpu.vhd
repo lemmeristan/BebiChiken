@@ -104,7 +104,7 @@ ARCHITECTURE behavioural OF cpu IS
     TYPE whole_state_t IS (ws0, ws1, ws2, ws3, ws4, ws5, ws6, ws7);
     SIGNAL wstate, n_wstate : whole_state_t;
 
-    signal inc_token : std_logic;
+    SIGNAL inc_token : STD_LOGIC;
 
 BEGIN
     PROCESS (wstate, initialized, inst_rdata_r, inst_rdata, rs1_locked, rs2_locked, eu_busy, imm_decoded, pc, token, pc_owner, writeback_update_pc, writeback_next_pc)
@@ -126,7 +126,7 @@ BEGIN
         n_pc                           <= pc;
         n_token                        <= token;
         n_pc_owner                     <= pc_owner;
-        inc_token <= '0';
+        inc_token                      <= '0';
 
         CASE wstate IS
             WHEN ws0 => -- set instruction register
@@ -135,10 +135,7 @@ BEGIN
                     n_inst_rdata_r <= inst_rdata;
 
                 END IF;
-            WHEN ws1 => -- read rs1 / rs2
-
-                n_wstate <= ws2;
-            WHEN ws2 => -- execute / dispatch
+            WHEN ws1 => -- execute / dispatch
 
                 IF ((f_uses_rs1(inst_rdata_r) = '1') AND (rs1_locked = '1'))
                     OR ((f_uses_rs2(inst_rdata_r) = '1') AND (rs2_locked = '1'))
@@ -168,7 +165,7 @@ BEGIN
                     END CASE;
                     n_token <= token + X"00000001";
                     IF f_updates_pc(inst_rdata_r) = '1' THEN
-                        n_wstate   <= ws3;
+                        n_wstate   <= ws2;
                         n_pc_owner <= f_decode_exec_unit(inst_rdata_r);
                     ELSE
                         n_pc     <= pc + X"00000004";
@@ -176,7 +173,7 @@ BEGIN
                     END IF;
                 END IF;
 
-            WHEN ws3 =>
+            WHEN ws2 =>
                 IF (writeback_update_pc(pc_owner) = '1') THEN
                     n_pc       <= writeback_next_pc(pc_owner);
                     n_pc_owner <= OPCODE_INVALID;
@@ -199,12 +196,22 @@ BEGIN
 
     rd_out(OPCODE_INVALID)  <= "00000";
     eu_busy(OPCODE_INVALID) <= '0';
-    eu_busy(OPCODE_U_TYPE)  <= '0';
+    --eu_busy(OPCODE_U_TYPE)  <= '0';
 
     PROCESS (rst, clk)
     BEGIN
+
         IF rst = '1' THEN
-            inst_rdata_r     <= (OTHERS => '0');
+            inst_rdata_r <= (OTHERS => '0');
+
+        ELSIF falling_edge(clk) THEN
+            inst_rdata_r <= inst_rdata;
+        END IF;
+
+        IF rst = '1' THEN
+            wstate <= ws0;
+            --inst_rdata_r     <= (OTHERS => '0');
+
             initialized      <= (OTHERS => '0');
             fetcher_state    <= FETCHER_STATE_S0;
             dispatcher_state <= DISPATCHER_STATE_S0;
@@ -224,9 +231,9 @@ BEGIN
             rs1_data_out_r <= (OTHERS => '0');
             rs2_data_out_r <= (OTHERS => '0');
 
-            wstate <= ws0;
         ELSIF rising_edge(clk) THEN
             wstate <= n_wstate;
+            --inst_rdata_r <= n_inst_rdata_r;
 
             rs1_data_out_r <= rs1_data_out;
             rs2_data_out_r <= rs2_data_out;
@@ -248,11 +255,10 @@ BEGIN
             rs1_data_r <= rs1_data;
             rs2_data_r <= rs2_data;
 
-            initialized  <= initialized(6 DOWNTO 0) & inst_rdy;
-            token        <= n_token;
-            inst_rdata_r <= n_inst_rdata_r;
-            token_r      <= token;
-            pc           <= n_pc;
+            initialized <= initialized(6 DOWNTO 0) & inst_rdy;
+            token       <= n_token;
+            token_r     <= token;
+            pc          <= n_pc;
 
             pc_r <= pc;
             IF (issue = '1') THEN
@@ -262,7 +268,7 @@ BEGIN
         END IF;
     END PROCESS;
     i_regfile_dpram : regfile_dpram
-    GENERIC MAP(entry_point => entry_point, vendor => '1')
+    GENERIC MAP(entry_point => entry_point, vendor => '0')
     PORT MAP(
 
         clk => clk, rst => rst,
