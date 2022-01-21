@@ -133,7 +133,6 @@ BEGIN
                 IF (initialized = X"FF") THEN
                     n_wstate       <= ws1;
                     n_inst_rdata_r <= inst_rdata;
-                    n_pc     <= pc + X"00000004";
                 END IF;
             WHEN ws1 => -- execute / dispatch
 
@@ -169,6 +168,7 @@ BEGIN
                         n_pc_owner <= f_decode_exec_unit(inst_rdata_r);
                     ELSE
                         n_wstate <= ws0;
+                        n_pc     <= pc + X"00000004";
                     END IF;
                 END IF;
 
@@ -189,7 +189,7 @@ BEGIN
     decoded   <= f_decode_exec_unit(inst_rdata);
     decoded_r <= f_decode_exec_unit(inst_rdata_r);
 
-    inst_addr  <= n_pc;
+    inst_addr  <= pc;
     inst_re    <= '1';
     inst_width <= "10"; -- unused
 
