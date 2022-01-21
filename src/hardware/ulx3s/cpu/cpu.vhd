@@ -104,10 +104,12 @@ ARCHITECTURE behavioural OF cpu IS
     TYPE whole_state_t IS (ws0, ws1, ws2, ws3, ws4, ws5, ws6, ws7);
     SIGNAL wstate, n_wstate : whole_state_t;
 
+    signal rs1_locked_r, rs2_locked_r : std_logic;
+
     SIGNAL inc_token : STD_LOGIC;
 
 BEGIN
-    PROCESS (wstate, initialized, inst_rdata_r, inst_rdata, rs1_locked, rs2_locked, eu_busy, imm_decoded, pc, token, pc_owner, writeback_update_pc, writeback_next_pc)
+    PROCESS (wstate, initialized, inst_rdata_r, inst_rdata, rs1_locked, rs2_locked, eu_busy, imm_decoded, pc, token, pc_owner, writeback_update_pc, writeback_next_pc, rs1_locked_r, rs2_locked_r, rd_r)
     BEGIN
         n_wstate                       <= wstate;
         n_inst_rdata_r                 <= inst_rdata_r;
@@ -116,13 +118,11 @@ BEGIN
         eu_we                          <= (OTHERS => '0');
 
         writeback_rd(OPCODE_INVALID) <= rd_r;
-        writeback_we(OPCODE_INVALID) <= '0';
         lock_rd                      <= '0';
         new_rd_lock_owner            <= OPCODE_INVALID;
 
         writeback_token(OPCODE_INVALID) <= token;
 
-        writeback_data(OPCODE_INVALID) <= (OTHERS => '0');
         n_pc                           <= pc;
         n_token                        <= token;
         n_pc_owner                     <= pc_owner;
@@ -133,7 +133,7 @@ BEGIN
                 IF (initialized = X"FF") THEN
                     n_wstate       <= ws1;
                     n_inst_rdata_r <= inst_rdata;
-
+                    n_pc     <= pc + X"00000004";
                 END IF;
             WHEN ws1 => -- execute / dispatch
 
@@ -168,7 +168,6 @@ BEGIN
                         n_wstate   <= ws2;
                         n_pc_owner <= f_decode_exec_unit(inst_rdata_r);
                     ELSE
-                        n_pc     <= pc + X"00000004";
                         n_wstate <= ws0;
                     END IF;
                 END IF;
@@ -202,13 +201,13 @@ BEGIN
     BEGIN
 
         IF rst = '1' THEN
-            inst_rdata_r <= (OTHERS => '0');
 
         ELSIF falling_edge(clk) THEN
-            inst_rdata_r <= inst_rdata;
         END IF;
 
         IF rst = '1' THEN
+        inst_rdata_r <= (OTHERS => '0');
+
             wstate <= ws0;
             --inst_rdata_r     <= (OTHERS => '0');
 
@@ -231,7 +230,15 @@ BEGIN
             rs1_data_out_r <= (OTHERS => '0');
             rs2_data_out_r <= (OTHERS => '0');
 
+            rs1_locked_r <= '0';
+            rs2_locked_r <= '0';
+
         ELSIF rising_edge(clk) THEN
+        inst_rdata_r <= inst_rdata;
+
+        rs1_locked_r <= rs1_locked;
+        rs2_locked_r <= rs2_locked;
+
             wstate <= n_wstate;
             --inst_rdata_r <= n_inst_rdata_r;
 
@@ -268,7 +275,7 @@ BEGIN
         END IF;
     END PROCESS;
     i_regfile_dpram : regfile_dpram
-    GENERIC MAP(entry_point => entry_point, vendor => '0')
+    GENERIC MAP(entry_point => entry_point, vendor => '1')
     PORT MAP(
 
         clk => clk, rst => rst,
