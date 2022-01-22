@@ -58,8 +58,39 @@ PACKAGE bebichiken IS
 
     -- components
 
-    COMPONENT dpram_regfile_xilinx
-  PORT (
+
+COMPONENT fifo_dc_144_lattice PORT (
+    Data : in std_logic_vector(143 downto 0);
+    WrClock : in std_logic;
+    RdClock : in std_logic;
+    WrEn : in std_logic;
+    RdEn : in std_logic;
+    Reset : in std_logic;
+    RPReset : in std_logic;
+    Q : out std_logic_vector(143 downto 0);
+    Empty : out std_logic;
+    Full : out std_logic
+);
+END COMPONENT;
+
+
+COMPONENT fifo_dc_36_lattice PORT (
+    Data : in std_logic_vector(35 downto 0);
+    WrClock : in std_logic;
+    RdClock : in std_logic;
+    WrEn : in std_logic;
+    RdEn : in std_logic;
+    Reset : in std_logic;
+    RPReset : in std_logic;
+    Q : out std_logic_vector(35 downto 0);
+    Empty : out std_logic;
+    Full : out std_logic
+);
+END COMPONENT;
+
+
+COMPONENT dpram_regfile_xilinx
+PORT (
     clka : IN STD_LOGIC;
     wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
     addra : IN STD_LOGIC_VECTOR(4 DOWNTO 0);

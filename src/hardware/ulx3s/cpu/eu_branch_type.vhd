@@ -39,6 +39,7 @@ BEGIN
         r_pc <= (others => '0');
         r_token <= (others => '0');
         r_imm <= (others => '0');
+        writeback_next_pc <= (others => '0');
     elsIF rising_edge(clk) THEN
     writeback_next_pc <= i_next_pc;
 
