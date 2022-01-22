@@ -152,15 +152,10 @@ BEGIN
                             writeback_data(OPCODE_INVALID) <= pc + imm_decoded;
                             writeback_we(OPCODE_INVALID) <= '1';
                         WHEN OTHERS =>
-                            IF (f_decode_exec_unit(inst_rdata_r) = OPCODE_I_TYPE) AND (f_uses_rs1(inst_rdata_r) = '0') THEN
-                                writeback_data(OPCODE_INVALID) <= f_calculate_i_type_zero(inst_rdata_r);
-                                writeback_we(OPCODE_INVALID) <= '1';
-                            ELSE
-                                IF f_updates_rd(inst_rdata_r) = '1' THEN
-                                    new_rd_lock_owner <= f_decode_exec_unit(inst_rdata_r);
-                                END IF;
-                                eu_we(f_decode_exec_unit(inst_rdata_r)) <= '1';
+                            IF f_updates_rd(inst_rdata_r) = '1' THEN
+                                new_rd_lock_owner <= f_decode_exec_unit(inst_rdata_r);
                             END IF;
+                            eu_we(f_decode_exec_unit(inst_rdata_r)) <= '1';
                     END CASE;
                     n_token <= token + X"00000001";
                     IF f_updates_pc(inst_rdata_r) = '1' THEN
@@ -322,34 +317,19 @@ BEGIN
         busy => eu_busy(OPCODE_BRANCH_TYPE)
     );
 
-    i_eu_i : eu_i_type
+    i_eu_alu : eu_alu
     PORT MAP(
         rst => rst, clk => clk,
 
-        we => eu_we(OPCODE_I_TYPE),
-        rs1_data => rs1_data_out, instruction => inst_rdata_r, token => token, imm => imm_decoded,
+        we => eu_we(OPCODE_ALU_TYPE),
+        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, token => token, imm => imm_decoded,
 
-        writeback_we => writeback_we(OPCODE_I_TYPE),
-        writeback_data => writeback_data(OPCODE_I_TYPE),
-        writeback_token => writeback_token(OPCODE_I_TYPE),
-        writeback_rd => writeback_rd(OPCODE_I_TYPE),
-        busy => eu_busy(OPCODE_I_TYPE)
+        writeback_we => writeback_we(OPCODE_ALU_TYPE),
+        writeback_data => writeback_data(OPCODE_ALU_TYPE),
+        writeback_token => writeback_token(OPCODE_ALU_TYPE),
 
-    );
-
-    i_eu_r : eu_r_type
-    PORT MAP(
-        rst => rst, clk => clk,
-
-        we => eu_we(OPCODE_R_TYPE),
-        rs1_data => rs1_data_out, rs2_data => rs2_data_out, instruction => inst_rdata_r, token => token,
-
-        writeback_we => writeback_we(OPCODE_R_TYPE),
-        writeback_data => writeback_data(OPCODE_R_TYPE),
-        writeback_token => writeback_token(OPCODE_R_TYPE),
-
-        writeback_rd => writeback_rd(OPCODE_R_TYPE),
-        busy => eu_busy(OPCODE_R_TYPE)
+        writeback_rd => writeback_rd(OPCODE_ALU_TYPE),
+        busy => eu_busy(OPCODE_ALU_TYPE)
     );
 
 END behavioural;

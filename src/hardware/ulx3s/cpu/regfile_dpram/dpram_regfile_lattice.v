@@ -114,10 +114,10 @@ module dpram_regfile_lattice (DataInA, DataInB, AddressA, AddressB,
     assign DataInB_0 = {2'b00, DataInB[15:0]};
 
     wire [13:0] AddressA_0;
-    assign AddressA_0 = {5'b00000, AddressA[4:0], 4'b0011};
+    assign AddressA_0 = {5'b00000, AddressA[4:0], 4'b1111};
 
     wire [13:0] AddressB_0;
-    assign AddressB_0 = {5'b00000, AddressB[4:0], 4'b0011};
+    assign AddressB_0 = {5'b00000, AddressB[4:0], 4'b1111};
 
     
     wire [17:0] QA_0;
@@ -131,10 +131,10 @@ module dpram_regfile_lattice (DataInA, DataInB, AddressA, AddressB,
     assign DataInB_1 = {2'b00, DataInB[31:16]};
 
     wire [13:0] AddressA_1;
-    assign AddressA_1 = {5'b00000, AddressA[4:0], 4'b0011};
+    assign AddressA_1 = {5'b00000, AddressA[4:0], 4'b1111};
 
     wire [13:0] AddressB_1;
-    assign AddressB_1 = {5'b00000, AddressB[4:0], 4'b0011};
+    assign AddressB_1 = {5'b00000, AddressB[4:0], 4'b1111};
 
     
     wire [17:0] QA_1;

@@ -38,8 +38,9 @@ PACKAGE bebichiken IS
     TYPE opcode_width_t IS ARRAY(opcode_t) OF STD_LOGIC_VECTOR(1 DOWNTO 0);
     TYPE opcode_bit_t IS ARRAY(opcode_t) OF STD_LOGIC;
     TYPE opcode_group_t IS (
-        OPCODE_R_TYPE,
-        OPCODE_I_TYPE,
+        --OPCODE_R_TYPE,
+        --OPCODE_I_TYPE,
+        OPCODE_ALU_TYPE,
         OPCODE_MEM_TYPE,
         OPCODE_BRANCH_TYPE,
         --OPCODE_U_TYPE,
@@ -225,12 +226,12 @@ END COMPONENT;
         );
     END COMPONENT;
 
-    COMPONENT eu_r_type IS
+    COMPONENT eu_alu IS
         PORT (
             rst, clk : IN STD_LOGIC;
 
             we                                     : IN STD_LOGIC;
-            rs1_data, rs2_data, instruction, token : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            rs1_data, rs2_data, instruction, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
     
             writeback_data, writeback_token : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             writeback_we                    : OUT STD_LOGIC;
@@ -521,44 +522,44 @@ PACKAGE BODY bebichiken IS
             IF funct3 = "000" THEN
 
                 IF funct7 = "0000000" THEN
-                    RETURN OPCODE_R_TYPE;
+                    RETURN OPCODE_ALU_TYPE;
                 END IF;
 
                 IF funct7 = "0100000" THEN
-                    RETURN OPCODE_R_TYPE;
+                    RETURN OPCODE_ALU_TYPE;
                 END IF;
             END IF;
             IF funct3 = "001" THEN
-                RETURN OPCODE_R_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
             IF funct3 = "010" THEN
-                RETURN OPCODE_R_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
 
             IF funct3 = "011" THEN
-                RETURN OPCODE_R_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
 
             IF funct3 = "100" THEN
-                RETURN OPCODE_R_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
 
             IF funct3 = "101" THEN
                 IF funct7 = "0000000" THEN
-                    RETURN OPCODE_R_TYPE;
+                    RETURN OPCODE_ALU_TYPE;
                 END IF;
 
                 IF funct7 = "0100000" THEN
-                    RETURN OPCODE_R_TYPE;
+                    RETURN OPCODE_ALU_TYPE;
                 END IF;
             END IF;
 
             IF funct3 = "110" THEN
-                RETURN OPCODE_R_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
 
             IF funct3 = "111" THEN
-                RETURN OPCODE_R_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
 
             RETURN OPCODE_INVALID;
@@ -567,44 +568,44 @@ PACKAGE BODY bebichiken IS
         IF opcode = "0010011" THEN -- I_TYPE
             --        RETURN OPCODE_I_TYPE; -- Register/Immediate (ADDI, ...)
             IF funct3 = "000" THEN
-                RETURN OPCODE_I_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
 
             IF funct3 = "001" THEN
                 IF funct7 = "0000000" THEN
-                    RETURN OPCODE_I_TYPE;
+                    RETURN OPCODE_ALU_TYPE;
                 END IF;
             END IF;
 
             IF funct3 = "010" THEN
-                RETURN OPCODE_I_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
             IF funct3 = "011" THEN
-                RETURN OPCODE_I_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
 
             IF funct3 = "100" THEN
-                RETURN OPCODE_I_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
 
             IF funct3 = "101" THEN
 
                 IF funct7 = "0000000" THEN
-                    RETURN OPCODE_I_TYPE;
+                    RETURN OPCODE_ALU_TYPE;
                 END IF;
 
                 IF funct7 = "0100000" THEN
-                    RETURN OPCODE_I_TYPE;
+                    RETURN OPCODE_ALU_TYPE;
                 END IF;
 
             END IF;
 
             IF funct3 = "110" THEN
-                RETURN OPCODE_I_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
 
             IF funct3 = "111" THEN
-                RETURN OPCODE_I_TYPE;
+                RETURN OPCODE_ALU_TYPE;
             END IF;
 
         END IF;
