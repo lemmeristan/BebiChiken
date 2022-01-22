@@ -17,7 +17,13 @@ blah:
         sw	a4,0(a5)
         li	a4, '\n'
         sw	a4,0(a5)
-        bne a4, a5, blah //j blah
+
+        li a6, 255
+hah:
+        addi a4, a4, 1
+        sw	a4,0(a5)
+        blt a4, a6, hah
+        j blah
 
 //.align 7
 j _start 
