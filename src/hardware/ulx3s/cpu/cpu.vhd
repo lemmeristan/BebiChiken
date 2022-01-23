@@ -132,7 +132,7 @@ BEGIN
             WHEN ws0 => -- set instruction register
                 IF (initialized = X"FFFF") THEN
                     n_wstate <= ws1;
-                    reset_init <= '1';
+                    --reset_init <= '1';
                 END IF;
             WHEN ws1 => -- execute / dispatch
 
@@ -267,7 +267,7 @@ BEGIN
         END IF;
     END PROCESS;
     i_regfile_dpram : regfile_dpram
-    GENERIC MAP(entry_point => entry_point, vendor => '1')
+    GENERIC MAP(entry_point => entry_point, vendor => '0')
     PORT MAP(
 
         clk => clk, rst => rst,
