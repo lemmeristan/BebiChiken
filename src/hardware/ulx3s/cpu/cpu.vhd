@@ -130,9 +130,9 @@ BEGIN
 
         CASE wstate IS
             WHEN ws0 => -- set instruction register
-                IF (initialized = X"FFFF") THEN
+                IF (initialized(3 downto 0) = X"F") THEN
                     n_wstate <= ws1;
-                    --reset_init <= '1';
+                    reset_init <= '1';
                 END IF;
             WHEN ws1 => -- execute / dispatch
 

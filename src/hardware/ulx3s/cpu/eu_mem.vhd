@@ -7,7 +7,7 @@ USE work.bebichiken.ALL;
 
 ENTITY eu_mem IS
     GENERIC (
-        vendor : STD_LOGIC := '0'
+        vendor : STD_LOGIC := '1'
     );
     PORT (
         rst, clk : IN STD_LOGIC;
@@ -48,7 +48,7 @@ ARCHITECTURE behavioural OF eu_mem IS
 
     signal we_r : std_logic;
 
-    
+
 BEGIN
 
     RdClock144 <= clk;
@@ -97,7 +97,6 @@ BEGIN
         Data144(143 DOWNTO 96) <= timestamp; -- use later to prioritize multiple host memory access
     END PROCESS;
 
-    gen_dpram : FOR op IN opcode_group_t GENERATE
 
         lattice : IF vendor = '1' GENERATE
 
@@ -172,7 +171,6 @@ BEGIN
 
         END GENERATE xilinx;
 
-    END GENERATE gen_dpram;
     ----------------------------------------------
     -- Split into instructions
     ----------------------------------------------
@@ -197,8 +195,8 @@ BEGIN
                 IF ((last_instruction /= Q144(31 DOWNTO 0)) AND (Full36 = '0')) OR (last_instruction = Q144(31 DOWNTO 0)) THEN
                     IF (last_instruction /= Q144(31 DOWNTO 0)) THEN
                         WrEn36             <= '1';
-                        n_last_instruction <= Q144(31 DOWNTO 0);
                     END IF;
+                    n_last_instruction <= Q144(31 DOWNTO 0);
                     n_fsm144_state <= S2;
                 END IF;
             WHEN S2 =>
@@ -206,8 +204,8 @@ BEGIN
                 IF ((last_mem_addr /= Q144(63 DOWNTO 32)) AND (Full36 = '0')) OR (last_mem_addr = Q144(63 DOWNTO 32)) THEN
                     IF (last_mem_addr /= Q144(63 DOWNTO 32)) THEN
                         WrEn36          <= '1';
-                        n_last_mem_addr <= Q144(63 DOWNTO 32);
                     END IF;
+                    n_last_mem_addr <= Q144(63 DOWNTO 32);
                     n_fsm144_state <= S3;
                 END IF;
             WHEN S3 =>
@@ -270,16 +268,11 @@ BEGIN
                         mem_re <= '1';
                         IF mem_rdy = '1' THEN
                             writeback_we <= '1';
-                            IF Empty36 = '0' THEN
-                                RdEn36 <= '1';
-                            ELSE
-                                n_fsm36_state <= S0;
-                            END IF;
+                            n_fsm36_state <= S0;
                         END IF;
                     WHEN "1000" => -- write to bus
                         mem_we <= '1';
                         IF mem_wack = '1' THEN
-
                             n_fsm36_state <= S0;
                         END IF;
                     WHEN OTHERS =>
