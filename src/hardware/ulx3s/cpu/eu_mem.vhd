@@ -7,7 +7,7 @@ USE work.bebichiken.ALL;
 
 ENTITY eu_mem IS
     GENERIC (
-        vendor : STD_LOGIC := '1'
+        vendor : STD_LOGIC := '0'
     );
     PORT (
         rst, clk : IN STD_LOGIC;
@@ -31,10 +31,8 @@ ENTITY eu_mem IS
 END eu_mem;
 
 ARCHITECTURE behavioural OF eu_mem IS
-    SIGNAL microinst : STD_LOGIC_VECTOR(3 DOWNTO 0);
-
     SIGNAL Data36, Q36                                                                                                        : STD_LOGIC_VECTOR(35 DOWNTO 0);
-    SIGNAL Data144, Data144_r, Q144                                                                                                      : STD_LOGIC_VECTOR(143 DOWNTO 0);
+    SIGNAL Data144, Data144_r, Q144                                                                                           : STD_LOGIC_VECTOR(143 DOWNTO 0);
     SIGNAL WrClock144, RdClock144, WrEn144, RdEn144, Empty144, Full144, WrClock36, RdClock36, WrEn36, RdEn36, Empty36, Full36 : STD_LOGIC;
     SIGNAL timestamp, n_timestamp                                                                                             : STD_LOGIC_VECTOR(47 DOWNTO 0);
 
@@ -46,9 +44,7 @@ ARCHITECTURE behavioural OF eu_mem IS
     TYPE fsm36_state_t IS (S0, S1);
     SIGNAL fsm36_state, n_fsm36_state : fsm36_state_t;
 
-    signal we_r : std_logic;
-
-
+    SIGNAL we_r : STD_LOGIC;
 BEGIN
 
     RdClock144 <= clk;
@@ -68,8 +64,8 @@ BEGIN
             last_instruction <= (OTHERS => '0');
             last_mem_addr    <= (OTHERS => '0');
             instruction_r    <= (OTHERS => '0');
-            Data144_r <= (others => '0');
-            we_r <= '0';
+            Data144_r        <= (OTHERS => '0');
+            we_r             <= '0';
         ELSIF rising_edge(clk) THEN
             timestamp        <= n_timestamp;
             i_mem_addr       <= n_mem_addr;
@@ -78,8 +74,8 @@ BEGIN
             last_instruction <= n_last_instruction;
             last_mem_addr    <= n_last_mem_addr;
             instruction_r    <= n_instruction_r;
-            Data144_r <= Data144;
-            we_r <= we;
+            Data144_r        <= Data144;
+            we_r             <= we;
         END IF;
     END PROCESS;
     PROCESS (instruction, rs1_data, rs2_data, token, timestamp)
@@ -96,80 +92,78 @@ BEGIN
 
         Data144(143 DOWNTO 96) <= timestamp; -- use later to prioritize multiple host memory access
     END PROCESS;
+    lattice : IF vendor = '1' GENERATE
 
+        i_fifo_dc_144_lattice : fifo_dc_144_lattice PORT MAP(
+            Reset   => '0',
+            RPReset => '0',
 
-        lattice : IF vendor = '1' GENERATE
+            -- producer / CPU
+            Data    => Data144,
+            WrClock => clk,
+            WrEn    => we,
+            Full    => busy,
 
-            i_fifo_dc_144_lattice : fifo_dc_144_lattice PORT MAP(
-                Reset   => '0',
-                RPReset => '0',
+            -- consumer / FSM
+            RdClock => RdClock144,
+            RdEn    => RdEn144,
+            Q       => Q144,
+            Empty   => Empty144
+        );
 
-                -- producer / CPU
-                Data    => Data144,
-                WrClock => clk,
-                WrEn    => we,
-                Full    => busy,
+        i_fifo_dc_36_lattice : fifo_dc_36_lattice PORT MAP(
+            Reset   => '0',
+            RPReset => '0',
 
-                -- consumer / FSM
-                RdClock => RdClock144,
-                RdEn    => RdEn144,
-                Q       => Q144,
-                Empty   => Empty144
-            );
+            -- producer / CPU
+            Data    => Data36,
+            WrClock => WrClock36,
+            WrEn    => WrEn36,
+            Full    => Full36,
 
-            i_fifo_dc_36_lattice : fifo_dc_36_lattice PORT MAP(
-                Reset   => '0',
-                RPReset => '0',
+            -- consumer / FSM
+            RdClock => RdClock36,
+            RdEn    => RdEn36,
+            Q       => Q36,
+            Empty   => Empty36
+        );
 
-                -- producer / CPU
-                Data    => Data36,
-                WrClock => WrClock36,
-                WrEn    => WrEn36,
-                Full    => Full36,
+    END GENERATE lattice;
+    xilinx : IF vendor = '0' GENERATE
 
-                -- consumer / FSM
-                RdClock => RdClock36,
-                RdEn    => RdEn36,
-                Q       => Q36,
-                Empty   => Empty36
-            );
+        i_fifo_dc_144_xilinx : fifo_dc_144_xilinx PORT MAP(
+            rst => '0',
 
-        END GENERATE lattice;
-        xilinx : IF vendor = '0' GENERATE
+            -- producer / CPU
+            din    => Data144_r,
+            wr_clk => clk,
+            wr_en  => we_r,
+            full   => busy,
 
-            i_fifo_dc_144_xilinx : fifo_dc_144_xilinx PORT MAP(
-                rst => '0',
+            -- consumer / FSM
+            rd_clk => RdClock144,
+            rd_en  => RdEn144,
+            dout   => Q144,
+            empty  => Empty144
 
-                -- producer / CPU
-                din    => Data144_r,
-                wr_clk => clk,
-                wr_en  => we_r,
-                full   => busy,
+        );
+        i_fifo_dc_36_xilinx : fifo_dc_36_xilinx PORT MAP(
+            rst => '0',
 
-                -- consumer / FSM
-                rd_clk => RdClock144,
-                rd_en  => RdEn144,
-                dout   => Q144,
-                empty  => Empty144
+            -- producer / CPU
+            din    => Data36,
+            wr_clk => WrClock36,
+            wr_en  => WrEn36,
+            full   => Full36,
 
-            );
-            i_fifo_dc_36_xilinx : fifo_dc_36_xilinx PORT MAP(
-                rst => '0',
+            -- consumer / FSM
+            rd_clk => RdClock36,
+            rd_en  => RdEn36,
+            dout   => Q36,
+            empty  => Empty36
+        );
 
-                -- producer / CPU
-                din    => Data36,
-                wr_clk => WrClock36,
-                wr_en  => WrEn36,
-                full   => Full36,
-
-                -- consumer / FSM
-                rd_clk => RdClock36,
-                rd_en  => RdEn36,
-                dout   => Q36,
-                empty  => Empty36
-            );
-
-        END GENERATE xilinx;
+    END GENERATE xilinx;
 
     ----------------------------------------------
     -- Split into instructions
@@ -194,19 +188,19 @@ BEGIN
                 Data36 <= "0001" & Q144(31 DOWNTO 0); -- set instruction
                 IF ((last_instruction /= Q144(31 DOWNTO 0)) AND (Full36 = '0')) OR (last_instruction = Q144(31 DOWNTO 0)) THEN
                     IF (last_instruction /= Q144(31 DOWNTO 0)) THEN
-                        WrEn36             <= '1';
+                        WrEn36 <= '1';
                     END IF;
                     n_last_instruction <= Q144(31 DOWNTO 0);
-                    n_fsm144_state <= S2;
+                    n_fsm144_state     <= S2;
                 END IF;
             WHEN S2 =>
                 Data36 <= "0010" & Q144(63 DOWNTO 32); -- set mem_addr
                 IF ((last_mem_addr /= Q144(63 DOWNTO 32)) AND (Full36 = '0')) OR (last_mem_addr = Q144(63 DOWNTO 32)) THEN
                     IF (last_mem_addr /= Q144(63 DOWNTO 32)) THEN
-                        WrEn36          <= '1';
+                        WrEn36 <= '1';
                     END IF;
                     n_last_mem_addr <= Q144(63 DOWNTO 32);
-                    n_fsm144_state <= S3;
+                    n_fsm144_state  <= S3;
                 END IF;
             WHEN S3 =>
                 IF Full36 = '0' THEN
@@ -267,7 +261,7 @@ BEGIN
                     WHEN "0100" => -- read from bus
                         mem_re <= '1';
                         IF mem_rdy = '1' THEN
-                            writeback_we <= '1';
+                            writeback_we  <= '1';
                             n_fsm36_state <= S0;
                         END IF;
                     WHEN "1000" => -- write to bus
@@ -285,7 +279,5 @@ BEGIN
         END CASE;
 
     END PROCESS;
-
-    microinst <= Q36(35 DOWNTO 32);
 
 END behavioural;

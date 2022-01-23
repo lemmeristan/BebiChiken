@@ -1,9 +1,7 @@
 LIBRARY IEEE;
 USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.NUMERIC_STD.ALL; -- signed / unsigned
+USE IEEE.NUMERIC_STD.ALL;        -- signed / unsigned
 USE IEEE.std_logic_unsigned.ALL; -- addition
-
-
 --use std.textio.all;
 
 PACKAGE bebichiken IS
@@ -51,105 +49,118 @@ PACKAGE bebichiken IS
     TYPE opcode_group_regidx_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(4 DOWNTO 0);
     TYPE opcode_group_width_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(1 DOWNTO 0);
     TYPE opcode_group_bit_t IS ARRAY(opcode_group_t) OF STD_LOGIC;
-    TYPE opcode_group_bit_as_vector_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(0 downto 0);
-
-
+    TYPE opcode_group_bit_as_vector_t IS ARRAY(opcode_group_t) OF STD_LOGIC_VECTOR(0 DOWNTO 0);
     TYPE lock_owner_t IS ARRAY(NATURAL RANGE <>) OF opcode_group_t;
 
     -- components
 
+    COMPONENT dp16k_wrapper
+        PORT (
+            DataInA  : IN STD_LOGIC_VECTOR(17 DOWNTO 0);
+            DataInB  : IN STD_LOGIC_VECTOR(17 DOWNTO 0);
+            AddressA : IN STD_LOGIC_VECTOR(13 DOWNTO 0);
+            AddressB : IN STD_LOGIC_VECTOR(13 DOWNTO 0);
+            ClockA   : IN STD_LOGIC;
+            ClockB   : IN STD_LOGIC;
+            ClockEnA : IN STD_LOGIC;
+            ClockEnB : IN STD_LOGIC;
+            WrA      : IN STD_LOGIC;
+            WrB      : IN STD_LOGIC;
+            ResetA   : IN STD_LOGIC;
+            ResetB   : IN STD_LOGIC;
+            QA       : OUT STD_LOGIC_VECTOR(17 DOWNTO 0);
+            QB       : OUT STD_LOGIC_VECTOR(17 DOWNTO 0);
+
+            CSA : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
+            CSB : IN STD_LOGIC_VECTOR(2 DOWNTO 0)
+        );
+    END COMPONENT;
 
     COMPONENT fifo_dc_36_xilinx
-  PORT (
-    rst : IN STD_LOGIC;
-    wr_clk : IN STD_LOGIC;
-    rd_clk : IN STD_LOGIC;
-    din : IN STD_LOGIC_VECTOR(35 DOWNTO 0);
-    wr_en : IN STD_LOGIC;
-    rd_en : IN STD_LOGIC;
-    dout : OUT STD_LOGIC_VECTOR(35 DOWNTO 0);
-    full : OUT STD_LOGIC;
-    empty : OUT STD_LOGIC
-  );
-END COMPONENT;
+        PORT (
+            rst    : IN STD_LOGIC;
+            wr_clk : IN STD_LOGIC;
+            rd_clk : IN STD_LOGIC;
+            din    : IN STD_LOGIC_VECTOR(35 DOWNTO 0);
+            wr_en  : IN STD_LOGIC;
+            rd_en  : IN STD_LOGIC;
+            dout   : OUT STD_LOGIC_VECTOR(35 DOWNTO 0);
+            full   : OUT STD_LOGIC;
+            empty  : OUT STD_LOGIC
+        );
+    END COMPONENT;
 
-COMPONENT fifo_dc_144_xilinx
-  PORT (
-    rst : IN STD_LOGIC;
-    wr_clk : IN STD_LOGIC;
-    rd_clk : IN STD_LOGIC;
-    din : IN STD_LOGIC_VECTOR(143 DOWNTO 0);
-    wr_en : IN STD_LOGIC;
-    rd_en : IN STD_LOGIC;
-    dout : OUT STD_LOGIC_VECTOR(143 DOWNTO 0);
-    full : OUT STD_LOGIC;
-    empty : OUT STD_LOGIC
-  );
-END COMPONENT;
+    COMPONENT fifo_dc_144_xilinx
+        PORT (
+            rst    : IN STD_LOGIC;
+            wr_clk : IN STD_LOGIC;
+            rd_clk : IN STD_LOGIC;
+            din    : IN STD_LOGIC_VECTOR(143 DOWNTO 0);
+            wr_en  : IN STD_LOGIC;
+            rd_en  : IN STD_LOGIC;
+            dout   : OUT STD_LOGIC_VECTOR(143 DOWNTO 0);
+            full   : OUT STD_LOGIC;
+            empty  : OUT STD_LOGIC
+        );
+    END COMPONENT;
 
-COMPONENT fifo_dc_144_lattice PORT (
-    Data : in std_logic_vector(143 downto 0);
-    WrClock : in std_logic;
-    RdClock : in std_logic;
-    WrEn : in std_logic;
-    RdEn : in std_logic;
-    Reset : in std_logic;
-    RPReset : in std_logic;
-    Q : out std_logic_vector(143 downto 0);
-    Empty : out std_logic;
-    Full : out std_logic
-);
-END COMPONENT;
-
-
-COMPONENT fifo_dc_36_lattice PORT (
-    Data : in std_logic_vector(35 downto 0);
-    WrClock : in std_logic;
-    RdClock : in std_logic;
-    WrEn : in std_logic;
-    RdEn : in std_logic;
-    Reset : in std_logic;
-    RPReset : in std_logic;
-    Q : out std_logic_vector(35 downto 0);
-    Empty : out std_logic;
-    Full : out std_logic
-);
-END COMPONENT;
-
-
-COMPONENT dpram_regfile_xilinx
-PORT (
-    clka : IN STD_LOGIC;
-    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-    dina : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    douta : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    clkb : IN STD_LOGIC;
-    web : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addrb : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-    dinb : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    doutb : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
-  );
-END COMPONENT;
-
-
-COMPONENT dpram_regfile_lattice PORT (
-    DataInA: IN STD_LOGIC_VECTOR(31 downto 0);
-    DataInB: IN STD_LOGIC_VECTOR(31 downto 0);
-    AddressA: IN STD_LOGIC_VECTOR(4 downto 0);
-    AddressB: IN STD_LOGIC_VECTOR(4 downto 0);
-    ClockA: IN STD_LOGIC;
-    ClockB: IN STD_LOGIC;
-    ClockEnA: IN STD_LOGIC;
-    ClockEnB: IN STD_LOGIC;
-    WrA: IN STD_LOGIC;
-    WrB: IN STD_LOGIC;
-    ResetA: IN STD_LOGIC;
-    ResetB: IN STD_LOGIC;
-    QA: OUT STD_LOGIC_VECTOR(31 downto 0);
-    QB: OUT STD_LOGIC_VECTOR(31 downto 0)
-);
-end component;
+    COMPONENT fifo_dc_144_lattice PORT (
+        Data    : IN STD_LOGIC_VECTOR(143 DOWNTO 0);
+        WrClock : IN STD_LOGIC;
+        RdClock : IN STD_LOGIC;
+        WrEn    : IN STD_LOGIC;
+        RdEn    : IN STD_LOGIC;
+        Reset   : IN STD_LOGIC;
+        RPReset : IN STD_LOGIC;
+        Q       : OUT STD_LOGIC_VECTOR(143 DOWNTO 0);
+        Empty   : OUT STD_LOGIC;
+        Full    : OUT STD_LOGIC
+        );
+    END COMPONENT;
+    COMPONENT fifo_dc_36_lattice PORT (
+        Data    : IN STD_LOGIC_VECTOR(35 DOWNTO 0);
+        WrClock : IN STD_LOGIC;
+        RdClock : IN STD_LOGIC;
+        WrEn    : IN STD_LOGIC;
+        RdEn    : IN STD_LOGIC;
+        Reset   : IN STD_LOGIC;
+        RPReset : IN STD_LOGIC;
+        Q       : OUT STD_LOGIC_VECTOR(35 DOWNTO 0);
+        Empty   : OUT STD_LOGIC;
+        Full    : OUT STD_LOGIC
+        );
+    END COMPONENT;
+    COMPONENT dpram_regfile_xilinx
+        PORT (
+            clka  : IN STD_LOGIC;
+            wea   : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+            addra : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+            dina  : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            douta : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            clkb  : IN STD_LOGIC;
+            web   : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+            addrb : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+            dinb  : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            doutb : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+        );
+    END COMPONENT;
+    COMPONENT dpram_regfile_lattice PORT (
+        DataInA  : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        DataInB  : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        AddressA : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+        AddressB : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+        ClockA   : IN STD_LOGIC;
+        ClockB   : IN STD_LOGIC;
+        ClockEnA : IN STD_LOGIC;
+        ClockEnB : IN STD_LOGIC;
+        WrA      : IN STD_LOGIC;
+        WrB      : IN STD_LOGIC;
+        ResetA   : IN STD_LOGIC;
+        ResetB   : IN STD_LOGIC;
+        QA       : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        QB       : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+        );
+    END COMPONENT;
 
     COMPONENT regfile_half IS
         GENERIC (
@@ -164,55 +175,49 @@ end component;
 
         );
     END COMPONENT;
-
-
     COMPONENT regfile_reduced IS
-    GENERIC (
-        entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0)
-    );
-    PORT (
-        rst, clk                             : IN STD_LOGIC;
-        rs1, rs2, rd                         : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-        lock_rd                     : IN STD_LOGIC;
-        new_rd_lock_owner : IN opcode_group_t;
-        lock_token           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        GENERIC (
+            entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0)
+        );
+        PORT (
+            rst, clk          : IN STD_LOGIC;
+            rs1, rs2, rd      : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+            lock_rd           : IN STD_LOGIC;
+            new_rd_lock_owner : IN opcode_group_t;
+            lock_token        : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-        writeback_we  : IN opcode_group_bit_t;
-        writeback_data                     : IN opcode_group_word_t;
-        writeback_token : IN opcode_group_word_t;
-        writeback_rd                       : IN opcode_group_regidx_t;
+            writeback_we    : IN opcode_group_bit_t;
+            writeback_data  : IN opcode_group_word_t;
+            writeback_token : IN opcode_group_word_t;
+            writeback_rd    : IN opcode_group_regidx_t;
 
-        rs1_data_out, rs2_data_out    : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        rs1_locked, rs2_locked : OUT STD_LOGIC
+            rs1_data_out, rs2_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            rs1_locked, rs2_locked     : OUT STD_LOGIC
 
-    );
-END COMPONENT;
+        );
+    END COMPONENT;
+    COMPONENT regfile_dpram IS
+        GENERIC (
+            entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00000000";
+            vendor      : STD_LOGIC                     := '0'
+        );
+        PORT (
+            rst, clk          : IN STD_LOGIC;
+            rs1, rs2, rd      : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+            lock_rd           : IN STD_LOGIC;
+            new_rd_lock_owner : IN opcode_group_t;
+            lock_token        : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
+            writeback_we    : IN opcode_group_bit_t;
+            writeback_data  : IN opcode_group_word_t;
+            writeback_token : IN opcode_group_word_t;
+            writeback_rd    : IN opcode_group_regidx_t;
 
-COMPONENT regfile_dpram IS
-    GENERIC (
-        entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00000000";
-        vendor: std_logic := '0'
-    );
-    PORT (
-        rst, clk          : IN STD_LOGIC;
-        rs1, rs2, rd      : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-        lock_rd           : IN STD_LOGIC;
-        new_rd_lock_owner : IN opcode_group_t;
-        lock_token        : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            rs1_data_out, rs2_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            rs1_locked, rs2_locked     : OUT STD_LOGIC
 
-        writeback_we    : IN opcode_group_bit_t;
-        writeback_data  : IN opcode_group_word_t;
-        writeback_token : IN opcode_group_word_t;
-        writeback_rd    : IN opcode_group_regidx_t;
-
-        rs1_data_out, rs2_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        rs1_locked, rs2_locked     : OUT STD_LOGIC
-
-    );
-END COMPONENT;
-
-
+        );
+    END COMPONENT;
     COMPONENT execunit IS
         GENERIC (operation : opcode_t);
 
@@ -236,20 +241,20 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                  : IN STD_LOGIC;
+            we                                          : IN STD_LOGIC;
             rs1_data, rs2_data, instruction, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    
-            writeback_data, writeback_token : out std_logic_vector(31 downto 0);
-            writeback_we  : out std_logic;
-            writeback_rd                       : out std_logic_vector(4 downto 0);
-    
-            mem_we, mem_re : out std_logic;
-            mem_wack, mem_rdy : in std_logic;
-            mem_wdata, mem_addr : out std_logic_vector(31 downto 0);
-            mem_rdata : in std_logic_vector(31 downto 0);
-            mem_width : out std_logic_vector(1 downto 0);
-    
-            busy : out std_logic 
+
+            writeback_data, writeback_token : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            writeback_we                    : OUT STD_LOGIC;
+            writeback_rd                    : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+
+            mem_we, mem_re      : OUT STD_LOGIC;
+            mem_wack, mem_rdy   : IN STD_LOGIC;
+            mem_wdata, mem_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            mem_rdata           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            mem_width           : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+
+            busy : OUT STD_LOGIC
         );
     END COMPONENT;
 
@@ -257,14 +262,14 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                  : IN STD_LOGIC;
+            we                                              : IN STD_LOGIC;
             rs1_data, rs2_data, instruction, pc, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    
-            writeback_next_pc, writeback_data, writeback_token : out std_logic_vector(31 downto 0);
-            writeback_we, writeback_update_pc  : out std_logic;
-            writeback_rd                       : out std_logic_vector(4 downto 0);
-    
-            busy : out std_logic
+
+            writeback_next_pc, writeback_data, writeback_token : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            writeback_we, writeback_update_pc                  : OUT STD_LOGIC;
+            writeback_rd                                       : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+
+            busy : OUT STD_LOGIC
 
         );
     END COMPONENT;
@@ -273,14 +278,14 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                  : IN STD_LOGIC;
+            we                                : IN STD_LOGIC;
             rs1_data, instruction, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    
-            writeback_data, writeback_token : out std_logic_vector(31 downto 0);
-            writeback_we  : out std_logic;
-            writeback_rd                       : out std_logic_vector(4 downto 0);
-    
-            busy : out std_logic
+
+            writeback_data, writeback_token : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            writeback_we                    : OUT STD_LOGIC;
+            writeback_rd                    : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+
+            busy : OUT STD_LOGIC
 
         );
     END COMPONENT;
@@ -289,13 +294,13 @@ END COMPONENT;
         PORT (
             rst, clk : IN STD_LOGIC;
 
-            we                                     : IN STD_LOGIC;
+            we                                          : IN STD_LOGIC;
             rs1_data, rs2_data, instruction, token, imm : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    
+
             writeback_data, writeback_token : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             writeback_we                    : OUT STD_LOGIC;
             writeback_rd                    : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-    
+
             busy : OUT STD_LOGIC
 
         );
@@ -363,14 +368,14 @@ PACKAGE BODY bebichiken IS
     FUNCTION f_calculate_i_type_zero (
         instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0))
         RETURN STD_LOGIC_VECTOR IS
-        VARIABLE op                : opcode_t;
+        VARIABLE op                        : opcode_t;
         VARIABLE r_imm, r_rs1_data, result : STD_LOGIC_VECTOR(31 DOWNTO 0);
     BEGIN
 
         r_imm      := f_decode_imm(instruction);
         op         := f_decode_opcode(instruction);
         r_rs1_data := X"00000000";
-        result := X"00000000";
+        result     := X"00000000";
 
         IF op = OPCODE_I_TYPE_ADDI THEN
             result := r_rs1_data + r_imm;
@@ -408,7 +413,7 @@ PACKAGE BODY bebichiken IS
             result := r_rs1_data AND r_imm;
         END IF;
 
-        return result;
+        RETURN result;
 
     END;
 

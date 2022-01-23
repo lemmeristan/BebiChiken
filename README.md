@@ -1,4 +1,4 @@
-![alt text](bebichiken.png "Bebi Chiken")
+![alt text](BebiChiken2.png "Bebi Chiken")
 
 # Bebi Chiken
 
