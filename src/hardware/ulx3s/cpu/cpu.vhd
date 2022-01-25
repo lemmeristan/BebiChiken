@@ -6,7 +6,9 @@ LIBRARY work;
 USE work.bebichiken.ALL;
 
 ENTITY cpu IS
-    GENERIC (entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00200000");
+    GENERIC (entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00200000";
+    vendor : std_logic := '0'
+    );
 
     PORT (
         rst, clk : IN STD_LOGIC;
@@ -130,9 +132,9 @@ BEGIN
 
         CASE wstate IS
             WHEN ws0 => -- set instruction register
-                IF (initialized(3 downto 0) = X"F") THEN
+                IF (initialized(7 downto 0) = X"FF") THEN
                     n_wstate <= ws1;
-                    --reset_init <= '1';
+                    reset_init <= '1';
                 END IF;
             WHEN ws1 => -- execute / dispatch
 
@@ -267,7 +269,10 @@ BEGIN
         END IF;
     END PROCESS;
     i_regfile_dpram : regfile_dpram
-    GENERIC MAP(entry_point => entry_point, vendor => '0')
+    GENERIC MAP(
+        entry_point => entry_point, 
+        vendor => vendor
+    )
     PORT MAP(
 
         clk => clk, rst => rst,
@@ -287,6 +292,9 @@ BEGIN
         rs1_locked => rs1_locked, rs2_locked => rs2_locked --, pc_locked => pc_locked
     );
     i_eu_mem : eu_mem
+    GENERIC MAP (
+        vendor => vendor
+    )
     PORT MAP(
         rst => rst, clk => clk,
 

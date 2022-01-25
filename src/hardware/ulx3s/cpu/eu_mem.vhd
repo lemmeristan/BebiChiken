@@ -44,7 +44,12 @@ ARCHITECTURE behavioural OF eu_mem IS
     TYPE fsm36_state_t IS (S0, S1);
     SIGNAL fsm36_state, n_fsm36_state : fsm36_state_t;
 
-    SIGNAL we_r : STD_LOGIC;
+    SIGNAL we_r, we_r_r : STD_LOGIC;
+
+
+    signal rs1_data_r, rs2_data_r, imm_r, inst_r, token_r : std_logic_vector(31 downto 0);
+
+
 BEGIN
 
     RdClock144 <= clk;
@@ -52,7 +57,6 @@ BEGIN
     WrClock144 <= clk;
     WrClock36  <= clk;
 
-    mem_addr    <= i_mem_addr;
     n_timestamp <= timestamp + X"000000000001";
     PROCESS (rst, clk)
     BEGIN
@@ -66,6 +70,14 @@ BEGIN
             instruction_r    <= (OTHERS => '0');
             Data144_r        <= (OTHERS => '0');
             we_r             <= '0';
+            we_r_r <= '0';
+
+            rs1_data_r <= (others => '0');
+            rs2_data_r <= (others => '0');
+            inst_r <= (others => '0');
+            token_r <= (others => '0');
+
+
         ELSIF rising_edge(clk) THEN
             timestamp        <= n_timestamp;
             i_mem_addr       <= n_mem_addr;
@@ -74,96 +86,147 @@ BEGIN
             last_instruction <= n_last_instruction;
             last_mem_addr    <= n_last_mem_addr;
             instruction_r    <= n_instruction_r;
-            Data144_r        <= Data144;
+            if we = '1' then
+                rs1_data_r <= rs1_data;
+                rs2_data_r <= rs2_data;
+                inst_r <= instruction;
+                token_r <= token;
+            end if;
+            if we_r = '1' then
+                Data144_r        <= Data144;
+            end if;
             we_r             <= we;
+            we_r_r <= we_r;
         END IF;
     END PROCESS;
-    PROCESS (instruction, rs1_data, rs2_data, token, timestamp)
+    PROCESS (inst_r, rs1_data_r, rs2_data_r, token_r, timestamp, imm)
     BEGIN
         Data144               <= (OTHERS => '0');
-        Data144(31 DOWNTO 0)  <= instruction;                          -- use to extract width and rd later
-        Data144(63 DOWNTO 32) <= rs1_data + f_decode_imm(instruction); -- address
+        Data144(31 DOWNTO 0)  <= inst_r;                          -- use to extract width and rd later
+        Data144(63 DOWNTO 32) <= rs1_data_r + f_decode_imm(inst_r); -- address
 
-        IF f_decode_opcode(instruction) = OPCODE_I_TYPE_LOAD THEN
-            Data144(95 DOWNTO 64) <= token;
-        ELSIF f_decode_opcode(instruction) = OPCODE_S_TYPE THEN
-            Data144(95 DOWNTO 64) <= rs2_data; -- wdata
+        IF f_decode_opcode(inst_r) = OPCODE_I_TYPE_LOAD THEN
+            Data144(95 DOWNTO 64) <= token_r;
+        ELSIF f_decode_opcode(inst_r) = OPCODE_S_TYPE THEN
+            Data144(95 DOWNTO 64) <= rs2_data_r; -- wdata
         END IF;
 
         Data144(143 DOWNTO 96) <= timestamp; -- use later to prioritize multiple host memory access
     END PROCESS;
-    lattice : IF vendor = '1' GENERATE
 
-        i_fifo_dc_144_lattice : fifo_dc_144_lattice PORT MAP(
-            Reset   => '0',
-            RPReset => '0',
+    i_fifo_dc_144 : fifo_generic
+    GENERIC MAP(
+        vendor     => vendor,
+        data_width => 144
+    )
+    PORT MAP(
+        rst => rst,
 
-            -- producer / CPU
-            Data    => Data144,
-            WrClock => clk,
-            WrEn    => we,
-            Full    => busy,
+        -- producer / CPU
+        din    => Data144_r,
+        wr_clk => clk,
+        wr_en  => we_r_r,
+        full   => busy,
 
-            -- consumer / FSM
-            RdClock => RdClock144,
-            RdEn    => RdEn144,
-            Q       => Q144,
-            Empty   => Empty144
-        );
+        -- consumer / FSM
+        rd_clk => RdClock144,
+        rd_en  => RdEn144,
+        dout   => Q144,
+        empty  => Empty144
 
-        i_fifo_dc_36_lattice : fifo_dc_36_lattice PORT MAP(
-            Reset   => '0',
-            RPReset => '0',
+    );
+    i_fifo_dc_36 : fifo_generic
+    GENERIC MAP(
+        vendor     => vendor,
+        data_width => 36
+    )
+    PORT MAP(
+        rst => rst,
 
-            -- producer / CPU
-            Data    => Data36,
-            WrClock => WrClock36,
-            WrEn    => WrEn36,
-            Full    => Full36,
+        -- producer / CPU
+        din    => Data36,
+        wr_clk => WrClock36,
+        wr_en  => WrEn36,
+        full   => Full36,
 
-            -- consumer / FSM
-            RdClock => RdClock36,
-            RdEn    => RdEn36,
-            Q       => Q36,
-            Empty   => Empty36
-        );
+        -- consumer / FSM
+        rd_clk => RdClock36,
+        rd_en  => RdEn36,
+        dout   => Q36,
+        empty  => Empty36
+    );
+    -- lattice : IF vendor = '1' GENERATE
 
-    END GENERATE lattice;
-    xilinx : IF vendor = '0' GENERATE
+    --     i_fifo_dc_144_lattice : fifo_dc_144_lattice PORT MAP(
+    --         Reset   => '0',
+    --         RPReset => '0',
 
-        i_fifo_dc_144_xilinx : fifo_dc_144_xilinx PORT MAP(
-            rst => '0',
+    --         -- producer / CPU
+    --         Data    => Data144,
+    --         WrClock => clk,
+    --         WrEn    => we,
+    --         Full    => busy,
 
-            -- producer / CPU
-            din    => Data144_r,
-            wr_clk => clk,
-            wr_en  => we_r,
-            full   => busy,
+    --         -- consumer / FSM
+    --         RdClock => RdClock144,
+    --         RdEn    => RdEn144,
+    --         Q       => Q144,
+    --         Empty   => Empty144
+    --     );
 
-            -- consumer / FSM
-            rd_clk => RdClock144,
-            rd_en  => RdEn144,
-            dout   => Q144,
-            empty  => Empty144
+    --     i_fifo_dc_36_lattice : fifo_dc_36_lattice PORT MAP(
+    --         Reset   => '0',
+    --         RPReset => '0',
 
-        );
-        i_fifo_dc_36_xilinx : fifo_dc_36_xilinx PORT MAP(
-            rst => '0',
+    --         -- producer / CPU
+    --         Data    => Data36,
+    --         WrClock => WrClock36,
+    --         WrEn    => WrEn36,
+    --         Full    => Full36,
 
-            -- producer / CPU
-            din    => Data36,
-            wr_clk => WrClock36,
-            wr_en  => WrEn36,
-            full   => Full36,
+    --         -- consumer / FSM
+    --         RdClock => RdClock36,
+    --         RdEn    => RdEn36,
+    --         Q       => Q36,
+    --         Empty   => Empty36
+    --     );
 
-            -- consumer / FSM
-            rd_clk => RdClock36,
-            rd_en  => RdEn36,
-            dout   => Q36,
-            empty  => Empty36
-        );
+    -- END GENERATE lattice;
+    -- xilinx : IF vendor = '0' GENERATE
 
-    END GENERATE xilinx;
+    --     i_fifo_dc_144_xilinx : fifo_dc_144_xilinx PORT MAP(
+    --         rst => '0',
+
+    --         -- producer / CPU
+    --         din    => Data144_r,
+    --         wr_clk => clk,
+    --         wr_en  => we_r,
+    --         full   => busy,
+
+    --         -- consumer / FSM
+    --         rd_clk => RdClock144,
+    --         rd_en  => RdEn144,
+    --         dout   => Q144,
+    --         empty  => Empty144
+
+    --     );
+    --     i_fifo_dc_36_xilinx : fifo_dc_36_xilinx PORT MAP(
+    --         rst => '0',
+
+    --         -- producer / CPU
+    --         din    => Data36,
+    --         wr_clk => WrClock36,
+    --         wr_en  => WrEn36,
+    --         full   => Full36,
+
+    --         -- consumer / FSM
+    --         rd_clk => RdClock36,
+    --         rd_en  => RdEn36,
+    --         dout   => Q36,
+    --         empty  => Empty36
+    --     );
+
+    -- END GENERATE xilinx;
 
     ----------------------------------------------
     -- Split into instructions
@@ -220,6 +283,7 @@ BEGIN
     writeback_data  <= mem_rdata; -- perhaps edit this later depending on width
     writeback_token <= Q36(31 DOWNTO 0);
     mem_wdata       <= Q36(31 DOWNTO 0);
+    mem_addr    <= i_mem_addr;
     mem_width       <= instruction_r(13 DOWNTO 12);
     writeback_rd    <= instruction_r(11 DOWNTO 7);
     ----------------------------------------------
@@ -238,26 +302,27 @@ BEGIN
         CASE fsm36_state IS
             WHEN S0 =>
                 IF Empty36 = '0' THEN
-                    RdEn36        <= '1';
+                RdEn36        <= '1';
+
                     n_fsm36_state <= S1;
                 END IF;
             WHEN S1 =>
                 CASE Q36(35 DOWNTO 32) IS
                     WHEN "0001" => -- set instruction
                         n_instruction_r <= Q36(31 DOWNTO 0);
-                        IF Empty36 = '0' THEN
-                            RdEn36 <= '1';
-                        ELSE
+                        --IF Empty36 = '0' THEN
+                        --    RdEn36 <= '1';
+                        --ELSE
                             n_fsm36_state <= S0;
-                        END IF;
+                        --END IF;
                     WHEN "0010" => -- set address
                         n_mem_addr <= Q36(31 DOWNTO 0);
 
-                        IF Empty36 = '0' THEN
-                            RdEn36 <= '1';
-                        ELSE
+                        --IF Empty36 = '0' THEN
+                        --    RdEn36 <= '1';
+                        --ELSE
                             n_fsm36_state <= S0;
-                        END IF;
+                        --END IF;
                     WHEN "0100" => -- read from bus
                         mem_re <= '1';
                         IF mem_rdy = '1' THEN
@@ -270,11 +335,11 @@ BEGIN
                             n_fsm36_state <= S0;
                         END IF;
                     WHEN OTHERS =>
-                        IF Empty36 = '0' THEN
-                            RdEn36 <= '1';
-                        ELSE
+                        --IF Empty36 = '0' THEN
+                        --    RdEn36 <= '1';
+                        --ELSE
                             n_fsm36_state <= S0;
-                        END IF;
+                        --END IF;
                 END CASE;
         END CASE;
 

@@ -54,6 +54,42 @@ PACKAGE bebichiken IS
 
     -- components
 
+
+    COMPONENT fifo_generic
+    GENERIC (
+        vendor : std_logic := '1';
+        data_width : integer := 36
+        );
+
+    PORT (
+        rst : IN STD_LOGIC;
+        wr_clk : IN STD_LOGIC;
+        rd_clk : IN STD_LOGIC;
+        din : IN STD_LOGIC_VECTOR(data_width-1 DOWNTO 0);
+        wr_en : IN STD_LOGIC;
+        rd_en : IN STD_LOGIC;
+        dout : OUT STD_LOGIC_VECTOR(data_width-1 DOWNTO 0);
+        full : OUT STD_LOGIC;
+        empty : OUT STD_LOGIC
+    );
+END COMPONENT;
+
+
+COMPONENT dpram_xilinx_18k
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(9 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(17 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(17 DOWNTO 0);
+    clkb : IN STD_LOGIC;
+    web : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addrb : IN STD_LOGIC_VECTOR(9 DOWNTO 0);
+    dinb : IN STD_LOGIC_VECTOR(17 DOWNTO 0);
+    doutb : OUT STD_LOGIC_VECTOR(17 DOWNTO 0)
+  );
+END COMPONENT;
+
     COMPONENT dp16k_wrapper
         PORT (
             DataInA  : IN STD_LOGIC_VECTOR(17 DOWNTO 0);
@@ -238,6 +274,9 @@ PACKAGE bebichiken IS
     END COMPONENT;
 
     COMPONENT eu_mem IS
+    GENERIC (
+        vendor : STD_LOGIC := '0'
+    );
         PORT (
             rst, clk : IN STD_LOGIC;
 

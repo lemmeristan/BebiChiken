@@ -10,114 +10,110 @@ USE work.bebichiken.ALL;
 
 ENTITY fifo_generic IS
     GENERIC (
-        vendor : std_logic := '1';
-        data_width : integer := 36
-        );
+        vendor     : STD_LOGIC := '1';
+        data_width : INTEGER   := 36
+    );
 
     PORT (
-        rst : IN STD_LOGIC;
+        rst    : IN STD_LOGIC;
         wr_clk : IN STD_LOGIC;
         rd_clk : IN STD_LOGIC;
-        din : IN STD_LOGIC_VECTOR(data_width-1 DOWNTO 0);
-        wr_en : IN STD_LOGIC;
-        rd_en : IN STD_LOGIC;
-        dout : OUT STD_LOGIC_VECTOR(data_width-1 DOWNTO 0);
-        full : OUT STD_LOGIC;
-        empty : OUT STD_LOGIC
+        din    : IN STD_LOGIC_VECTOR(data_width - 1 DOWNTO 0);
+        wr_en  : IN STD_LOGIC;
+        rd_en  : IN STD_LOGIC;
+        dout   : OUT STD_LOGIC_VECTOR(data_width - 1 DOWNTO 0);
+        full   : OUT STD_LOGIC;
+        empty  : OUT STD_LOGIC
     );
 END fifo_generic;
 
 ARCHITECTURE behavioural OF fifo_generic IS
 
-CONSTANT num_dpram : integer := data_width / 18;
-signal rd_ptr, wr_ptr : std_logic_vector(9 downto 0);
-signal AddressA, AddressB : std_logic_vector(13 downto 0);
-signal i_empty, i_afull : std_logic;
+    CONSTANT num_dpram                        : INTEGER := data_width / 18;
+    SIGNAL rd_ptr, wr_ptr                     : STD_LOGIC_VECTOR(9 DOWNTO 0);
+    SIGNAL AddressA, AddressB                 : STD_LOGIC_VECTOR(13 DOWNTO 0);
+    SIGNAL i_empty, i_afull, first_read, we_r : STD_LOGIC;
 
-begin
+    SIGNAL i_dout, din_r : STD_LOGIC_VECTOR(data_width - 1 DOWNTO 0);
+
+BEGIN
 
     AddressA <= wr_ptr & "1111";
     AddressB <= rd_ptr & "1111";
 
-    gen_dpram : FOR i IN 0 to num_dpram-1 GENERATE
+    gen_dpram : FOR i IN 0 TO num_dpram - 1 GENERATE
+        xilinx : IF vendor = '0' GENERATE
+            i_dp16kd : dpram_xilinx_18k
+            PORT MAP(
+                clka   => wr_clk,
+                wea(0) => we_r,
+                addra  => wr_ptr,
+                dina   => din_r(((i + 1) * 18) - 1 DOWNTO i * 18),
+                douta  => OPEN,
+                clkb   => rd_clk,
+                web(0) => '0',
+                addrb  => rd_ptr,
+                dinb => (OTHERS => '0'),
+                doutb  => i_dout(((i + 1) * 18) - 1 DOWNTO i * 18)
+            );
+        END GENERATE xilinx;
 
-    lattice : IF vendor = '1' GENERATE
+        lattice : IF vendor = '1' GENERATE
+            i_dp16kd : dp16k_wrapper
+            PORT MAP(
+                DataInA  => din(((i + 1) * 18) - 1 DOWNTO i * 18),
+                DataInB => (OTHERS => '0'),
+                AddressA => AddressA,
+                AddressB => AddressB,
 
+                ClockA   => wr_clk,
+                ClockB   => rd_clk,
+                ClockEnA => '1',
+                ClockEnB => '1',
+                WrA      => we_r,
+                WrB      => '0',
+                ResetA   => '0',
+                ResetB   => '0',
+                QA       => OPEN,
+                QB       => i_dout(((i + 1) * 18) - 1 DOWNTO i * 18),
+                CSA      => "000",
+                CSB      => "000"
+            );
 
-        i_dp16kd : dp16k_wrapper  
-        PORT MAP (
-            DataInA => din(((i+1) * 18)-1 downto i*18),
-            DataInB => (others => '0'),
-            AddressA => AddressA,
-            AddressB => AddressB,
-        
-            ClockA => wr_clk,
-            ClockB => rd_clk,
-            ClockEnA => '1',
-            ClockEnB => '1',
-            WrA => wr_en,
-            WrB => '0',
-            ResetA => '0',
-            ResetB => '0',
-            QA => open,
-            QB => dout(((i+1) * 18)-1 downto i*18),
-            CSA => "000",
-            CSB => "000"
-        );
-
-    END GENERATE lattice;
-
-
-    xilinx : IF vendor = '0' GENERATE
-        -- inst_dpram_rs1 : dpram_regfile_xilinx
-        -- PORT MAP(
-        --     clka   => clk,
-        --     wea(0) => '0',
-        --     addra  => rs1,
-        --     dina   => X"00000000",
-        --     douta  => rs1_data_out_of_op(op),
-        --     clkb   => clk,
-        --     web(0) => writeback_we(op),
-        --     addrb  => writeback_rd(op),
-        --     dinb   => writeback_data(op),
-        --     doutb  => OPEN
-        -- );
-
-
-    END GENERATE xilinx;
-
-END GENERATE gen_dpram;
-
-
-    process(rst, wr_clk)
-    begin
-        if rst = '1' then
-            wr_ptr <= (others => '0');
-        elsif rising_edge(wr_clk) then
-            if wr_en = '1' then
+        END GENERATE lattice;
+    END GENERATE gen_dpram;
+    PROCESS (rst, wr_clk)
+    BEGIN
+        IF rst = '1' THEN
+            wr_ptr <= (OTHERS => '0');
+            we_r   <= '0';
+            din_r <= (others => '0');
+        ELSIF rising_edge(wr_clk) THEN
+            we_r <= wr_en;
+            din_r <= din;
+            IF wr_en = '1' THEN
                 wr_ptr <= wr_ptr + "0000000001";
-            end if;
-        end if;
-    end process;
-
-
-    process(rst, rd_clk)
-    begin
-        if rst = '1' then
-            rd_ptr <= (others => '0');
-        elsif rising_edge(rd_clk) then
-            if rd_en = '1' then
+            END IF;
+        END IF;
+    END PROCESS;
+    PROCESS (rst, rd_clk)
+    BEGIN
+        IF rst = '1' THEN
+            rd_ptr <= (OTHERS => '0');
+            dout <= (others => '0');
+        ELSIF rising_edge(rd_clk) THEN
+            IF rd_en = '1' THEN
+                dout <= i_dout;
                 rd_ptr <= rd_ptr + "0000000001";
-            end if;
-        end if;
-    end process;
+            END IF;
+        END IF;
+    END PROCESS;
+    empty <= '1' WHEN rd_ptr = wr_ptr ELSE
+        '0';
+    i_afull <= '1' WHEN wr_ptr + "0000000010" = rd_ptr ELSE
+        '0';
+    full <= '1' WHEN wr_ptr + "0000000001" = rd_ptr ELSE
+        '0';
 
 
-    empty <= '1' when rd_ptr = wr_ptr else '0';
-    i_afull <= '1' when wr_ptr + "0000000010" = rd_ptr else '0';
-    full <= '1' when wr_ptr + "0000000001" = rd_ptr else '0';
-
-
-
-
-end behavioural;
+END behavioural;
