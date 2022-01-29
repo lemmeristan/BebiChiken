@@ -13,8 +13,8 @@ PERIPHERALS_VHDLS=("${UART_VHDLS[@]/#/peripherals/uart/} ${SDRAM_VHDLS[@]/#/peri
 
 
 
-VERILOGS="${PERIPHERALS_VERILOGS[@]} cpu/regfile_dpram/dp16kd_wrapper.v  cpu/regfile_dpram/dpram_regfile_lattice.v"
-VHDLS="datatypes.vhd top.vhd cpu/cpu.vhd cpu/regfile_dpram/regfile_dpram.vhd cpu/eu_mem.vhd mmu.vhd cpu/eu_alu.vhd cpu/eu_branch_type.vhd cpu/eu_mem/fifo_generic.vhd ${PERIPHERALS_VHDLS[@]}" 
+VERILOGS="${PERIPHERALS_VERILOGS[@]} primitives/dp16kd_wrapper.v primitives/dpram_regfile_lattice.v"
+VHDLS="bebichiken.vhd top.vhd cpu/cpu.vhd cpu/registerfile.vhd cpu/eu_mem.vhd mmu.vhd cpu/eu_alu.vhd cpu/eu_branch_type.vhd primitives/fifo_generic.vhd ${PERIPHERALS_VHDLS[@]}" 
 
 if [ $1 == "clean" ]; then
   rm -f *.bit *.json *.config *.svf *~

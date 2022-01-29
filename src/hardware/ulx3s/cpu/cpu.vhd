@@ -132,7 +132,7 @@ BEGIN
 
         CASE wstate IS
             WHEN ws0 => -- set instruction register
-                IF (initialized(23 downto 0) = X"FFFFFF") THEN
+                IF (initialized(2 downto 0) = "111") THEN
                     n_wstate <= ws1;
                 END IF;
             WHEN ws1 => -- execute / dispatch
@@ -268,7 +268,7 @@ BEGIN
             END IF;
         END IF;
     END PROCESS;
-    i_regfile_dpram : regfile_dpram
+    i_registerfile : registerfile
     GENERIC MAP(
         entry_point => entry_point, 
         vendor => vendor

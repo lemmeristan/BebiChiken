@@ -6,7 +6,7 @@ USE IEEE.std_logic_unsigned.ALL;
 LIBRARY work;
 USE work.bebichiken.ALL;
 
-ENTITY regfile_dpram IS
+ENTITY registerfile IS
     GENERIC (
         entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00000000";
         vendor      : STD_LOGIC                     := '1'
@@ -27,9 +27,9 @@ ENTITY regfile_dpram IS
         rs1_locked, rs2_locked     : OUT STD_LOGIC
 
     );
-END regfile_dpram;
+END registerfile;
 
-ARCHITECTURE behavioural OF regfile_dpram IS
+ARCHITECTURE behavioural OF registerfile IS
 
     SIGNAL owner : lock_owner_t(31 DOWNTO 0);
     TYPE registers_t IS ARRAY (31 DOWNTO 0) OF STD_LOGIC_VECTOR(31 DOWNTO 0);

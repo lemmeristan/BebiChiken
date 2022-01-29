@@ -232,7 +232,7 @@ END COMPONENT;
 
         );
     END COMPONENT;
-    COMPONENT regfile_dpram IS
+    COMPONENT registerfile IS
         GENERIC (
             entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00000000";
             vendor      : STD_LOGIC                     := '0'
