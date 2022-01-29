@@ -55,6 +55,226 @@ PACKAGE bebichiken IS
     -- components
 
 
+      -- COMPONENT registerfile PORT (
+  --   clk : IN STD_LOGIC;
+  --   rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+  --   data_out_rs1, data_out_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+  --   data_in_rd : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+  --   we : IN STD_LOGIC
+  --   );
+--  END COMPONENT;
+  COMPONENT cpu PORT (
+    rst, clk : IN STD_LOGIC;
+
+    -- Instruction memory bus
+    inst_width : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00" -> 1 byte, "01" -> 2 bytes, "10" -> 4 bytes, "11" -> invalid / 8 bytes for RV64
+    inst_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    inst_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    inst_re : OUT STD_LOGIC;
+    inst_rdy : IN STD_LOGIC;
+
+    -- Data memory bus
+    data_width : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00" -> 1 byte, "01" -> 2 bytes, "10" -> 4 bytes, "11" -> invalid / 8 bytes for RV64
+    data_addr, data_wdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    data_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    data_re, data_we : OUT STD_LOGIC;
+    data_rdy, data_wack : IN STD_LOGIC
+    );
+  END COMPONENT;
+
+
+  COMPONENT block_ram PORT (
+    rst, clk : IN STD_LOGIC;
+    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_we, mem_re : IN STD_LOGIC;
+    mem_width : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+    mem_rdy, mem_wack : OUT STD_LOGIC;
+    address_valid : OUT STD_LOGIC
+    );
+  END COMPONENT;
+
+  COMPONENT uart PORT (rst, clk : IN STD_LOGIC;
+    txd : OUT STD_LOGIC;
+    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_we, mem_re : IN STD_LOGIC;
+    mem_wack, mem_rdy : OUT STD_LOGIC
+    );
+  END COMPONENT;
+
+  COMPONENT gpio PORT (
+    rst, clk : IN STD_LOGIC;
+    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_we, mem_re : IN STD_LOGIC;
+    mem_wack, mem_rdy : OUT STD_LOGIC;
+
+    gpio_dir, gpio_value : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    gpio_input : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    address_valid : OUT STD_LOGIC
+    );
+  END COMPONENT;
+
+  COMPONENT timebase PORT (
+    rst, clk : IN STD_LOGIC;
+    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_we, mem_re : IN STD_LOGIC;
+    mem_wack, mem_rdy : OUT STD_LOGIC;
+    address_valid : OUT STD_LOGIC
+    );
+  END COMPONENT;
+
+  COMPONENT quadflash_cache
+    GENERIC (
+      vendor : STD_LOGIC; -- 0 => xilinx, 1 => lattice
+
+      base_address : STD_LOGIC_VECTOR(31 DOWNTO 0)
+    );
+
+    PORT (
+      reset : IN STD_LOGIC;
+      clk : IN STD_LOGIC;
+
+      mem_clk : IN STD_LOGIC;
+      mem_re : IN STD_LOGIC;
+      mem_addr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+      mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+      mem_rdy : OUT STD_LOGIC;
+      spi_csn, spi_sck, spi_di, spi_wpn, spi_holdn : OUT STD_LOGIC;
+      spi_do : IN STD_LOGIC;
+
+      spi_io : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+
+      spi_reading : OUT STD_LOGIC;
+      led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
+    );
+  END COMPONENT;
+
+  COMPONENT USRMCLK
+    PORT (
+      USRMCLKI : IN STD_ULOGIC;
+      USRMCLKTS : IN STD_ULOGIC
+    );
+  END COMPONENT;
+  ATTRIBUTE syn_noprune : BOOLEAN;
+  ATTRIBUTE syn_noprune OF USRMCLK : COMPONENT IS true;
+  COMPONENT spimaster PORT (
+    rst, clk : IN STD_LOGIC;
+    sck, mosi : OUT STD_LOGIC;
+    miso : IN STD_LOGIC;
+    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_we, mem_re : IN STD_LOGIC;
+    mem_wack, mem_rdy : OUT STD_LOGIC;
+    address_valid : OUT STD_LOGIC
+    );
+  END COMPONENT;
+
+  COMPONENT i2cmaster PORT (
+    rst, clk : IN STD_LOGIC;
+    scl, sda : INOUT STD_LOGIC;
+    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_we, mem_re : IN STD_LOGIC;
+    mem_wack, mem_rdy : OUT STD_LOGIC;
+    address_valid : OUT STD_LOGIC
+    );
+  END COMPONENT;
+  COMPONENT hdmi PORT (
+
+    rst, clk : IN STD_LOGIC;
+    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mem_we, mem_re : IN STD_LOGIC;
+    mem_width : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+    mem_rdy, mem_wack : OUT STD_LOGIC;
+
+    address_valid : OUT STD_LOGIC;
+
+    gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
+    --gpdi_dn : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
+    );
+  END COMPONENT;
+
+    -- component uart PORT (
+  --   rst, CLK100MHZ : in std_logic;
+  --   txd : out std_logic
+  -- );
+  -- end component;
+
+  -- component ila_0 PORT (
+  --   clk : in std_logic;
+  --   probe0, probe1 : in std_logic_vector(31 downto 0)
+  -- );
+  -- end component;
+
+  COMPONENT HDMI_test_hires IS
+  PORT (
+      pclk : IN STD_LOGIC;
+      gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+      GFX_X, GFX_Y : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
+      red, green, blue : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+      pixclk, half_clk_TMDS : OUT STD_LOGIC
+  );
+  END COMPONENT;
+
+
+
+    COMPONENT sdram_cache IS
+
+    GENERIC (
+        vendor : STD_LOGIC;
+        base_address : STD_LOGIC_VECTOR(31 DOWNTO 0);
+        clk_freq : NATURAL;
+        CAS_LATENCY : NATURAL := 2; -- 2=below 133MHz, 3=above 133MHz
+
+        -- timing values (in nanoseconds)
+        --
+        -- These values can be adjusted to match the exact timing of your SDRAM
+        -- chip (refer to the datasheet).
+        T_DESL : real := 100000.0; -- startup delay
+        T_MRD : real := 12.0; -- mode register cycle time
+        T_RC : real := 60.0; -- row cycle time
+        T_RCD : real := 18.0; -- RAS to CAS delay
+        T_RP : real := 18.0; -- precharge to activate delay
+        T_WR : real := 12.0; -- write recovery time
+        T_REFI : real := 7800.0; -- average refresh interval
+
+        num_ports : INTEGER := 1
+
+    );
+    PORT (
+        reset : IN STD_LOGIC;
+        clk : IN STD_LOGIC;
+
+        sdram_a : OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
+        sdram_ba : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+        sdram_dq : INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+        sdram_cke : OUT STD_LOGIC;
+        sdram_cs_n : OUT STD_LOGIC;
+        sdram_ras_n : OUT STD_LOGIC;
+        sdram_cas_n : OUT STD_LOGIC;
+        sdram_we_n : OUT STD_LOGIC;
+        sdram_dqml : OUT STD_LOGIC;
+        sdram_dqmh : OUT STD_LOGIC;
+
+        mem_clk : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
+        mem_we : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
+        mem_re : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
+        mem_addr : IN word_array_t(num_ports - 1 DOWNTO 0);
+        mem_width : IN width_array_t(num_ports - 1 DOWNTO 0);
+        mem_wdata : IN word_array_t(num_ports - 1 DOWNTO 0);
+        mem_rdata : OUT word_array_t(num_ports - 1 DOWNTO 0);
+        mem_rdy : OUT STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
+        mem_wack : OUT STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0) --;
+
+        --addr_valid : OUT STD_LOGIC
+    );
+END COMPONENT;
+
+
     COMPONENT fifo_generic
     GENERIC (
         vendor : std_logic := '1';

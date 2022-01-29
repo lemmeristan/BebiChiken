@@ -56,190 +56,11 @@ ARCHITECTURE behavioural OF top IS
   CONSTANT num_hosts : INTEGER := 1;
   CONSTANT num_peripherals : INTEGER := 1;
 
-  -- COMPONENT registerfile PORT (
-  --   clk : IN STD_LOGIC;
-  --   rs1, rs2, rd : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-  --   data_out_rs1, data_out_rs2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-  --   data_in_rd : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-  --   we : IN STD_LOGIC
-  --   );
---  END COMPONENT;
-  COMPONENT cpu PORT (
-    rst, clk : IN STD_LOGIC;
 
-    -- Instruction memory bus
-    inst_width : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00" -> 1 byte, "01" -> 2 bytes, "10" -> 4 bytes, "11" -> invalid / 8 bytes for RV64
-    inst_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    inst_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    inst_re : OUT STD_LOGIC;
-    inst_rdy : IN STD_LOGIC;
-
-    -- Data memory bus
-    data_width : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00" -> 1 byte, "01" -> 2 bytes, "10" -> 4 bytes, "11" -> invalid / 8 bytes for RV64
-    data_addr, data_wdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    data_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    data_re, data_we : OUT STD_LOGIC;
-    data_rdy, data_wack : IN STD_LOGIC
-    );
-  END COMPONENT;
-
-  COMPONENT mmu IS
-    -- GENERIC (
-    --   peripheral_addresses : peripheral_address_t
-    -- );
-
-    PORT (
-      rst : IN STD_LOGIC;
-      sys_clk : IN STD_LOGIC;
-      host_we : IN STD_LOGIC;
-      host_re : IN STD_LOGIC;
-      host_addr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-      host_width : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-      host_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-      host_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-      host_rdy : OUT STD_LOGIC;
-      host_wack : OUT STD_LOGIC;
-      host_address_invalid : OUT STD_LOGIC;
-      peripheral_we : OUT peripheral_bit_t;
-      peripheral_re : OUT peripheral_bit_t;
-      peripheral_addr : OUT peripheral_word_t;
-      peripheral_width : OUT peripheral_width_t;
-      peripheral_wdata : OUT peripheral_word_t;
-      peripheral_rdata : IN peripheral_word_t;
-      peripheral_rdy : IN peripheral_bit_t;
-      peripheral_wack : IN peripheral_bit_t
-
-    );
-  END COMPONENT;
-
-  COMPONENT block_ram PORT (
-    rst, clk : IN STD_LOGIC;
-    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_we, mem_re : IN STD_LOGIC;
-    mem_width : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-    mem_rdy, mem_wack : OUT STD_LOGIC;
-    address_valid : OUT STD_LOGIC
-    );
-  END COMPONENT;
-
-  COMPONENT uart PORT (rst, clk : IN STD_LOGIC;
-    txd : OUT STD_LOGIC;
-    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_we, mem_re : IN STD_LOGIC;
-    mem_wack, mem_rdy : OUT STD_LOGIC
-    );
-  END COMPONENT;
-
-  COMPONENT gpio PORT (
-    rst, clk : IN STD_LOGIC;
-    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_we, mem_re : IN STD_LOGIC;
-    mem_wack, mem_rdy : OUT STD_LOGIC;
-
-    gpio_dir, gpio_value : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    gpio_input : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    address_valid : OUT STD_LOGIC
-    );
-  END COMPONENT;
-
-  COMPONENT timebase PORT (
-    rst, clk : IN STD_LOGIC;
-    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_we, mem_re : IN STD_LOGIC;
-    mem_wack, mem_rdy : OUT STD_LOGIC;
-    address_valid : OUT STD_LOGIC
-    );
-  END COMPONENT;
-
-  COMPONENT quadflash_cache
-    GENERIC (
-      vendor : STD_LOGIC; -- 0 => xilinx, 1 => lattice
-
-      base_address : STD_LOGIC_VECTOR(31 DOWNTO 0)
-    );
-
-    PORT (
-      reset : IN STD_LOGIC;
-      clk : IN STD_LOGIC;
-
-      mem_clk : IN STD_LOGIC;
-      mem_re : IN STD_LOGIC;
-      mem_addr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-      mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-      mem_rdy : OUT STD_LOGIC;
-      spi_csn, spi_sck, spi_di, spi_wpn, spi_holdn : OUT STD_LOGIC;
-      spi_do : IN STD_LOGIC;
-
-      spi_io : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
-
-      spi_reading : OUT STD_LOGIC;
-      led : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
-    );
-  END COMPONENT;
-
-  COMPONENT USRMCLK
-    PORT (
-      USRMCLKI : IN STD_ULOGIC;
-      USRMCLKTS : IN STD_ULOGIC
-    );
-  END COMPONENT;
-  ATTRIBUTE syn_noprune : BOOLEAN;
-  ATTRIBUTE syn_noprune OF USRMCLK : COMPONENT IS true;
-  COMPONENT spimaster PORT (
-    rst, clk : IN STD_LOGIC;
-    sck, mosi : OUT STD_LOGIC;
-    miso : IN STD_LOGIC;
-    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_we, mem_re : IN STD_LOGIC;
-    mem_wack, mem_rdy : OUT STD_LOGIC;
-    address_valid : OUT STD_LOGIC
-    );
-  END COMPONENT;
-
-  COMPONENT i2cmaster PORT (
-    rst, clk : IN STD_LOGIC;
-    scl, sda : INOUT STD_LOGIC;
-    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_we, mem_re : IN STD_LOGIC;
-    mem_wack, mem_rdy : OUT STD_LOGIC;
-    address_valid : OUT STD_LOGIC
-    );
-  END COMPONENT;
-  COMPONENT hdmi PORT (
-
-    rst, clk : IN STD_LOGIC;
-    mem_addr, mem_wdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    mem_we, mem_re : IN STD_LOGIC;
-    mem_width : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-    mem_rdy, mem_wack : OUT STD_LOGIC;
-
-    address_valid : OUT STD_LOGIC;
-
-    gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
-    --gpdi_dn : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
-    );
-  END COMPONENT;
 
   SIGNAL miso, mosi, sck : STD_LOGIC;
 
-  -- component uart PORT (
-  --   rst, CLK100MHZ : in std_logic;
-  --   txd : out std_logic
-  -- );
-  -- end component;
 
-  -- component ila_0 PORT (
-  --   clk : in std_logic;
-  --   probe0, probe1 : in std_logic_vector(31 downto 0)
-  -- );
-  -- end component;
 
   ATTRIBUTE syn_keep : BOOLEAN;
 
@@ -320,57 +141,7 @@ ARCHITECTURE behavioural OF top IS
   SIGNAL sdram_mem_width : width_array_t(1 DOWNTO 0);
 
 
-  COMPONENT sdram_cache IS
 
-        GENERIC (
-            vendor : STD_LOGIC;
-            --base_address : STD_LOGIC_VECTOR(31 DOWNTO 0);
-            clk_freq : NATURAL;
-            CAS_LATENCY : NATURAL := 2; -- 2=below 133MHz, 3=above 133MHz
-
-            -- timing values (in nanoseconds)
-            --
-            -- These values can be adjusted to match the exact timing of your SDRAM
-            -- chip (refer to the datasheet).
-            T_DESL : real := 100000.0; -- startup delay
-            T_MRD : real := 12.0; -- mode register cycle time
-            T_RC : real := 60.0; -- row cycle time
-            T_RCD : real := 18.0; -- RAS to CAS delay
-            T_RP : real := 18.0; -- precharge to activate delay
-            T_WR : real := 12.0; -- write recovery time
-            T_REFI : real := 7800.0; -- average refresh interval
-
-            num_ports : INTEGER := 1
-
-        );
-        PORT (
-            reset : IN STD_LOGIC;
-            clk : IN STD_LOGIC;
-
-            sdram_a : OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
-            sdram_ba : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-            sdram_dq : INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            sdram_cke : OUT STD_LOGIC;
-            sdram_cs_n : OUT STD_LOGIC;
-            sdram_ras_n : OUT STD_LOGIC;
-            sdram_cas_n : OUT STD_LOGIC;
-            sdram_we_n : OUT STD_LOGIC;
-            sdram_dqml : OUT STD_LOGIC;
-            sdram_dqmh : OUT STD_LOGIC;
-
-            mem_clk : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
-            mem_we : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
-            mem_re : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
-            mem_addr : IN word_array_t(num_ports - 1 DOWNTO 0);
-            mem_width : IN width_array_t(num_ports - 1 DOWNTO 0);
-            mem_wdata : IN word_array_t(num_ports - 1 DOWNTO 0);
-            mem_rdata : OUT word_array_t(num_ports - 1 DOWNTO 0);
-            mem_rdy : OUT STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
-            mem_wack : OUT STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0) --;
-
-            --addr_valid : OUT STD_LOGIC
-        );
-    END COMPONENT;
 
 
   -- HDMI
@@ -380,15 +151,7 @@ ARCHITECTURE behavioural OF top IS
   SIGNAL X, Y : STD_LOGIC_VECTOR(9 DOWNTO 0);
   SIGNAL current_pixel : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"0000F000";
 
-  COMPONENT HDMI_test_hires IS
-  PORT (
-      pclk : IN STD_LOGIC;
-      gpdi_dp : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
-      GFX_X, GFX_Y : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
-      red, green, blue : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
-      pixclk, half_clk_TMDS : OUT STD_LOGIC
-  );
-  END COMPONENT;
+
 
   signal cpu_clk : std_logic;
 
@@ -430,15 +193,7 @@ BEGIN
   --   END LOOP;
   -- END PROCESS;
 
-  i_uart : uart PORT MAP(
-    rst => rst, clk => clk,
-    txd => ftdi_rxd,
-    mem_addr => periph_address(PERIPH_UART), mem_wdata => periph_wdata(PERIPH_UART),
-    mem_rdata => periph_rdata(PERIPH_UART),
-    mem_we => periph_we(PERIPH_UART), mem_re => periph_re(PERIPH_UART),
-    mem_wack => periph_wack(PERIPH_UART),
-    mem_rdy => periph_rdy(PERIPH_UART)
-  );
+
 
   -- i_timebase : timebase PORT MAP(
   --   rst => rst, clk => clk,
@@ -485,30 +240,7 @@ BEGIN
 
   --periph_addresses <= (786433 => PERIPH_UART, 851968 to 860160 => PERIPH_SDRAM, others => PERIPH_INVALID);
 
-  i_mmu : mmu 
-
-  PORT MAP(
-    rst => rst,
-    sys_clk => clk,
-    host_we => mem_we,
-    host_re => mem_re,
-    host_addr => mem_addr,
-    host_width => mem_width,
-    host_wdata => mem_wdata,
-    host_rdata => mem_rdata,
-    host_rdy => mem_rdy,
-    host_wack => mem_wack,
-    --host_address_invalid => '0',
-    peripheral_we => periph_we,
-    peripheral_re => periph_re,
-    peripheral_addr => periph_address,
-    peripheral_width => periph_width,
-    peripheral_wdata => periph_wdata,
-    peripheral_rdata => periph_rdata,
-    peripheral_rdy => periph_rdy,
-    peripheral_wack => periph_wack
-
-  );
+  
   i_quadflash_cache : quadflash_cache GENERIC MAP(
     vendor => '1',
     base_address => X"00000000"
@@ -582,6 +314,20 @@ BEGIN
 
   cpu_clk <= clk_25mhz;
 
+  i_uart : uart PORT MAP(
+    rst => rst, clk => clk,
+    txd => ftdi_rxd,
+    mem_addr => mem_addr, mem_wdata => mem_wdata,
+    mem_rdata => i_mem_rdata(PERIPHERAL_UART),
+    mem_we => mem_we, mem_re => mem_re,
+    mem_wack => i_mem_wack(PERIPHERAL_UART),
+    mem_rdy => i_mem_rdy(PERIPHERAL_UART)
+  );
+
+  mem_wack <= i_mem_wack(PERIPHERAL_UART);
+  mem_rdy <= i_mem_rdy(PERIPHERAL_UART);
+
+
   i_cpu : cpu PORT MAP(
     rst => rst, clk => clk_25mhz,
 
@@ -593,61 +339,8 @@ BEGIN
     data_width => mem_width, data_addr => mem_addr, data_wdata => mem_wdata,
     data_rdata => mem_rdata, data_re => mem_re, data_we => mem_we, data_rdy => mem_rdy, data_wack => mem_wack
 
-    -- Register file
-    -- registerfile_rs1 => registerfile_rs1, registerfile_rs2 => registerfile_rs2, registerfile_rd => registerfile_rd,
-    -- registerfile_wdata_rd => registerfile_wdata_rd,
-    -- registerfile_rdata_rs1 => registerfile_rdata_rs1, registerfile_rdata_rs2 => registerfile_rdata_rs2,
-    -- registerfile_we => registerfile_we
   );
-  -- regfile : registerfile PORT MAP(
-  --   clk => clk,
-  --   rs1 => registerfile_rs1, rs2 => registerfile_rs2, rd => registerfile_rd,
-  --   data_out_rs1 => registerfile_rdata_rs1, data_out_rs2 => registerfile_rdata_rs2,
-  --   data_in_rd => registerfile_wdata_rd,
-  --   we => registerfile_we
-  -- );
   
-
-  -- PROCESS (i_address_valid, i_mem_rdata, i_mem_rdy, i_mem_wack)
-  -- BEGIN
-  --   mem_rdata <= (OTHERS => '0');
-  --   mem_rdy <= '0';
-  --   mem_wack <= '0';
-  --   FOR i IN PERIPHERAL_MAX - 1 DOWNTO 0 LOOP
-  --     IF i_address_valid(i) = '1' THEN
-  --       mem_rdata <= i_mem_rdata(i);
-  --       mem_rdy <= i_mem_rdy(i);
-  --       mem_wack <= i_mem_wack(i);
-  --     END IF;
-  --   END LOOP;
-  -- END PROCESS;
-
-  --mem_rdy <= '1';
-  --mem_rdata <= X"AAAAAAAA";
-  --mem_wack <= i_mem_wack(PERIPHERAL_UART);
-  --SD_DAT3 <= int_gpio(0);
-  --SD_CMD <= mosi;
-  --miso <= SD_DAT0;
-  --SD_CLK <= sck;
-  -- ila: ila_1 PORT MAP(
-  --     clk => clk,
-  --     probe0 => int_gpio(0), -- OLED_CS
-  --     probe1 => sck,
-  --     probe2 => mosi,
-  --     probe3 => int_gpio(1),
-  --     probe4 => int_gpio(2),
-  --     probe5 => int_gpio(3),
-  --     probe6 => int_gpio(4)
-
-  --   );
-
-  -- OLED_CS <= int_gpio(0);
-  -- OLED_MOSI <= mosi;
-  -- OLED_SCK <= sck;
-  -- OLED_DC <= int_gpio(1);
-  -- OLED_RES <= int_gpio(2);
-  -- OLED_VCCEN <= int_gpio(3);
-  -- OLED_PMODEN <= int_gpio(4);
 
 
   sdram_mem_addr <= (0 => (others => '0'), 1 => hdmi_mem_addr); --(0 => periph_address(PERIPH_SDRAM), 1 => hdmi_mem_addr);
@@ -675,7 +368,8 @@ BEGIN
     GENERIC MAP(
         vendor => '1',
         num_ports => 2,
-        clk_freq => 125
+        clk_freq => 125,
+        base_address => X"00000000"
     )
 
     PORT MAP(

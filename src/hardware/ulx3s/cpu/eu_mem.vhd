@@ -36,7 +36,7 @@ ARCHITECTURE behavioural OF eu_mem IS
     SIGNAL WrClock144, RdClock144, WrEn144, RdEn144, Empty144, Full144, WrClock36, RdClock36, WrEn36, RdEn36, Empty36, Full36 : STD_LOGIC;
     SIGNAL timestamp, n_timestamp                                                                                             : STD_LOGIC_VECTOR(47 DOWNTO 0);
 
-    SIGNAL last_mem_addr, last_instruction, n_last_mem_addr, n_last_instruction, instruction_r, n_instruction_r, n_mem_addr, i_mem_addr : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL last_mem_addr, last_instruction, n_last_mem_addr, n_last_instruction, instruction_r, n_instruction_r, n_mem_addr, i_mem_addr, n_mem_wdata, i_mem_wdata : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
     TYPE fsm144_state_t IS (S0, S1, S2, S3);
     SIGNAL fsm144_state, n_fsm144_state : fsm144_state_t;
@@ -44,7 +44,7 @@ ARCHITECTURE behavioural OF eu_mem IS
     TYPE fsm36_state_t IS (S0, S1);
     SIGNAL fsm36_state, n_fsm36_state : fsm36_state_t;
 
-    SIGNAL we_r, we_r_r : STD_LOGIC;
+    SIGNAL we_r, we_r_r, n_mem_we, n_mem_re : STD_LOGIC;
 
 
     signal rs1_data_r, rs2_data_r, imm_r, inst_r, token_r : std_logic_vector(31 downto 0);
@@ -63,6 +63,7 @@ BEGIN
         IF rst = '1' THEN
             timestamp        <= (OTHERS => '0');
             i_mem_addr       <= (OTHERS => '0');
+            i_mem_wdata <= (others => '0');
             fsm36_state      <= S0;
             fsm144_state     <= S0;
             last_instruction <= (OTHERS => '0');
@@ -76,11 +77,15 @@ BEGIN
             rs2_data_r <= (others => '0');
             inst_r <= (others => '0');
             token_r <= (others => '0');
-
+            mem_we <= '0';
+            mem_re <= '0';
 
         ELSIF rising_edge(clk) THEN
+            mem_we <= n_mem_we;
+            mem_re <= n_mem_re;
             timestamp        <= n_timestamp;
             i_mem_addr       <= n_mem_addr;
+            i_mem_wdata       <= n_mem_wdata;
             fsm36_state      <= n_fsm36_state;
             fsm144_state     <= n_fsm144_state;
             last_instruction <= n_last_instruction;
@@ -282,21 +287,22 @@ BEGIN
 
     writeback_data  <= mem_rdata; -- perhaps edit this later depending on width
     writeback_token <= Q36(31 DOWNTO 0);
-    mem_wdata       <= Q36(31 DOWNTO 0);
     mem_addr    <= i_mem_addr;
+    mem_wdata <= i_mem_wdata;
     mem_width       <= instruction_r(13 DOWNTO 12);
     writeback_rd    <= instruction_r(11 DOWNTO 7);
     ----------------------------------------------
     -- Execute instructions
     ----------------------------------------------
-    fsm36 : PROCESS (fsm36_state, mem_rdy, mem_wack, Empty36, instruction_r, Q36, i_mem_addr)
+    fsm36 : PROCESS (fsm36_state, mem_rdy, mem_wack, Empty36, instruction_r, Q36, i_mem_addr, i_mem_wdata)
     BEGIN
         n_instruction_r <= instruction_r;
         RdEn36          <= '0';
         n_fsm36_state   <= fsm36_state;
         n_mem_addr      <= i_mem_addr;
-        mem_re          <= '0';
-        mem_we          <= '0';
+        n_mem_wdata <= i_mem_wdata;
+        n_mem_re          <= '0';
+        n_mem_we          <= '0';
         writeback_we    <= '0';
 
         CASE fsm36_state IS
@@ -324,13 +330,14 @@ BEGIN
                             n_fsm36_state <= S0;
                         --END IF;
                     WHEN "0100" => -- read from bus
-                        mem_re <= '1';
+                        n_mem_re <= '1';
                         IF mem_rdy = '1' THEN
                             writeback_we  <= '1';
                             n_fsm36_state <= S0;
                         END IF;
                     WHEN "1000" => -- write to bus
-                        mem_we <= '1';
+                        n_mem_wdata <= Q36(31 DOWNTO 0);
+                        n_mem_we <= '1';
                         IF mem_wack = '1' THEN
                             n_fsm36_state <= S0;
                         END IF;

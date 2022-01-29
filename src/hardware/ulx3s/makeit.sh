@@ -14,7 +14,7 @@ PERIPHERALS_VHDLS=("${UART_VHDLS[@]/#/peripherals/uart/} ${SDRAM_VHDLS[@]/#/peri
 
 
 VERILOGS="${PERIPHERALS_VERILOGS[@]} primitives/dp16kd_wrapper.v primitives/dpram_regfile_lattice.v"
-VHDLS="bebichiken.vhd top.vhd cpu/cpu.vhd cpu/registerfile.vhd cpu/eu_mem.vhd mmu.vhd cpu/eu_alu.vhd cpu/eu_branch_type.vhd primitives/fifo_generic.vhd ${PERIPHERALS_VHDLS[@]}" 
+VHDLS="bebichiken.vhd top.vhd cpu/cpu.vhd cpu/registerfile.vhd cpu/eu_mem.vhd cpu/eu_alu.vhd cpu/eu_branch_type.vhd primitives/fifo_generic.vhd ${PERIPHERALS_VHDLS[@]}" 
 
 if [ $1 == "clean" ]; then
   rm -f *.bit *.json *.config *.svf *~

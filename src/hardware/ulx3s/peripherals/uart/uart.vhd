@@ -23,14 +23,14 @@ ARCHITECTURE Behavioral OF uart IS
     CONSTANT COUNTER_MAX : INTEGER := (clk_freq/baud_rate) - 1;
     CONSTANT TX_BUSY : INTEGER := 0;
 
-    SIGNAL counter : INTEGER; -- 115207 bps
+    SIGNAL counter, n_counter : INTEGER; -- 115207 bps
     SIGNAL charToBeSent, n_charToBeSent : STD_LOGIC_VECTOR(7 DOWNTO 0);
     SIGNAL reg_status : STD_LOGIC_VECTOR(7 DOWNTO 0);
     SIGNAL tick : STD_LOGIC;
 
     SIGNAL state, n_state : INTEGER RANGE 0 TO 15;
 
-    SIGNAL do_start : STD_LOGIC;
+    SIGNAL do_start, n_mem_wack : STD_LOGIC;
 
 BEGIN
 
@@ -42,22 +42,22 @@ BEGIN
             charToBeSent <= initial_data;
             mem_wack <= '0';
         ELSIF rising_edge(clk) THEN
-            mem_wack <= '0';
+            mem_wack <= n_mem_wack;
+
+           counter <= n_counter;
+           chartobesent <= n_chartobesent;
 
             IF counter = 0 THEN
-                counter <= COUNTER_MAX; -- reset counter
                 state <= n_state; -- assign next state
-
-                IF (state = 15) AND (mem_we = '1') THEN --AND (mem_addr = X"C0001000")  THEN
-                    chartobesent <= mem_wdata(7 DOWNTO 0);
-                    state <= 0;
-                    mem_wack <= '1';
-                END IF;
-            ELSE
-                counter <= counter - 1; -- continue counting down
             END IF;
         END IF;
     END PROCESS;
+
+    n_counter <= counter - 1 when counter > 0 else COUNTER_MAX;
+    n_chartobesent <= mem_wdata(7 DOWNTO 0) when (mem_we = '1') and (mem_addr = X"C0001000") and (state = 15) else chartobesent;
+    n_mem_wack <= mem_we when (counter = 0) and (mem_addr = X"C0001000") and (state = 15) else '0';
+
+
     PROCESS (state, do_start, charToBeSent, mem_we, mem_wdata)
     BEGIN
         n_state <= state + 1;
@@ -72,9 +72,15 @@ BEGIN
             WHEN 15 =>
                 txd <= '1'; -- stop bit
                 n_state <= state;
+                if mem_we = '1' then
+                    n_state <= 0;
+                end if;
             WHEN OTHERS =>
         END CASE;
     END PROCESS;
+
+
+    mem_rdy <= '1';
 
     --    do_start <= '1';
 
