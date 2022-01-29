@@ -69,7 +69,7 @@ PACKAGE bebichiken IS
         wr_en : IN STD_LOGIC;
         rd_en : IN STD_LOGIC;
         dout : OUT STD_LOGIC_VECTOR(data_width-1 DOWNTO 0);
-        full : OUT STD_LOGIC;
+        full, afull : OUT STD_LOGIC;
         empty : OUT STD_LOGIC
     );
 END COMPONENT;

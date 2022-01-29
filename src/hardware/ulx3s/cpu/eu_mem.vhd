@@ -126,7 +126,7 @@ BEGIN
         din    => Data144_r,
         wr_clk => clk,
         wr_en  => we_r_r,
-        full   => busy,
+        afull   => busy,
 
         -- consumer / FSM
         rd_clk => RdClock144,

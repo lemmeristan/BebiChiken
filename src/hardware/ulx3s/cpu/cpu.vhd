@@ -7,7 +7,7 @@ USE work.bebichiken.ALL;
 
 ENTITY cpu IS
     GENERIC (entry_point : STD_LOGIC_VECTOR(31 DOWNTO 0) := X"00200000";
-    vendor : std_logic := '0'
+    vendor : std_logic := '1'
     );
 
     PORT (
@@ -83,7 +83,7 @@ ARCHITECTURE behavioural OF cpu IS
     ALIAS funct3 : STD_LOGIC_VECTOR(2 DOWNTO 0) IS inst_rdata(14 DOWNTO 12);
     ALIAS rd : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata(11 DOWNTO 7);
     ALIAS opcode : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata(6 DOWNTO 0);
-    SIGNAL initialized : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL initialized : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
     ALIAS funct7_r : STD_LOGIC_VECTOR(6 DOWNTO 0) IS inst_rdata_r(31 DOWNTO 25);
     ALIAS rs2_r : STD_LOGIC_VECTOR(4 DOWNTO 0) IS inst_rdata_r(24 DOWNTO 20);
@@ -132,9 +132,8 @@ BEGIN
 
         CASE wstate IS
             WHEN ws0 => -- set instruction register
-                IF (initialized(7 downto 0) = X"FF") THEN
+                IF (initialized(23 downto 0) = X"FFFFFF") THEN
                     n_wstate <= ws1;
-                    reset_init <= '1';
                 END IF;
             WHEN ws1 => -- execute / dispatch
 
@@ -166,6 +165,7 @@ BEGIN
                     ELSE
                         n_wstate <= ws0;
                         n_pc <= pc + X"00000004";
+                        reset_init <= '1';
                     END IF;
                 END IF;
 
@@ -264,7 +264,7 @@ BEGIN
             IF reset_init = '1' THEN
                 initialized <= (OTHERS => '0');
             ELSE
-                initialized <= initialized(14 DOWNTO 0) & inst_rdy;
+                initialized <= initialized(30 DOWNTO 0) & inst_rdy;
             END IF;
         END IF;
     END PROCESS;
