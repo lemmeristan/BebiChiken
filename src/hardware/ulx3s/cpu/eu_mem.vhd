@@ -52,6 +52,8 @@ ARCHITECTURE behavioural OF eu_mem IS
     signal set_last_instruction, set_last_mem_addr : std_logic;
     signal same_last_instruction, same_last_mem_addr, i_same_last_instruction, i_same_last_mem_addr : std_logic;
 
+    signal set_instruction_r, set_mem_addr : std_logic;
+
 
 BEGIN
 
@@ -93,7 +95,7 @@ BEGIN
             mem_we <= n_mem_we;
             mem_re <= n_mem_re;
             timestamp        <= n_timestamp;
-            i_mem_addr       <= n_mem_addr;
+
             i_mem_wdata       <= n_mem_wdata;
             fsm36_state      <= n_fsm36_state;
             fsm108_state     <= n_fsm108_state;
@@ -106,7 +108,16 @@ BEGIN
                 last_mem_addr    <= Q108(63 DOWNTO 32);
             end if;
 
-            instruction_r    <= n_instruction_r;
+            if set_instruction_r = '1' then
+            instruction_r    <= Q36(31 DOWNTO 0);
+            end if;
+
+            if set_mem_addr = '1' then
+                i_mem_addr       <= Q36(31 DOWNTO 0);
+            end if;
+
+
+
             if we = '1' then
                 rs1_data_r <= rs1_data;
                 rs2_data_r <= rs2_data;
@@ -262,6 +273,9 @@ BEGIN
         n_mem_we          <= '0';
         writeback_we    <= '0';
 
+        set_instruction_r <= '0';
+        set_mem_addr <= '0';
+
         CASE fsm36_state IS
             WHEN S0 =>
                 IF Empty36 = '0' THEN
@@ -272,19 +286,23 @@ BEGIN
             WHEN S1 =>
                 CASE Q36(35 DOWNTO 32) IS
                     WHEN "0001" => -- set instruction
-                        n_instruction_r <= Q36(31 DOWNTO 0);
+                        set_instruction_r <= '1';
+                        n_fsm36_state <= S0;
+
+--                        n_instruction_r <= Q36(31 DOWNTO 0);
                         --IF Empty36 = '0' THEN
                         --    RdEn36 <= '1';
                         --ELSE
-                            n_fsm36_state <= S0;
                         --END IF;
                     WHEN "0010" => -- set address
-                        n_mem_addr <= Q36(31 DOWNTO 0);
+                        set_mem_addr <= '1';
+                        n_fsm36_state <= S0;
+
+                        --n_mem_addr <= Q36(31 DOWNTO 0);
 
                         --IF Empty36 = '0' THEN
                         --    RdEn36 <= '1';
                         --ELSE
-                            n_fsm36_state <= S0;
                         --END IF;
                     WHEN "0100" => -- read from bus
                         n_mem_re <= '1';
