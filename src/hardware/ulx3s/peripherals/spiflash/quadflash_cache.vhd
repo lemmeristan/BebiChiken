@@ -111,7 +111,7 @@ ARCHITECTURE behavioural OF quadflash_cache IS
     SIGNAL waitcounter, n_waitcounter : INTEGER RANGE 0 TO 700000; -- turn into lfsr to mek it go fest
     SIGNAL n_fill_count, fill_count : STD_LOGIC_VECTOR(15 DOWNTO 0);
     SIGNAL cache_DIN : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL current_address, n_current_address : STD_LOGIC_VECTOR(10 DOWNTO 0);
+    SIGNAL current_address, n_current_address : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL cache_WE, address_valid : STD_LOGIC;
     SIGNAL shift_reg, n_shift_reg : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL update_current_address, start_fill_cache : STD_LOGIC;
@@ -120,10 +120,12 @@ ARCHITECTURE behavioural OF quadflash_cache IS
 
     SIGNAL sr1, n_sr1, sr2, n_sr2 : STD_LOGIC_VECTOR(7 DOWNTO 0);
 
+    signal mem_addr_req : std_logic_vector(31 downto 0);
+
 BEGIN
 
     cache_DIN <= n_shift_reg(7 DOWNTO 0) & n_shift_reg(15 DOWNTO 8) & n_shift_reg(23 DOWNTO 16) & n_shift_reg(31 DOWNTO 24);
-    async : PROCESS (clk, sr1, sr2, sck_state, wel, initialized, spi_do, state, current_address, shift_reg, fill_count, waitcounter, start_fill_cache, spi_io, address_valid)
+    async : PROCESS (clk, sr1, sr2, sck_state, wel, initialized, spi_do, state, current_address, mem_addr_req, shift_reg, fill_count, waitcounter, start_fill_cache, spi_io, address_valid)
     BEGIN
         spi_csn <= '1';
         spi_di <= '0';
@@ -265,16 +267,14 @@ BEGIN
                 END CASE;
             WHEN IDLE =>
                 led(1) <= '1';
-                IF (mem_re = '1') AND (address_valid = '1') THEN
-                    IF current_address /= mem_addr(23 DOWNTO 13) THEN
-                        n_state <= FILL_CACHE_SINGLE;
-                        n_waitcounter <= 0;
-                        n_fill_count <= (OTHERS => '0');
-                    ELSE
-                        mem_rdy <= '1';
-                    END IF;
+                IF (current_address(23 downto 13) /= mem_addr_req(23 downto 13)) THEN
+                    n_state <= FILL_CACHE_SINGLE;
+                    n_waitcounter <= 0;
+                    n_fill_count <= (OTHERS => '0');
+                    update_current_address <= '1';
+                else
+                    mem_rdy <= '1';
                 END IF;
-
             WHEN FILL_CACHE =>
                 n_initialized <= '1';
                 led(2) <= '1';
@@ -358,7 +358,7 @@ BEGIN
 
                         spi_sck <= clk;
                         spi_csn <= '0';
-                        spi_di <= mem_addr(23 - (waitcounter - 16));
+                        spi_di <= current_address(23 - (waitcounter - 16));
                         --16 => addr(10)
                         --17 => addr(9)
                         --18 => addr(8)
@@ -378,13 +378,16 @@ BEGIN
                         n_shift_reg <= shift_reg(30 DOWNTO 0) & spi_do;
                         n_fill_count <= fill_count + "0000000000000001";
 
-                        IF fill_count(4 DOWNTO 0) = "11111" THEN
+                        if mem_addr_req(23 downto 13) /= current_address(23 downto 13) then
+                            n_waitcounter <= 0;
+                            n_fill_count <= (OTHERS => '0');
+                            update_current_address <= '1';
+                        elsIF fill_count(4 DOWNTO 0) = "11111" THEN
                             cache_WE <= '1';
                             IF fill_count = "1111111111111111" THEN
                                 n_state <= IDLE;
-                                update_current_address <= '1';
                             END IF;
-                        END IF;
+                        end if;
 
                     WHEN OTHERS =>
                         n_state <= INIT;
@@ -401,6 +404,7 @@ BEGIN
             fill_count <= (OTHERS => '0');
             shift_reg <= (OTHERS => '0');
             current_address <= (OTHERS => '1');
+            mem_addr_req <= (others => '0');
             state <= S_RESET;
             waitcounter <= 0;
             initialized <= '0';
@@ -420,8 +424,13 @@ BEGIN
             sr1 <= n_sr1;
             sr2 <= n_sr2;
 
+            if (mem_re = '1') then --and (address_valid = '1') then
+                mem_addr_req <= mem_addr;
+            end if;
+            
+
             IF update_current_address = '1' THEN
-                current_address <= mem_addr(23 DOWNTO 13);
+                current_address <= mem_addr_req;
             END IF;
 
         END IF;

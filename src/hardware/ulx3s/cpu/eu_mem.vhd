@@ -32,14 +32,14 @@ END eu_mem;
 
 ARCHITECTURE behavioural OF eu_mem IS
     SIGNAL Data36, Q36                                                                                                        : STD_LOGIC_VECTOR(35 DOWNTO 0);
-    SIGNAL Data144, Data144_r, Q144                                                                                           : STD_LOGIC_VECTOR(143 DOWNTO 0);
-    SIGNAL WrClock144, RdClock144, WrEn144, RdEn144, Empty144, Full144, WrClock36, RdClock36, WrEn36, RdEn36, Empty36, Full36 : STD_LOGIC;
+    SIGNAL Data108, Data108_r, Q108                                                                                           : STD_LOGIC_VECTOR(107 DOWNTO 0);
+    SIGNAL WrClock108, RdClock108, WrEn108, RdEn108, Empty108, Full108, WrClock36, RdClock36, WrEn36, RdEn36, Empty36, Full36 : STD_LOGIC;
     SIGNAL timestamp, n_timestamp                                                                                             : STD_LOGIC_VECTOR(47 DOWNTO 0);
 
     SIGNAL last_mem_addr, last_instruction, n_last_mem_addr, n_last_instruction, instruction_r, n_instruction_r, n_mem_addr, i_mem_addr, n_mem_wdata, i_mem_wdata : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-    TYPE fsm144_state_t IS (S0, S1, S2, S3);
-    SIGNAL fsm144_state, n_fsm144_state : fsm144_state_t;
+    TYPE fsm108_state_t IS (S0, S1, S2, S3);
+    SIGNAL fsm108_state, n_fsm108_state : fsm108_state_t;
 
     TYPE fsm36_state_t IS (S0, S1);
     SIGNAL fsm36_state, n_fsm36_state : fsm36_state_t;
@@ -49,12 +49,15 @@ ARCHITECTURE behavioural OF eu_mem IS
 
     signal rs1_data_r, rs2_data_r, imm_r, inst_r, token_r : std_logic_vector(31 downto 0);
 
+    signal set_last_instruction, set_last_mem_addr : std_logic;
+    signal same_last_instruction, same_last_mem_addr, i_same_last_instruction, i_same_last_mem_addr : std_logic;
+
 
 BEGIN
 
-    RdClock144 <= clk;
+    RdClock108 <= clk;
     RdClock36  <= clk;
-    WrClock144 <= clk;
+    WrClock108 <= clk;
     WrClock36  <= clk;
 
     n_timestamp <= timestamp + X"000000000001";
@@ -65,11 +68,11 @@ BEGIN
             i_mem_addr       <= (OTHERS => '0');
             i_mem_wdata <= (others => '0');
             fsm36_state      <= S0;
-            fsm144_state     <= S0;
+            fsm108_state     <= S0;
             last_instruction <= (OTHERS => '0');
             last_mem_addr    <= (OTHERS => '0');
             instruction_r    <= (OTHERS => '0');
-            Data144_r        <= (OTHERS => '0');
+            Data108_r        <= (OTHERS => '0');
             we_r             <= '0';
             we_r_r <= '0';
 
@@ -80,16 +83,29 @@ BEGIN
             mem_we <= '0';
             mem_re <= '0';
 
+            same_last_instruction <= '0';
+            same_last_mem_addr <= '0';
+
         ELSIF rising_edge(clk) THEN
+        same_last_instruction <= i_same_last_instruction;
+        same_last_mem_addr <= i_same_last_mem_addr;
+
             mem_we <= n_mem_we;
             mem_re <= n_mem_re;
             timestamp        <= n_timestamp;
             i_mem_addr       <= n_mem_addr;
             i_mem_wdata       <= n_mem_wdata;
             fsm36_state      <= n_fsm36_state;
-            fsm144_state     <= n_fsm144_state;
-            last_instruction <= n_last_instruction;
-            last_mem_addr    <= n_last_mem_addr;
+            fsm108_state     <= n_fsm108_state;
+
+            if set_last_instruction = '1' then
+                last_instruction <= Q108(31 DOWNTO 0);
+            end if;
+
+            if set_last_mem_addr = '1' then
+                last_mem_addr    <= Q108(63 DOWNTO 32);
+            end if;
+
             instruction_r    <= n_instruction_r;
             if we = '1' then
                 rs1_data_r <= rs1_data;
@@ -98,7 +114,7 @@ BEGIN
                 token_r <= token;
             end if;
             if we_r = '1' then
-                Data144_r        <= Data144;
+                Data108_r        <= Data108;
             end if;
             we_r             <= we;
             we_r_r <= we_r;
@@ -106,38 +122,38 @@ BEGIN
     END PROCESS;
     PROCESS (inst_r, rs1_data_r, rs2_data_r, token_r, timestamp, imm)
     BEGIN
-        Data144               <= (OTHERS => '0');
-        Data144(31 DOWNTO 0)  <= inst_r;                          -- use to extract width and rd later
-        Data144(63 DOWNTO 32) <= rs1_data_r + f_decode_imm(inst_r); -- address
+        Data108               <= (OTHERS => '0');
+        Data108(31 DOWNTO 0)  <= inst_r;                          -- use to extract width and rd later
+        Data108(63 DOWNTO 32) <= rs1_data_r + f_decode_imm(inst_r); -- address
 
         IF f_decode_opcode(inst_r) = OPCODE_I_TYPE_LOAD THEN
-            Data144(95 DOWNTO 64) <= token_r;
+            Data108(95 DOWNTO 64) <= token_r;
         ELSIF f_decode_opcode(inst_r) = OPCODE_S_TYPE THEN
-            Data144(95 DOWNTO 64) <= rs2_data_r; -- wdata
+            Data108(95 DOWNTO 64) <= rs2_data_r; -- wdata
         END IF;
 
-        Data144(143 DOWNTO 96) <= timestamp; -- use later to prioritize multiple host memory access
+        Data108(107 DOWNTO 96) <= timestamp(11 downto 0); -- use later to prioritize multiple host memory access
     END PROCESS;
 
-    i_fifo_dc_144 : fifo_generic
+    i_fifo_dc_108 : fifo_generic
     GENERIC MAP(
         vendor     => vendor,
-        data_width => 144
+        data_width => 108
     )
     PORT MAP(
         rst => rst,
 
         -- producer / CPU
-        din    => Data144_r,
+        din    => Data108_r,
         wr_clk => clk,
         wr_en  => we_r_r,
         afull   => busy,
 
         -- consumer / FSM
-        rd_clk => RdClock144,
-        rd_en  => RdEn144,
-        dout   => Q144,
-        empty  => Empty144
+        rd_clk => RdClock108,
+        rd_en  => RdEn108,
+        dout   => Q108,
+        empty  => Empty108
 
     );
     i_fifo_dc_36 : fifo_generic
@@ -160,127 +176,68 @@ BEGIN
         dout   => Q36,
         empty  => Empty36
     );
-    -- lattice : IF vendor = '1' GENERATE
+    
 
-    --     i_fifo_dc_144_lattice : fifo_dc_144_lattice PORT MAP(
-    --         Reset   => '0',
-    --         RPReset => '0',
 
-    --         -- producer / CPU
-    --         Data    => Data144,
-    --         WrClock => clk,
-    --         WrEn    => we,
-    --         Full    => busy,
-
-    --         -- consumer / FSM
-    --         RdClock => RdClock144,
-    --         RdEn    => RdEn144,
-    --         Q       => Q144,
-    --         Empty   => Empty144
-    --     );
-
-    --     i_fifo_dc_36_lattice : fifo_dc_36_lattice PORT MAP(
-    --         Reset   => '0',
-    --         RPReset => '0',
-
-    --         -- producer / CPU
-    --         Data    => Data36,
-    --         WrClock => WrClock36,
-    --         WrEn    => WrEn36,
-    --         Full    => Full36,
-
-    --         -- consumer / FSM
-    --         RdClock => RdClock36,
-    --         RdEn    => RdEn36,
-    --         Q       => Q36,
-    --         Empty   => Empty36
-    --     );
-
-    -- END GENERATE lattice;
-    -- xilinx : IF vendor = '0' GENERATE
-
-    --     i_fifo_dc_144_xilinx : fifo_dc_144_xilinx PORT MAP(
-    --         rst => '0',
-
-    --         -- producer / CPU
-    --         din    => Data144_r,
-    --         wr_clk => clk,
-    --         wr_en  => we_r,
-    --         full   => busy,
-
-    --         -- consumer / FSM
-    --         rd_clk => RdClock144,
-    --         rd_en  => RdEn144,
-    --         dout   => Q144,
-    --         empty  => Empty144
-
-    --     );
-    --     i_fifo_dc_36_xilinx : fifo_dc_36_xilinx PORT MAP(
-    --         rst => '0',
-
-    --         -- producer / CPU
-    --         din    => Data36,
-    --         wr_clk => WrClock36,
-    --         wr_en  => WrEn36,
-    --         full   => Full36,
-
-    --         -- consumer / FSM
-    --         rd_clk => RdClock36,
-    --         rd_en  => RdEn36,
-    --         dout   => Q36,
-    --         empty  => Empty36
-    --     );
-
-    -- END GENERATE xilinx;
+    i_same_last_instruction <= '1' when last_instruction /= Q108(31 DOWNTO 0) else '0';
+    i_same_last_mem_addr <= '1' when last_mem_addr /= Q108(63 DOWNTO 32) else '0';
 
     ----------------------------------------------
     -- Split into instructions
     ----------------------------------------------
 
-    fsm144 : PROCESS (fsm144_state, Empty144, Full36, last_instruction, Q144, last_mem_addr)
+    fsm108 : PROCESS (fsm108_state, Empty108, Full36, same_last_instruction, Q108, same_last_mem_addr)
     BEGIN
-        n_fsm144_state     <= fsm144_state;
-        RdEn144            <= '0';
+        n_fsm108_state     <= fsm108_state;
+        RdEn108            <= '0';
         WrEn36             <= '0';
         n_last_instruction <= last_instruction;
         n_last_mem_addr    <= last_mem_addr;
         Data36             <= (OTHERS => '0');
+        set_last_instruction <= '0';
+        set_last_mem_addr <= '0';
 
-        CASE fsm144_state IS
+        CASE fsm108_state IS
             WHEN S0 =>
-                IF Empty144 = '0' THEN
-                    RdEn144        <= '1';
-                    n_fsm144_state <= S1;
+                IF Empty108 = '0' THEN
+                    RdEn108        <= '1';
+                    n_fsm108_state <= S1;
                 END IF;
             WHEN S1 =>                            -- remember to check whether or not fifo is full
-                Data36 <= "0001" & Q144(31 DOWNTO 0); -- set instruction
-                IF ((last_instruction /= Q144(31 DOWNTO 0)) AND (Full36 = '0')) OR (last_instruction = Q144(31 DOWNTO 0)) THEN
-                    IF (last_instruction /= Q144(31 DOWNTO 0)) THEN
-                        WrEn36 <= '1';
-                    END IF;
-                    n_last_instruction <= Q144(31 DOWNTO 0);
-                    n_fsm144_state     <= S2;
-                END IF;
+                Data36 <= "0001" & Q108(31 DOWNTO 0); -- set instruction
+
+                --if same_last_instruction = '1' then
+                --    n_fsm108_state     <= S2;
+                --els
+                if (Full36 = '0') then
+                    WrEn36 <= '1';
+                    set_last_instruction <= '1';
+                    n_fsm108_state     <= S2;
+                end if;
+
             WHEN S2 =>
-                Data36 <= "0010" & Q144(63 DOWNTO 32); -- set mem_addr
-                IF ((last_mem_addr /= Q144(63 DOWNTO 32)) AND (Full36 = '0')) OR (last_mem_addr = Q144(63 DOWNTO 32)) THEN
-                    IF (last_mem_addr /= Q144(63 DOWNTO 32)) THEN
-                        WrEn36 <= '1';
-                    END IF;
-                    n_last_mem_addr <= Q144(63 DOWNTO 32);
-                    n_fsm144_state  <= S3;
-                END IF;
+                Data36 <= "0010" & Q108(63 DOWNTO 32); -- set mem_addr
+
+                --if same_last_mem_addr = '1' then
+                --    n_fsm108_state     <= S3;
+                --els
+                if (Full36 = '0') then
+                    WrEn36 <= '1';
+                    set_last_mem_addr <= '1';
+                    n_fsm108_state     <= S3;
+                end if;
+
             WHEN S3 =>
                 IF Full36 = '0' THEN
                     WrEn36 <= '1';
-                    IF f_decode_opcode(Q144(31 DOWNTO 0)) = OPCODE_I_TYPE_LOAD THEN
-                        Data36 <= "0100" & Q144(95 DOWNTO 64); -- read from bus, token as parameter
-                    ELSIF f_decode_opcode(Q144(31 DOWNTO 0)) = OPCODE_S_TYPE THEN
-                        Data36 <= "1000" & Q144(95 DOWNTO 64); -- write to bus, wdata as parameter
+                    IF f_decode_opcode(Q108(31 DOWNTO 0)) = OPCODE_I_TYPE_LOAD THEN
+                        Data36 <= "0100" & Q108(95 DOWNTO 64); -- read from bus, token as parameter
+                    ELSIF f_decode_opcode(Q108(31 DOWNTO 0)) = OPCODE_S_TYPE THEN
+                        Data36 <= "1000" & Q108(95 DOWNTO 64); -- write to bus, wdata as parameter
                     ELSE                                   -- invalid instruction
                         WrEn36 <= '0';
                     END IF;
-                    n_fsm144_state <= S0;
+                    n_fsm108_state <= S0;
                 END IF;
         END CASE;
     END PROCESS;
