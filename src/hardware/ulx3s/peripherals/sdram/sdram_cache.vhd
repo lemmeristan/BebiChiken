@@ -75,6 +75,10 @@ ENTITY sdram_cache IS
         sdram_dqml : OUT STD_LOGIC;
         sdram_dqmh : OUT STD_LOGIC;
 
+
+        --cpu_clk, cpu_we, cpu_re : in std_logic;
+        --cpu_addr, cpu_wdata : in std_logic_vector(31 downto 0);
+        
         mem_clk : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
         mem_we : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
         mem_re : IN STD_LOGIC_VECTOR(num_ports - 1 DOWNTO 0);
@@ -158,6 +162,9 @@ ARCHITECTURE behavioural OF sdram_cache IS
 
     signal skiptostop : std_logic;
 
+    signal mem_addr_r :  word_array_t(num_ports - 1 DOWNTO 0);
+
+
     -- dualport ram
     COMPONENT dpram1 PORT (
 
@@ -185,7 +192,7 @@ ARCHITECTURE behavioural OF sdram_cache IS
     END COMPONENT;
 
 BEGIN
-    async : PROCESS (state, cache_miss, wait_counter, refresh_done, should_refresh, return_state, fill_count, fill_count_valid, row, mem_addr, mem_we, current_address, dirty, DPRAM_DOUT_SDRAM, sdram_dq, DPRAM_DIN_SDRAM, current_port_selection)
+    async : PROCESS (state, cache_miss, wait_counter, refresh_done, should_refresh, return_state, fill_count, fill_count_valid, row, mem_addr_r, mem_we, current_address, dirty, DPRAM_DOUT_SDRAM, sdram_dq, DPRAM_DIN_SDRAM, current_port_selection)
     BEGIN
         sdram_a <= (OTHERS => '0');
         sdram_ba <= (OTHERS => '0');
@@ -252,7 +259,7 @@ BEGIN
                     n_state <= REFRESH;
                     n_return_state <= IDLE;
                     -- best speed imo
-                ELSIF mem_addr(current_port_selection)(24 DOWNTO 13) /= current_address(current_port_selection)(24 DOWNTO 13) THEN
+                ELSIF mem_addr_r(current_port_selection)(24 DOWNTO 13) /= current_address(current_port_selection)(24 DOWNTO 13) THEN
                     n_row <= "000";
                     IF dirty(current_port_selection) = '1' THEN
                         n_state <= FLUSH_CACHE; -- to do: flush ALL caches at the same time
@@ -264,10 +271,10 @@ BEGIN
                     FOR j IN 0 TO num_ports - 1 LOOP
                         IF mem_we(j) = '1' THEN
                             FOR i IN 0 TO num_ports - 1 LOOP
-                                IF mem_addr(j)(24 DOWNTO 13) = current_address(i)(24 DOWNTO 13) THEN
+                                IF mem_addr_r(j)(24 DOWNTO 13) = current_address(i)(24 DOWNTO 13) THEN
                                     n_dirty(i) <= '1';
                                     n_DPRAM_WE_SDRAM(i) <= '1';
-                                    n_DPRAM_ADDR_SDRAM(i) <= mem_addr(j)(12 DOWNTO 2);
+                                    n_DPRAM_ADDR_SDRAM(i) <= mem_addr_r(j)(12 DOWNTO 2);
                                     n_DPRAM_DIN_SDRAM(i) <= mem_wdata(j);
                                     n_mem_wack(i) <= '1';
                                 END IF;
@@ -351,14 +358,14 @@ BEGIN
                 CASE wait_counter IS
                     WHEN 0 =>
                         cmd <= CMD_ACTIVE;
-                        sdram_ba <= mem_addr(current_port_selection)(24 DOWNTO 23);
-                        sdram_a <= mem_addr(current_port_selection)(22 DOWNTO 13) & row;
+                        sdram_ba <= mem_addr_r(current_port_selection)(24 DOWNTO 23);
+                        sdram_a <= mem_addr_r(current_port_selection)(22 DOWNTO 13) & row;
 
                     WHEN 2 =>
                         cmd <= CMD_READ;
                         sdram_a(10) <= '1'; -- auto precharge
                         --                       sdram_a <= (OTHERS => '0'); -- starting column - might be a good idea to use non-zero value for faster access
-                        sdram_ba <= mem_addr(current_port_selection)(24 DOWNTO 23);
+                        sdram_ba <= mem_addr_r(current_port_selection)(24 DOWNTO 23);
 
                     WHEN 4 TO 515 =>
                     update_current_address(current_port_selection) <= '1';
@@ -430,7 +437,11 @@ BEGIN
             DPRAM_ADDR_SDRAM <= (OTHERS => (OTHERS => '0'));
             mem_wack <= (OTHERS => '0');
             dirty <= (OTHERS => '0');
+                        mem_addr_r <= (others => (others => '0'));
+
         ELSIF rising_edge(clk) THEN
+                mem_addr_r <= mem_addr;
+
 
             DPRAM_ADDR_SDRAM <= n_DPRAM_ADDR_SDRAM;
 
@@ -452,7 +463,7 @@ BEGIN
 
 
                 IF update_current_address(i) = '1' THEN
-                    current_address(i) <= mem_addr(i);
+                    current_address(i) <= mem_addr_r(i);
                 END IF;
 
                 --                IF reset_fill_count(i) = '1' THEN
@@ -464,10 +475,10 @@ BEGIN
                 fill_count <= n_fill_count;
                 fill_count_valid(i) <= n_fill_count_valid(i);
 
-                --                IF ((fill_count(i) > mem_addr(i)(12 DOWNTO 2)) OR ((fill_count(i) = mem_addr(i)(12 DOWNTO 2)) AND (fill_count_valid(i) = '1'))) AND (cache_miss(i) = '0') AND (address_valid(i) = '1') THEN
+                --                IF ((fill_count(i) > mem_addr_r(i)(12 DOWNTO 2)) OR ((fill_count(i) = mem_addr_r(i)(12 DOWNTO 2)) AND (fill_count_valid(i) = '1'))) AND (cache_miss(i) = '0') AND (address_valid(i) = '1') THEN
 
                 --IF (cache_miss(i) = '0') AND (address_valid(i) = '1') THEN
-                --IF (mem_addr(i)(12 DOWNTO 2) < fill_count(i)) AND (cache_miss(i) = '0') AND (address_valid(i) = '1') THEN
+                --IF (mem_addr_r(i)(12 DOWNTO 2) < fill_count(i)) AND (cache_miss(i) = '0') AND (address_valid(i) = '1') THEN
                 --DPRAM_WE_CPU(i) <= mem_we(i); -- not coherent
                 --mem_rdy(i) <= '1'; --mem_re(i);
                 --END IF;
@@ -494,9 +505,9 @@ BEGIN
     END PROCESS;
 
     rdygen : FOR i IN 0 TO num_ports - 1 GENERATE
-        --mem_rdy(i) <= mem_re(i) WHEN (mem_addr(i)(12 DOWNTO 2) < fill_count(i)) AND (cache_miss(i) = '0') AND (address_valid(i) = '1') ELSE '0';
-        -- mem_rdy(i) <= mem_re(i) WHEN (mem_addr(i)(12 DOWNTO 2) <= fill_count(i)) AND (cache_miss(i) = '0') AND (address_valid(i) = '1') ELSE '0';
-        mem_rdy(i) <= mem_re(i) WHEN  (cache_miss(i) = '0') AND (address_valid(i) = '1') AND (fill_count(i) > mem_addr(i)(15 downto 5)) ELSE --(DPRAM_WE_SDRAM(i) = '0') 
+        --mem_rdy(i) <= mem_re(i) WHEN (mem_addr_r(i)(12 DOWNTO 2) < fill_count(i)) AND (cache_miss(i) = '0') AND (address_valid(i) = '1') ELSE '0';
+        -- mem_rdy(i) <= mem_re(i) WHEN (mem_addr_r(i)(12 DOWNTO 2) <= fill_count(i)) AND (cache_miss(i) = '0') AND (address_valid(i) = '1') ELSE '0';
+        mem_rdy(i) <= mem_re(i) WHEN  (cache_miss(i) = '0') AND (address_valid(i) = '1') AND (fill_count(i) > mem_addr_r(i)(15 downto 5)) ELSE --(DPRAM_WE_SDRAM(i) = '0') 
         '0'; -- works but is not fully correct
 
     END GENERATE rdygen;
@@ -521,7 +532,7 @@ BEGIN
             inst_dpram : dpram1
             PORT MAP(
                 DataInA => DPRAM_DIN_SDRAM(i), DataInB => DPRAM_DIN_CPU(i),
-                AddressA => DPRAM_ADDR_SDRAM(i), AddressB => mem_addr(i)(12 DOWNTO 2),
+                AddressA => DPRAM_ADDR_SDRAM(i), AddressB => mem_addr_r(i)(12 DOWNTO 2),
                 ClockA => clk, ClockB => mem_clk(i),
                 ClockEnA => '1', ClockEnB => '1',
                 WrA => DPRAM_WE_SDRAM(i), WrB => DPRAM_WE_CPU(i),
@@ -540,24 +551,24 @@ BEGIN
                 douta => DPRAM_DOUT_SDRAM(i),
                 clkb => mem_clk(i),
                 web(0) => DPRAM_WE_CPU(i),
-                addrb => mem_addr(i)(12 DOWNTO 2),
+                addrb => mem_addr_r(i)(12 DOWNTO 2),
                 dinb => DPRAM_DIN_CPU(i),
                 doutb => DPRAM_DOUT_CPU(i)
             );
         END GENERATE xilinx;
 
         --mem_wack(i)      <= DPRAM_WE_CPU(i);
-        address_valid(i) <= '1' WHEN mem_addr(i)(31 DOWNTO 25) = base_address(31 DOWNTO 25) ELSE
+        address_valid(i) <= '1' WHEN mem_addr_r(i)(31 DOWNTO 25) = base_address(31 DOWNTO 25) ELSE
         '0'; -- 0xD0000000 to 0xD1FFFFFF
-        cache_miss(i) <= '1' WHEN (current_address(i)(24 DOWNTO 13) /= mem_addr(i)(24 DOWNTO 13)) ELSE
+        cache_miss(i) <= '1' WHEN (current_address(i)(24 DOWNTO 13) /= mem_addr_r(i)(24 DOWNTO 13)) ELSE
         '0';
 
-        PROCESS (DPRAM_DOUT_CPU, mem_width, mem_addr, mem_wdata)
+        PROCESS (DPRAM_DOUT_CPU, mem_width, mem_addr_r, mem_wdata)
         BEGIN
             DPRAM_DIN_CPU(i) <= DPRAM_DOUT_CPU(i);
             CASE mem_width(i) IS
                 WHEN "00" => -- 1 byte access
-                    CASE mem_addr(i)(1 DOWNTO 0) IS
+                    CASE mem_addr_r(i)(1 DOWNTO 0) IS
                         WHEN "00" =>
                             DPRAM_DIN_CPU(i)(7 DOWNTO 0) <= mem_wdata(i)(7 DOWNTO 0);
                         WHEN "01" =>
@@ -570,7 +581,7 @@ BEGIN
                             -- xilinx sim is retarded
                     END CASE;
                 WHEN "01" => -- 2 byte / halfword access
-                    CASE mem_addr(i)(0) IS
+                    CASE mem_addr_r(i)(0) IS
                         WHEN '0' =>
                             DPRAM_DIN_CPU(i)(15 DOWNTO 0) <= mem_wdata(i)(15 DOWNTO 0);
                         WHEN '1' =>

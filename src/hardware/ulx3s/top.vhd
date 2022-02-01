@@ -343,8 +343,8 @@ BEGIN
   
 
 
-  sdram_mem_addr <= (0 => (others => '0'), 1 => hdmi_mem_addr); --(0 => periph_address(PERIPH_SDRAM), 1 => hdmi_mem_addr);
-  sdram_mem_wdata <= (0 => (others => '0'), 1 => hdmi_mem_wdata); --(0 => periph_wdata(PERIPH_SDRAM), 1 => hdmi_mem_wdata);
+  sdram_mem_addr <= (0 => mem_addr, 1 => hdmi_mem_addr);
+  sdram_mem_wdata <= (0 => mem_wdata, 1 => hdmi_mem_wdata);
 
 
   sdram_mem_we <= (0 => periph_we(PERIPH_SDRAM), 1 => hdmi_mem_we);
