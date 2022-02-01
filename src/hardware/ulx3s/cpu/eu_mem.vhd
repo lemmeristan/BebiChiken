@@ -52,7 +52,7 @@ ARCHITECTURE behavioural OF eu_mem IS
     signal set_last_instruction, set_last_mem_addr : std_logic;
     signal same_last_instruction, same_last_mem_addr, i_same_last_instruction, i_same_last_mem_addr : std_logic;
 
-    signal set_instruction_r, set_mem_addr : std_logic;
+    signal set_instruction_r, set_mem_addr, set_mem_wdata : std_logic;
 
 
 BEGIN
@@ -96,7 +96,6 @@ BEGIN
             mem_re <= n_mem_re;
             timestamp        <= n_timestamp;
 
-            i_mem_wdata       <= n_mem_wdata;
             fsm36_state      <= n_fsm36_state;
             fsm108_state     <= n_fsm108_state;
 
@@ -109,12 +108,17 @@ BEGIN
             end if;
 
             if set_instruction_r = '1' then
-            instruction_r    <= Q36(31 DOWNTO 0);
+                instruction_r    <= Q108(31 DOWNTO 0);
             end if;
 
             if set_mem_addr = '1' then
-                i_mem_addr       <= Q36(31 DOWNTO 0);
+                i_mem_addr       <= Q108(63 DOWNTO 32);
             end if;
+
+            if set_mem_wdata = '1' then
+                i_mem_wdata       <= Q108(95 DOWNTO 64);
+            end if;
+
 
 
 
@@ -207,6 +211,14 @@ BEGIN
         Data36             <= (OTHERS => '0');
         set_last_instruction <= '0';
         set_last_mem_addr <= '0';
+        n_mem_re <= '0';
+
+        set_instruction_r <= '0';
+        set_mem_addr <= '0';
+        set_mem_wdata <= '0';
+
+        n_mem_we <= '0';
+        n_mem_re <= '0';
 
         CASE fsm108_state IS
             WHEN S0 =>
@@ -214,117 +226,38 @@ BEGIN
                     RdEn108        <= '1';
                     n_fsm108_state <= S1;
                 END IF;
-            WHEN S1 =>                            -- remember to check whether or not fifo is full
-                Data36 <= "0001" & Q108(31 DOWNTO 0); -- set instruction
-
-                --if same_last_instruction = '1' then
-                --    n_fsm108_state     <= S2;
-                --els
-                if (Full36 = '0') then
-                    WrEn36 <= '1';
-                    set_last_instruction <= '1';
-                    n_fsm108_state     <= S2;
-                end if;
+            WHEN S1 =>
+                set_instruction_r <= '1';
+                set_mem_addr <= '1';
+                set_mem_wdata <= '1';
+                n_fsm108_state     <= S2;
 
             WHEN S2 =>
-                Data36 <= "0010" & Q108(63 DOWNTO 32); -- set mem_addr
-
-                --if same_last_mem_addr = '1' then
-                --    n_fsm108_state     <= S3;
-                --els
-                if (Full36 = '0') then
-                    WrEn36 <= '1';
-                    set_last_mem_addr <= '1';
-                    n_fsm108_state     <= S3;
-                end if;
-
-            WHEN S3 =>
-                IF Full36 = '0' THEN
-                    WrEn36 <= '1';
-                    IF f_decode_opcode(Q108(31 DOWNTO 0)) = OPCODE_I_TYPE_LOAD THEN
-                        Data36 <= "0100" & Q108(95 DOWNTO 64); -- read from bus, token as parameter
-                    ELSIF f_decode_opcode(Q108(31 DOWNTO 0)) = OPCODE_S_TYPE THEN
-                        Data36 <= "1000" & Q108(95 DOWNTO 64); -- write to bus, wdata as parameter
+                    IF f_decode_opcode(instruction_r) = OPCODE_I_TYPE_LOAD THEN
+                        n_mem_re <= '1';
+                        if mem_rdy = '1' then
+                            n_fsm108_state <= S0;
+                        end if;
+                    ELSIF f_decode_opcode(instruction_r) = OPCODE_S_TYPE THEN
+                        n_mem_we <= '1';
+                        if mem_wack = '1' then
+                            n_fsm108_state <= S0;
+                        end if;
                     ELSE                                   -- invalid instruction
-                        WrEn36 <= '0';
+                        n_fsm108_state <= S0;
                     END IF;
-                    n_fsm108_state <= S0;
-                END IF;
+
+            when others =>
+                n_fsm108_state <= S0;
         END CASE;
     END PROCESS;
 
     writeback_data  <= mem_rdata; -- perhaps edit this later depending on width
-    writeback_token <= Q36(31 DOWNTO 0);
+    writeback_token <= i_mem_wdata;
     mem_addr    <= i_mem_addr;
     mem_wdata <= i_mem_wdata;
     mem_width       <= instruction_r(13 DOWNTO 12);
     writeback_rd    <= instruction_r(11 DOWNTO 7);
-    ----------------------------------------------
-    -- Execute instructions
-    ----------------------------------------------
-    fsm36 : PROCESS (fsm36_state, mem_rdy, mem_wack, Empty36, instruction_r, Q36, i_mem_addr, i_mem_wdata)
-    BEGIN
-        n_instruction_r <= instruction_r;
-        RdEn36          <= '0';
-        n_fsm36_state   <= fsm36_state;
-        n_mem_addr      <= i_mem_addr;
-        n_mem_wdata <= i_mem_wdata;
-        n_mem_re          <= '0';
-        n_mem_we          <= '0';
-        writeback_we    <= '0';
-
-        set_instruction_r <= '0';
-        set_mem_addr <= '0';
-
-        CASE fsm36_state IS
-            WHEN S0 =>
-                IF Empty36 = '0' THEN
-                RdEn36        <= '1';
-
-                    n_fsm36_state <= S1;
-                END IF;
-            WHEN S1 =>
-                CASE Q36(35 DOWNTO 32) IS
-                    WHEN "0001" => -- set instruction
-                        set_instruction_r <= '1';
-                        n_fsm36_state <= S0;
-
---                        n_instruction_r <= Q36(31 DOWNTO 0);
-                        --IF Empty36 = '0' THEN
-                        --    RdEn36 <= '1';
-                        --ELSE
-                        --END IF;
-                    WHEN "0010" => -- set address
-                        set_mem_addr <= '1';
-                        n_fsm36_state <= S0;
-
-                        --n_mem_addr <= Q36(31 DOWNTO 0);
-
-                        --IF Empty36 = '0' THEN
-                        --    RdEn36 <= '1';
-                        --ELSE
-                        --END IF;
-                    WHEN "0100" => -- read from bus
-                        n_mem_re <= '1';
-                        IF mem_rdy = '1' THEN
-                            writeback_we  <= '1';
-                            n_fsm36_state <= S0;
-                        END IF;
-                    WHEN "1000" => -- write to bus
-                        n_mem_wdata <= Q36(31 DOWNTO 0);
-                        n_mem_we <= '1';
-                        IF mem_wack = '1' THEN
-                            n_fsm36_state <= S0;
-                        END IF;
-                    WHEN OTHERS =>
-                        --IF Empty36 = '0' THEN
-                        --    RdEn36 <= '1';
-                        --ELSE
-                            n_fsm36_state <= S0;
-                        --END IF;
-                END CASE;
-        END CASE;
-
-    END PROCESS;
+    
 
 END behavioural;
